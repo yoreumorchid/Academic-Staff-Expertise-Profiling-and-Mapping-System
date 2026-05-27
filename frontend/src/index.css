@@ -1,0 +1,54 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* DESIGN.md §3 — OpenType features cv01 and ss03 must be enabled
+   globally for the Linear typeface identity. */
+:root {
+  font-family: "Inter Variable", "SF Pro Display", -apple-system, system-ui,
+    "Segoe UI", Roboto, sans-serif;
+  font-feature-settings: "cv01", "ss03";
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  min-height: 100vh;
+}
+
+body {
+  margin: 0;
+  font-feature-settings: "cv01", "ss03";
+}
+
+/* Custom utility: Linear's ghost button styling, reused across pages. */
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center rounded-comfy bg-brand-indigo
+           px-4 py-2 text-body font-signature text-white transition-colors
+           hover:bg-brand-hover focus:outline-none focus:shadow-focus;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center rounded-comfy bg-white/[0.02]
+           px-4 py-2 text-body font-signature text-text-secondary border
+           border-white/[0.08] transition-colors hover:bg-white/[0.05]
+           focus:outline-none focus:shadow-focus;
+  }
+  .card {
+    @apply rounded-card border border-white/[0.08] bg-white/[0.02] p-6;
+  }
+  .input {
+    @apply w-full rounded-comfy border border-white/[0.08] bg-white/[0.02]
+           px-3.5 py-3 text-body text-text-secondary placeholder:text-text-tertiary
+           focus:outline-none focus:border-brand-violet focus:shadow-focus;
+  }
+  .label {
+    @apply block text-caption font-signature text-text-tertiary mb-2;
+  }
+  .pill {
+    @apply inline-flex items-center rounded-full border border-border-primary
+           px-2.5 py-0.5 text-label font-signature text-text-secondary;
+  }
+}
