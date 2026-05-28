@@ -1,140 +1,25 @@
 /**
- * Phase-1 placeholder views for the dashboard surfaces.
- *
- * Per instructions.md §4 rule 1, no decorative or dead links are
- * permitted: each placeholder explicitly states which Use Case it will
- * implement in the next build phase and renders the spec-mandated
- * "No records found" empty-state styling instead of fabricated data.
+ * Barrel module for the dashboard surfaces. Each Use Case implementation
+ * lives in its own file so audits against the spec matrix remain
+ * deterministic; App.tsx imports the entire dashboard surface from here.
  */
-
-interface PlaceholderProps {
-  title: string;
-  uc: string;
-  description: string;
-}
-
-function ModulePlaceholder({ title, uc, description }: PlaceholderProps) {
-  return (
-    <div className="space-y-6">
-      <div>
-        <p className="text-caption font-signature uppercase tracking-wide text-text-quaternary">
-          {uc}
-        </p>
-        <h1 className="mt-1 text-heading-1 font-announce text-text-primary">
-          {title}
-        </h1>
-        <p className="mt-2 max-w-2xl text-body-lg text-text-tertiary">
-          {description}
-        </p>
-      </div>
-      <div className="card">
-        <p className="text-small text-text-tertiary">
-          No records found. This module's data pipeline is provisioned in a
-          subsequent build phase per the spec matrix; the empty state shown
-          here is the explicit fallback mandated by UC-7's exception flow and
-          §4 rule 1 of instructions.md.
-        </p>
-      </div>
-    </div>
-  );
-}
-
-// --- Staff portal -----------------------------------------------------------
-
-export const ProfileOverviewPage = () => (
-  <ModulePlaceholder
-    uc="UC-7 / UC-11"
-    title="Profile Overview"
-    description="Consolidated view of your AI-generated expertise tags, publications, and validated metadata."
-  />
-);
-
-export const TagRefinementPage = () => (
-  <ModulePlaceholder
-    uc="UC-11"
-    title="Expertise Tag Refinement"
-    description="Review, validate, remove, or supplement the normalized expertise tags produced by the SciBERT + LLM pipeline."
-  />
-);
-
-export const AcademicBackgroundPage = () => (
-  <ModulePlaceholder
-    uc="UC-10"
-    title="Academic Background"
-    description="Manage administrative roles, awards, and education with chronological-integrity validation."
-  />
-);
-
-export const PublicationsPage = () => (
-  <ModulePlaceholder
-    uc="UC-9"
-    title="Publications & Abstracts"
-    description="Inspect harvested publications and supplement abstracts that OpenAlex could not return."
-  />
-);
-
-export const ExportSnapshotPage = () => (
-  <ModulePlaceholder
-    uc="UC-18"
-    title="Export Portfolio Snapshot"
-    description="Compose and download a one-page PDF or DOCX of your prioritized expertise tags and selected publications."
-  />
-);
-
-// --- Admin portal -----------------------------------------------------------
-
-export const AdminHomePage = () => (
-  <ModulePlaceholder
-    uc="UC-6"
-    title="Strategic Dashboard"
-    description="High-level analytical summaries scoped to your portfolio. Use the sidebar to enter individual modules."
-  />
-);
-
-export const StaffDirectoryPage = () => (
-  <ModulePlaceholder
-    uc="UC-7"
-    title="Staff Profiles"
-    description="Filterable directory of academic staff with normalized expertise tags and department affiliation."
-  />
-);
-
-export const CourseMappingPage = () => (
-  <ModulePlaceholder
-    uc="UC-13 / UC-14"
-    title="Semantic Course Mapping"
-    description="Ingest a syllabus (text or document) and produce a ranked list of best-matched academic staff via cosine similarity and spreading activation."
-  />
-);
-
-export const GrantMappingPage = () => (
-  <ModulePlaceholder
-    uc="UC-13 / UC-14"
-    title="Research Grant Mapping"
-    description="Ingest a grant call (text or document) and produce a ranked list of academic staff, including cross-department latent experts."
-  />
-);
-
-export const GapAnalyticsPage = () => (
-  <ModulePlaceholder
-    uc="UC-15 / UC-17"
-    title="Gap Analytics Overview"
-    description="K-Means + UMAP visualization of internal expertise centroids compared against global and peer benchmarks, with LLM-synthesized narrative."
-  />
-);
-
-export const GlobalBenchmarkingPage = () => (
-  <ModulePlaceholder
-    uc="UC-15"
-    title="Global Benchmarking"
-    description="Compare internal faculty clusters against IEEE Xplore-sourced global research frontiers and identify institutional white spaces."
-  />
-);
-
-// --- Admin: pending registrations (UC-2) -----------------------------------
-
 import { useEffect, useState } from "react";
 import { api, extractApiError } from "../api/client";
+
+export { ProfileOverviewPage } from "./Profile";
+export { TagRefinementPage } from "./Tags";
+export { AcademicBackgroundPage } from "./Background";
+export { PublicationsPage } from "./Publications";
+export { ExportSnapshotPage } from "./Export";
+export { AdminHomePage } from "./AdminHome";
+export { StaffDirectoryPage } from "./StaffDirectory";
+export { CourseMappingPage, GrantMappingPage } from "./Mapping";
+export { GapAnalyticsPage, GlobalBenchmarkingPage } from "./Gap";
+
+// ---------------------------------------------------------------------------
+// UC-2 — Pending Registrations (kept inline as the only admin-side surface
+// that consumes the /admin/registrations endpoint directly).
+// ---------------------------------------------------------------------------
 
 interface PendingRegistration {
   id: string;
@@ -155,7 +40,7 @@ export function PendingRegistrationsPage() {
   async function load() {
     try {
       const { data } = await api.get<PendingRegistration[]>(
-        "/admin/registrations"
+        "/admin/registrations",
       );
       setRows(data);
     } catch (err) {
