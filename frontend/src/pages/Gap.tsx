@@ -41,17 +41,9 @@ export function GapAnalyticsPage() {
     <div className="space-y-6">
       <header className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-caption font-signature uppercase tracking-wide text-text-quaternary">
-            UC-17
-          </p>
-          <h1 className="mt-1 text-heading-1 font-announce text-text-primary">
+          <h1 className="text-heading-1 font-announce text-text-primary">
             Gap Analytics Overview
           </h1>
-          <p className="mt-2 max-w-2xl text-body-lg text-text-tertiary">
-            LLM-synthesized narrative consolidating the latest global and peer
-            benchmark runs, surfacing the institutional white spaces ranked by
-            displacement score.
-          </p>
         </div>
         <button
           type="button"
@@ -82,7 +74,7 @@ export function GapAnalyticsPage() {
             {report.white_spaces.length === 0 ? (
               <EmptyState text="No white spaces flagged." />
             ) : (
-              <table className="min-w-full divide-y divide-white/[0.05] text-small">
+              <table className="min-w-full divide-y divide-border-secondary text-small">
                 <thead className="text-caption uppercase tracking-wide text-text-quaternary">
                   <tr>
                     <th className="px-2 py-2 text-left font-signature">Source</th>
@@ -93,7 +85,7 @@ export function GapAnalyticsPage() {
                     <th className="px-2 py-2 text-left font-signature">Recommendation</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/[0.05]">
+                <tbody className="divide-y divide-border-secondary">
                   {report.white_spaces.map((w, idx) => (
                     <tr key={`${w.source}-${idx}`}>
                       <td className="px-2 py-2 text-text-secondary">{w.source}</td>
@@ -174,17 +166,9 @@ export function GlobalBenchmarkingPage() {
   return (
     <div className="space-y-6">
       <header>
-        <p className="text-caption font-signature uppercase tracking-wide text-text-quaternary">
-          UC-15 / UC-16
-        </p>
-        <h1 className="mt-1 text-heading-1 font-announce text-text-primary">
+        <h1 className="text-heading-1 font-announce text-text-primary">
           Global &amp; Peer Benchmarking
         </h1>
-        <p className="mt-2 max-w-2xl text-body-lg text-text-tertiary">
-          Compare the internal expertise centroids against IEEE Xplore research
-          frontiers (UC-15) or against peer-institution curriculum documents
-          (UC-16). Results feed into the consolidated UC-17 report.
-        </p>
       </header>
 
       {error && <Banner kind="error">{error}</Banner>}
@@ -193,7 +177,7 @@ export function GlobalBenchmarkingPage() {
       <section className="card flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <h2 className="text-heading-3 font-announce text-text-primary">
-            UC-15 · Global frontier
+            Global frontier
           </h2>
           <p className="text-caption text-text-tertiary">
             Pulls eight benchmark queries from IEEE Xplore and clusters them
@@ -212,7 +196,7 @@ export function GlobalBenchmarkingPage() {
 
       <section className="card">
         <h2 className="text-heading-3 font-announce text-text-primary">
-          UC-16 · Peer-institution upload
+          Peer-institution upload
         </h2>
         <p className="mt-1 text-caption text-text-tertiary">
           Upload one or more PDF/DOCX curriculum documents from peer
@@ -264,7 +248,7 @@ export function GlobalBenchmarkingPage() {
             {run.white_spaces.length === 0 ? (
               <EmptyState text="No white spaces flagged." />
             ) : (
-              <ul className="divide-y divide-white/[0.05]">
+              <ul className="divide-y divide-border-secondary">
                 {run.white_spaces.map((w, idx) => (
                   <li key={idx} className="py-2">
                     <div className="flex items-center justify-between">
@@ -331,7 +315,7 @@ function UmapScatter({ payload }: { payload: VisualizationPayload }) {
       <svg
         ref={svgRef}
         viewBox={`0 0 ${width} ${height}`}
-        className="w-full rounded-comfy border border-white/[0.05] bg-bg-deepest"
+        className="w-full rounded-comfy border border-border-secondary bg-bg-deepest"
         onMouseLeave={() => setHover(null)}
       >
         {points.map((p, idx) => (

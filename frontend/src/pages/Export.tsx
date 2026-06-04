@@ -64,7 +64,7 @@ export function ExportSnapshotPage() {
   async function generate() {
     if (isEmptySelection) {
       setError(
-        "Select at least one data point or enable 'use defaults' (UC-18 exception).",
+        "Select at least one data point or enable 'use defaults'.",
       );
       return;
     }
@@ -105,17 +105,9 @@ export function ExportSnapshotPage() {
   return (
     <div className="space-y-6">
       <header>
-        <p className="text-caption font-signature uppercase tracking-wide text-text-quaternary">
-          UC-18
-        </p>
-        <h1 className="mt-1 text-heading-1 font-announce text-text-primary">
+        <h1 className="text-heading-1 font-announce text-text-primary">
           Export Portfolio Snapshot
         </h1>
-        <p className="mt-2 max-w-2xl text-body-lg text-text-tertiary">
-          Compose a curated one-page document of your strongest expertise
-          signals. PDF and DOCX outputs are produced server-side via ReportLab
-          and python-docx respectively.
-        </p>
       </header>
 
       {error && <Banner kind="error">{error}</Banner>}
@@ -170,7 +162,7 @@ export function ExportSnapshotPage() {
                   }
                   className={`pill ${
                     active
-                      ? "border-brand-violet bg-brand-indigo text-white"
+                      ? "border-brand-indigo bg-brand-indigo text-white"
                       : ""
                   }`}
                 >
@@ -189,7 +181,7 @@ export function ExportSnapshotPage() {
         {!profile || profile.publications.length === 0 ? (
           <EmptyState text="No publications available to include." />
         ) : (
-          <ul className="divide-y divide-white/[0.05]">
+          <ul className="divide-y divide-border-secondary">
             {profile.publications.map((p: Publication) => {
               const active = selectedPubs.has(p.id);
               return (
@@ -224,7 +216,7 @@ export function ExportSnapshotPage() {
         {background.length === 0 ? (
           <EmptyState text="No background records available." />
         ) : (
-          <ul className="divide-y divide-white/[0.05]">
+          <ul className="divide-y divide-border-secondary">
             {background.map((b) => {
               const active = selectedBg.has(b.id);
               return (

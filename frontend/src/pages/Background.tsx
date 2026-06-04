@@ -112,17 +112,9 @@ export function AcademicBackgroundPage() {
   return (
     <div className="space-y-6">
       <header>
-        <p className="text-caption font-signature uppercase tracking-wide text-text-quaternary">
-          UC-10
-        </p>
-        <h1 className="mt-1 text-heading-1 font-announce text-text-primary">
+        <h1 className="text-heading-1 font-announce text-text-primary">
           Academic Background
         </h1>
-        <p className="mt-2 max-w-2xl text-body-lg text-text-tertiary">
-          Curate appointments, education, awards and service. Dates are
-          validated for chronological integrity at both the client and the
-          backend.
-        </p>
       </header>
 
       {error && <Banner kind="error">{error}</Banner>}
@@ -213,7 +205,7 @@ export function AcademicBackgroundPage() {
         {records.length === 0 ? (
           <EmptyState text="No background records yet." />
         ) : (
-          <ul className="divide-y divide-white/[0.05]">
+          <ul className="divide-y divide-border-secondary">
             {records.map((r) => (
               <li
                 key={r.id}

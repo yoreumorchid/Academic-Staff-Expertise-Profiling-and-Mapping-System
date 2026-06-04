@@ -77,17 +77,9 @@ export function StaffDirectoryPage() {
   return (
     <div className="space-y-6">
       <header>
-        <p className="text-caption font-signature uppercase tracking-wide text-text-quaternary">
-          UC-7
-        </p>
-        <h1 className="mt-1 text-heading-1 font-announce text-text-primary">
+        <h1 className="text-heading-1 font-announce text-text-primary">
           Staff Profiles
         </h1>
-        <p className="mt-2 max-w-2xl text-body-lg text-text-tertiary">
-          Filterable directory of academic staff. Use the global header
-          search categories (Name / Expertise / Publication / Department) or
-          combine with departmental and tag filters.
-        </p>
       </header>
 
       {error && <Banner kind="error">{error}</Banner>}
@@ -156,8 +148,8 @@ export function StaffDirectoryPage() {
       </section>
 
       <section className="card overflow-hidden p-0">
-        <table className="min-w-full divide-y divide-white/[0.05] text-small">
-          <thead className="bg-white/[0.02] text-caption uppercase tracking-wide text-text-quaternary">
+        <table className="min-w-full divide-y divide-border-secondary text-small">
+          <thead className="bg-bg-surface text-caption uppercase tracking-wide text-text-quaternary">
             <tr>
               <th className="px-4 py-3 text-left font-signature">Name</th>
               <th className="px-4 py-3 text-left font-signature">Department</th>
@@ -165,7 +157,7 @@ export function StaffDirectoryPage() {
               <th className="px-4 py-3 text-right font-signature">Action</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-white/[0.05]">
+          <tbody className="divide-y divide-border-secondary">
             {rows.length === 0 ? (
               <tr>
                 <td colSpan={4} className="px-4 py-6 text-center text-text-tertiary">
@@ -265,7 +257,7 @@ export function StaffDirectoryPage() {
             {openProfile.publications.length === 0 ? (
               <EmptyState text="No publications." />
             ) : (
-              <ul className="divide-y divide-white/[0.05]">
+              <ul className="divide-y divide-border-secondary">
                 {openProfile.publications.slice(0, 10).map((p) => (
                   <li key={p.id} className="py-2">
                     <div className="text-body text-text-primary">

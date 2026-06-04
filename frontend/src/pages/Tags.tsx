@@ -86,7 +86,7 @@ export function TagRefinementPage() {
   async function submit() {
     if (remainingPreview === 0) {
       setError(
-        "A profile must retain at least one expertise tag (UC-11 exception).",
+        "A profile must retain at least one expertise tag.",
       );
       return;
     }
@@ -114,16 +114,9 @@ export function TagRefinementPage() {
   return (
     <div className="space-y-6">
       <header>
-        <p className="text-caption font-signature uppercase tracking-wide text-text-quaternary">
-          UC-11
-        </p>
-        <h1 className="mt-1 text-heading-1 font-announce text-text-primary">
+        <h1 className="text-heading-1 font-announce text-text-primary">
           Expertise Tag Refinement
         </h1>
-        <p className="mt-2 max-w-2xl text-body-lg text-text-tertiary">
-          Validate accurate tags, remove inaccurate ones, and add custom
-          labels. Validated tags carry higher weight in UC-14 matching.
-        </p>
       </header>
 
       {error && <Banner kind="error">{error}</Banner>}
@@ -136,7 +129,7 @@ export function TagRefinementPage() {
         {tags.length === 0 ? (
           <EmptyState text="No tags yet. Run a sync from Profile Overview." />
         ) : (
-          <ul className="divide-y divide-white/[0.05]">
+          <ul className="divide-y divide-border-secondary">
             {tags.map((t) => {
               const removing = removeIds.has(t.tag.id);
               const validating = validateIds.has(t.tag.id);
@@ -190,7 +183,7 @@ export function TagRefinementPage() {
           {addLabels.map((label) => (
             <span
               key={label}
-              className="pill border-brand-violet/50 text-text-primary"
+              className="pill border-brand-indigo/50 text-text-primary"
             >
               {label}
               <button

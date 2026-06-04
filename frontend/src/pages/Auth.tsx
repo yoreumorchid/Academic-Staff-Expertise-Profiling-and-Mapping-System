@@ -1,8 +1,8 @@
-/**
- * Auth pages: login (UC-3), register (UC-1), forgot password (UC-4),
- * reset password (UC-4). The visual treatment follows DESIGN.md §1-4.
+﻿/**
+ * Auth pages: login, register, forgot password, reset password.
+ * Light-mode design tokens (DESIGN.md Light Mode Neutrals).
  */
-import { FormEvent, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api, extractApiError } from "../api/client";
 import { useAuthStore } from "../store/auth";
@@ -15,11 +15,9 @@ import type {
 
 function AuthShell({
   title,
-  subtitle,
   children,
 }: {
   title: string;
-  subtitle: string;
   children: React.ReactNode;
 }) {
   return (
@@ -27,9 +25,8 @@ function AuthShell({
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
           <h1 className="text-display font-signature text-text-primary">
-            ExpertiseInsight
+            Expertise Insight
           </h1>
-          <p className="mt-2 text-small text-text-tertiary">{subtitle}</p>
         </div>
         <div className="card">
           <h2 className="mb-6 text-heading-3 font-announce text-text-primary">
@@ -43,7 +40,46 @@ function AuthShell({
 }
 
 // ---------------------------------------------------------------------------
-// UC-3 — Login
+// Validation helpers
+// ---------------------------------------------------------------------------
+
+const UM_EMAIL_PATTERN = /^[A-Za-z0-9._%+-]+@um\.edu\.my$/;
+const PASSWORD_PATTERN =
+  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>/?`~]).{8,16}$/;
+
+function validateUmEmail(value: string): string | null {
+  return UM_EMAIL_PATTERN.test(value.trim())
+    ? null
+    : "UM Email must end with @um.edu.my";
+}
+
+function validatePassword(value: string): string | null {
+  return PASSWORD_PATTERN.test(value)
+    ? null
+    : "Password must be 8-16 characters and include upper case, lower case, a digit, and a special character.";
+}
+
+function validateDepartment(value: string): string | null {
+  const trimmed = value.trim();
+  if (trimmed.length < 2 || trimmed.length > 100) {
+    return "Department must be 2-100 characters.";
+  }
+  if (!/[A-Za-z]/.test(trimmed)) {
+    return "Department must contain alphabetic characters.";
+  }
+  return null;
+}
+
+function validateName(value: string, field: string): string | null {
+  const trimmed = value.trim();
+  if (trimmed.length < 1 || trimmed.length > 80) {
+    return field + " must be 1-80 characters.";
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// Login
 // ---------------------------------------------------------------------------
 
 export function LoginPage() {
@@ -67,7 +103,9 @@ export function LoginPage() {
       login(data.access_token, data.user);
       const next =
         params.get("next") ??
-        (data.user.role === "faculty_administrator" ? "/admin" : "/staff/profile");
+        (data.user.role === "faculty_administrator"
+          ? "/admin"
+          : "/staff/profile");
       navigate(next, { replace: true });
     } catch (err) {
       setError(extractApiError(err, "Invalid email or password."));
@@ -77,16 +115,17 @@ export function LoginPage() {
   }
 
   return (
-    <AuthShell title="Sign in" subtitle="Access your institutional dashboard.">
+    <AuthShell title="Log in">
       <form onSubmit={onSubmit} className="space-y-4">
         <div>
           <label className="label" htmlFor="email">
-            Institutional email
+            UM Email
           </label>
           <input
             id="email"
             type="email"
             className="input"
+            placeholder="staffname@um.edu.my"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -108,20 +147,20 @@ export function LoginPage() {
           />
         </div>
         {error && (
-          <div className="rounded-comfy border border-white/[0.08] bg-white/[0.02] p-3 text-caption text-text-secondary">
+          <div className="rounded-comfy border border-border-primary bg-bg-surface p-3 text-caption text-text-secondary">
             {error}
           </div>
         )}
         <button type="submit" className="btn-primary w-full" disabled={loading}>
-          {loading ? "Signing in…" : "Sign in"}
+          {loading ? "Logging in..." : "Log in"}
         </button>
         <div className="flex justify-between text-caption">
-          <Link to="/register" className="text-brand-violet hover:text-brand-hover">
+          <Link to="/register" className="text-brand-indigo hover:text-brand-hover">
             Create account
           </Link>
           <Link
             to="/forgot-password"
-            className="text-brand-violet hover:text-brand-hover"
+            className="text-brand-indigo hover:text-brand-hover"
           >
             Forgot password?
           </Link>
@@ -132,7 +171,7 @@ export function LoginPage() {
 }
 
 // ---------------------------------------------------------------------------
-// UC-1 — Register
+// Register
 // ---------------------------------------------------------------------------
 
 const PORTFOLIO_OPTIONS: { label: string; value: PortfolioType }[] = [
@@ -144,7 +183,8 @@ const PORTFOLIO_OPTIONS: { label: string; value: PortfolioType }[] = [
 
 export function RegisterPage() {
   const navigate = useNavigate();
-  const [fullName, setFullName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<UserRole>("academic_staff");
@@ -155,25 +195,54 @@ export function RegisterPage() {
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  const fullName = useMemo(
+    () => (firstName.trim() + " " + lastName.trim()).trim().toUpperCase(),
+    [firstName, lastName],
+  );
+
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     setError(null);
+
+    const fnErr = validateName(firstName, "First name");
+    if (fnErr) return setError(fnErr);
+    const lnErr = validateName(lastName, "Last name");
+    if (lnErr) return setError(lnErr);
+    const emErr = validateUmEmail(email);
+    if (emErr) return setError(emErr);
+    const pwErr = validatePassword(password);
+    if (pwErr) return setError(pwErr);
+    if (role === "academic_staff") {
+      const dErr = validateDepartment(department);
+      if (dErr) return setError(dErr);
+      if (!/^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$/.test(orcidId)) {
+        return setError("ORCID ID must match the format 0000-0000-0000-0000.");
+      }
+    } else if (orcidId) {
+      // Optional dual-role flag; if provided, format and department must hold.
+      if (!/^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$/.test(orcidId)) {
+        return setError("ORCID ID must match the format 0000-0000-0000-0000.");
+      }
+      const dErr = validateDepartment(department);
+      if (dErr) return setError(dErr);
+    }
+
     setLoading(true);
     try {
       const payload: Record<string, unknown> = {
         full_name: fullName,
-        email,
+        email: email.trim().toLowerCase(),
         password,
         role,
       };
       if (role === "academic_staff") {
-        payload.department = department;
+        payload.department = department.trim();
         payload.orcid_id = orcidId;
       } else {
         payload.portfolio = portfolio;
         if (orcidId) {
-          payload.orcid_id = orcidId; // UC-1 dual-role flag
-          if (department) payload.department = department;
+          payload.orcid_id = orcidId;
+          if (department) payload.department = department.trim();
         }
       }
       await api.post("/auth/register", payload);
@@ -188,45 +257,55 @@ export function RegisterPage() {
 
   if (success) {
     return (
-      <AuthShell
-        title="Registration submitted"
-        subtitle="Your request is awaiting Faculty Manager approval (UC-1 post-condition)."
-      >
+      <AuthShell title="Registration submitted">
         <p className="text-small text-text-secondary">
           You will receive an email at <strong>{email}</strong> once a Faculty
-          Manager reviews your request. Redirecting to the login page…
+          Manager reviews your request. Redirecting to the login page...
         </p>
       </AuthShell>
     );
   }
 
   return (
-    <AuthShell
-      title="Create an account"
-      subtitle="UC-1 — Pending status until administrative approval."
-    >
+    <AuthShell title="Create an account">
       <form onSubmit={onSubmit} className="space-y-4">
-        <div>
-          <label className="label" htmlFor="full_name">
-            Full name
-          </label>
-          <input
-            id="full_name"
-            type="text"
-            className="input"
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            required
-          />
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="label" htmlFor="first_name">
+              First name
+            </label>
+            <input
+              id="first_name"
+              type="text"
+              className="input"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              required
+            />
+          </div>
+          <div>
+            <label className="label" htmlFor="last_name">
+              Last name
+            </label>
+            <input
+              id="last_name"
+              type="text"
+              className="input"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              required
+            />
+          </div>
         </div>
         <div>
           <label className="label" htmlFor="email">
-            Institutional email
+            UM Email
           </label>
           <input
             id="email"
             type="email"
             className="input"
+            placeholder="staffname@um.edu.my"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -234,7 +313,7 @@ export function RegisterPage() {
         </div>
         <div>
           <label className="label" htmlFor="password">
-            Password (min. 8 characters)
+            Password
           </label>
           <input
             id="password"
@@ -243,8 +322,13 @@ export function RegisterPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             minLength={8}
+            maxLength={16}
             required
           />
+          <p className="mt-1 text-label text-text-quaternary">
+            8-16 chars, must include upper case, lower case, a digit and a
+            special character.
+          </p>
         </div>
         <div>
           <label className="label">Role</label>
@@ -257,8 +341,8 @@ export function RegisterPage() {
                 className={[
                   "flex-1 rounded-comfy border px-3 py-2 text-small font-signature transition-colors",
                   role === r
-                    ? "border-brand-violet bg-white/[0.05] text-text-primary"
-                    : "border-white/[0.08] bg-white/[0.02] text-text-secondary hover:bg-white/[0.05]",
+                    ? "border-brand-indigo bg-bg-secondary text-text-primary"
+                    : "border-border-primary bg-white text-text-secondary hover:bg-bg-surface",
                 ].join(" ")}
               >
                 {r === "academic_staff" ? "Academic Staff" : "Faculty Administrator"}
@@ -279,12 +363,14 @@ export function RegisterPage() {
                 className="input"
                 value={department}
                 onChange={(e) => setDepartment(e.target.value)}
+                minLength={2}
+                maxLength={100}
                 required
               />
             </div>
             <div>
               <label className="label" htmlFor="orcid">
-                ORCID ID (0000-0000-0000-0000)
+                ORCID ID (Fill in if you also have academic publications)
               </label>
               <input
                 id="orcid"
@@ -293,7 +379,6 @@ export function RegisterPage() {
                 value={orcidId}
                 onChange={(e) => setOrcidId(e.target.value)}
                 pattern="^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$"
-                placeholder="0000-0000-0000-0000"
                 required
               />
             </div>
@@ -321,7 +406,7 @@ export function RegisterPage() {
             </div>
             <div>
               <label className="label" htmlFor="orcid_optional">
-                ORCID ID (optional — enables dual-role profile)
+                ORCID ID (Fill in if you also have academic publications)
               </label>
               <input
                 id="orcid_optional"
@@ -330,7 +415,6 @@ export function RegisterPage() {
                 value={orcidId}
                 onChange={(e) => setOrcidId(e.target.value)}
                 pattern="^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$"
-                placeholder="0000-0000-0000-0000"
               />
             </div>
             {orcidId && (
@@ -344,6 +428,8 @@ export function RegisterPage() {
                   className="input"
                   value={department}
                   onChange={(e) => setDepartment(e.target.value)}
+                  minLength={2}
+                  maxLength={100}
                 />
               </div>
             )}
@@ -351,17 +437,17 @@ export function RegisterPage() {
         )}
 
         {error && (
-          <div className="rounded-comfy border border-white/[0.08] bg-white/[0.02] p-3 text-caption text-text-secondary">
+          <div className="rounded-comfy border border-status-red bg-white p-3 text-caption text-status-red">
             {error}
           </div>
         )}
         <button type="submit" className="btn-primary w-full" disabled={loading}>
-          {loading ? "Submitting…" : "Submit registration"}
+          {loading ? "Submitting..." : "Submit registration"}
         </button>
         <p className="text-center text-caption text-text-tertiary">
           Already have an account?{" "}
-          <Link to="/login" className="text-brand-violet hover:text-brand-hover">
-            Sign in
+          <Link to="/login" className="text-brand-indigo hover:text-brand-hover">
+            Log in
           </Link>
         </p>
       </form>
@@ -370,7 +456,7 @@ export function RegisterPage() {
 }
 
 // ---------------------------------------------------------------------------
-// UC-4 — Forgot password (request reset link)
+// Forgot password
 // ---------------------------------------------------------------------------
 
 export function ForgotPasswordPage() {
@@ -394,38 +480,39 @@ export function ForgotPasswordPage() {
   }
 
   return (
-    <AuthShell title="Reset password" subtitle="UC-4 — request a secure reset link.">
+    <AuthShell title="Reset password">
       {success ? (
         <p className="text-small text-text-secondary">
           If <strong>{email}</strong> is registered, a reset link has been
-          dispatched to your institutional inbox.
+          dispatched to your UM inbox.
         </p>
       ) : (
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
             <label className="label" htmlFor="email">
-              Institutional email
+              UM Email
             </label>
             <input
               id="email"
               type="email"
               className="input"
+              placeholder="staffname@um.edu.my"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
             />
           </div>
           {error && (
-            <div className="rounded-comfy border border-white/[0.08] bg-white/[0.02] p-3 text-caption text-text-secondary">
+            <div className="rounded-comfy border border-status-red bg-white p-3 text-caption text-status-red">
               {error}
             </div>
           )}
           <button type="submit" className="btn-primary w-full" disabled={loading}>
-            {loading ? "Sending…" : "Send reset link"}
+            {loading ? "Sending..." : "Send reset link"}
           </button>
           <p className="text-center text-caption text-text-tertiary">
-            <Link to="/login" className="text-brand-violet hover:text-brand-hover">
-              Back to sign in
+            <Link to="/login" className="text-brand-indigo hover:text-brand-hover">
+              Back to log in
             </Link>
           </p>
         </form>
@@ -435,7 +522,7 @@ export function ForgotPasswordPage() {
 }
 
 // ---------------------------------------------------------------------------
-// UC-4 — Reset password (consume token)
+// Reset password
 // ---------------------------------------------------------------------------
 
 export function ResetPasswordPage() {
@@ -454,6 +541,8 @@ export function ResetPasswordPage() {
       setError("Password confirmation does not match.");
       return;
     }
+    const pwErr = validatePassword(newPassword);
+    if (pwErr) return setError(pwErr);
     setLoading(true);
     try {
       await api.post("/auth/reset-password", {
@@ -471,7 +560,7 @@ export function ResetPasswordPage() {
 
   if (!token) {
     return (
-      <AuthShell title="Invalid link" subtitle="UC-4 exception flow.">
+      <AuthShell title="Invalid link">
         <p className="text-small text-text-secondary">
           The reset link is missing required parameters. Please request a new
           one from the forgot-password page.
@@ -481,7 +570,7 @@ export function ResetPasswordPage() {
   }
 
   return (
-    <AuthShell title="Set a new password" subtitle="UC-4 — finish reset.">
+    <AuthShell title="Set a new password">
       <form onSubmit={onSubmit} className="space-y-4">
         <div>
           <label className="label" htmlFor="new_password">
@@ -494,8 +583,13 @@ export function ResetPasswordPage() {
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
             minLength={8}
+            maxLength={16}
             required
           />
+          <p className="mt-1 text-label text-text-quaternary">
+            8-16 chars, must include upper case, lower case, a digit and a
+            special character.
+          </p>
         </div>
         <div>
           <label className="label" htmlFor="confirm_password">
@@ -508,21 +602,21 @@ export function ResetPasswordPage() {
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             minLength={8}
+            maxLength={16}
             required
           />
         </div>
         {error && (
-          <div className="rounded-comfy border border-white/[0.08] bg-white/[0.02] p-3 text-caption text-text-secondary">
+          <div className="rounded-comfy border border-status-red bg-white p-3 text-caption text-status-red">
             {error}
           </div>
         )}
         <button type="submit" className="btn-primary w-full" disabled={loading}>
-          {loading ? "Updating…" : "Update password"}
+          {loading ? "Updating..." : "Update password"}
         </button>
       </form>
     </AuthShell>
   );
 }
 
-// Re-export the user type for convenience.
 export type { CurrentUser };

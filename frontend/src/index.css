@@ -3,12 +3,15 @@
 @tailwind utilities;
 
 /* DESIGN.md §3 — OpenType features cv01 and ss03 must be enabled
-   globally for the Linear typeface identity. */
+   globally for the Linear typeface identity. Light-mode palette
+   (DESIGN.md §2 — Light Mode Neutrals). */
 :root {
   font-family: "Inter Variable", "SF Pro Display", -apple-system, system-ui,
     "Segoe UI", Roboto, sans-serif;
   font-feature-settings: "cv01", "ss03";
-  color-scheme: dark;
+  color-scheme: light;
+  background-color: #f7f8f8;
+  color: #0f1011;
 }
 
 html,
@@ -21,9 +24,9 @@ body,
 body {
   margin: 0;
   font-feature-settings: "cv01", "ss03";
+  background-color: #f7f8f8;
 }
 
-/* Custom utility: Linear's ghost button styling, reused across pages. */
 @layer components {
   .btn-primary {
     @apply inline-flex items-center justify-center rounded-comfy bg-brand-indigo
@@ -31,24 +34,37 @@ body {
            hover:bg-brand-hover focus:outline-none focus:shadow-focus;
   }
   .btn-ghost {
-    @apply inline-flex items-center justify-center rounded-comfy bg-white/[0.02]
-           px-4 py-2 text-body font-signature text-text-secondary border
-           border-white/[0.08] transition-colors hover:bg-white/[0.05]
+    @apply inline-flex items-center justify-center rounded-comfy
+           bg-white px-4 py-2 text-body font-signature text-text-secondary
+           border border-border-primary transition-colors
+           hover:bg-bg-surface hover:text-text-primary
            focus:outline-none focus:shadow-focus;
   }
   .card {
-    @apply rounded-card border border-white/[0.08] bg-white/[0.02] p-6;
+    @apply rounded-card border border-border-secondary bg-white p-6
+           shadow-subtle;
   }
   .input {
-    @apply w-full rounded-comfy border border-white/[0.08] bg-white/[0.02]
-           px-3.5 py-3 text-body text-text-secondary placeholder:text-text-tertiary
-           focus:outline-none focus:border-brand-violet focus:shadow-focus;
+    @apply w-full rounded-comfy border border-border-primary bg-white
+           px-3.5 py-3 text-body text-text-primary
+           placeholder:text-text-quaternary
+           focus:outline-none focus:border-brand-indigo focus:shadow-focus;
   }
   .label {
     @apply block text-caption font-signature text-text-tertiary mb-2;
   }
   .pill {
     @apply inline-flex items-center rounded-full border border-border-primary
-           px-2.5 py-0.5 text-label font-signature text-text-secondary;
+           bg-white px-2.5 py-0.5 text-label font-signature text-text-secondary;
+  }
+  /* Sidebar floating-card hover effect. */
+  .sidebar-item {
+    @apply flex items-center gap-2 rounded-comfy px-3 py-2.5 text-small
+           font-signature text-text-secondary transition-all duration-150
+           hover:-translate-y-px hover:bg-white hover:text-text-primary
+           hover:shadow-floating focus:outline-none focus:shadow-focus;
+  }
+  .sidebar-item-active {
+    @apply bg-white text-text-primary shadow-floating border border-border-secondary;
   }
 }

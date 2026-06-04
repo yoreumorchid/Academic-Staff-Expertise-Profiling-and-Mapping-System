@@ -5,7 +5,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { api, extractApiError } from "../api/client";
 import type { Publication } from "../types";
-import { Banner, EmptyState } from "./Profile";
+import { Banner } from "./Profile";
 
 export function PublicationsPage() {
   const [pubs, setPubs] = useState<Publication[]>([]);
@@ -91,25 +91,17 @@ export function PublicationsPage() {
   return (
     <div className="space-y-6">
       <header>
-        <p className="text-caption font-signature uppercase tracking-wide text-text-quaternary">
-          UC-9
-        </p>
-        <h1 className="mt-1 text-heading-1 font-announce text-text-primary">
+        <h1 className="text-heading-1 font-announce text-text-primary">
           Publications &amp; Abstracts
         </h1>
-        <p className="mt-2 max-w-2xl text-body-lg text-text-tertiary">
-          Publications missing an OpenAlex abstract are flagged below. Supply
-          the abstract text or upload the corresponding document so the SciBERT
-          + LLM pipeline can regenerate expertise tags.
-        </p>
       </header>
 
       {error && <Banner kind="error">{error}</Banner>}
       {info && <Banner kind="success">{info}</Banner>}
 
       <section className="card overflow-hidden p-0">
-        <table className="min-w-full divide-y divide-white/[0.05] text-small">
-          <thead className="bg-white/[0.02] text-caption uppercase tracking-wide text-text-quaternary">
+        <table className="min-w-full divide-y divide-border-secondary text-small">
+          <thead className="bg-bg-surface text-caption uppercase tracking-wide text-text-quaternary">
             <tr>
               <th className="px-4 py-3 text-left font-signature">Title</th>
               <th className="px-4 py-3 text-left font-signature">Venue</th>
@@ -118,7 +110,7 @@ export function PublicationsPage() {
               <th className="px-4 py-3 text-right font-signature">Action</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-white/[0.05]">
+          <tbody className="divide-y divide-border-secondary">
             {pubs.length === 0 ? (
               <tr>
                 <td colSpan={5} className="px-4 py-6 text-center text-text-tertiary">
@@ -137,7 +129,7 @@ export function PublicationsPage() {
                   </td>
                   <td className="px-4 py-3">
                     {p.abstract_missing ? (
-                      <span className="pill border-brand-violet/50 text-brand-violet">
+                      <span className="pill border-brand-indigo/50 text-brand-indigo">
                         Missing
                       </span>
                     ) : (
@@ -196,9 +188,9 @@ export function PublicationsPage() {
             </div>
           </form>
 
-          <div className="border-t border-white/[0.05] pt-4">
+          <div className="border-t border-border-secondary pt-4">
             <p className="text-caption text-text-tertiary">
-              Or upload a PDF / DOCX document (UC-9 alternative flow):
+              Or upload a PDF / DOCX document:
             </p>
             <div className="mt-2 flex items-center gap-2">
               <input

@@ -1,3 +1,4 @@
+import { useState, FormEvent } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/auth";
 import { canToggleView, sidebarForActiveView } from "../navigation/sidebar";
@@ -5,61 +6,95 @@ import { canToggleView, sidebarForActiveView } from "../navigation/sidebar";
 /**
  * Persistent application shell shared by both portals.
  *
- * Implements the global header (UC-6 step 3) with the dual-role
- * "Switch View" toggle (FR-012 / UC-6 alternative flows) and the
- * portfolio-derived sidebar.
+ * Brand renders as "Expertise Insight". A global header search bar
+ * routes any query into the staff directory (UC-7 header search).
+ * Sidebar items use the floating-card hover effect from index.css.
  */
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { user, activeView, setActiveView, logout } = useAuthStore();
   const navigate = useNavigate();
+  const [query, setQuery] = useState("");
 
   if (!user) return null;
   const links = sidebarForActiveView(user, activeView);
   const showToggle = canToggleView(user);
 
+  function onSearch(event: FormEvent) {
+    event.preventDefault();
+    const q = query.trim();
+    if (!q) return;
+    navigate(`/admin/staff?q=${encodeURIComponent(q)}`);
+  }
+
+  // Show the global search bar only when an admin surface is reachable —
+  // i.e. the user is currently in admin view, or holds the dual-role
+  // toggle. Pure academic-staff sessions get a leaner header.
+  const showGlobalSearch = activeView === "admin" || showToggle;
+
   return (
     <div className="flex min-h-screen bg-bg-marketing text-text-primary">
-      <aside className="w-64 shrink-0 border-r border-white/[0.05] bg-bg-panel">
+      <aside className="w-64 shrink-0 border-r border-border-secondary bg-bg-panel">
         <div className="px-5 py-6">
           <div className="text-heading-3 font-announce text-text-primary">
-            ExpertiseInsight
-          </div>
-          <div className="mt-1 text-caption text-text-tertiary">
-            {activeView === "staff" ? "Expertise Portal" : "Strategic Dashboard"}
+            Expertise Insight
           </div>
         </div>
-        <nav className="mt-2 flex flex-col gap-0.5 px-2">
+        <nav className="mt-2 flex flex-col gap-2 px-3 pb-6">
           {links.map((item) => (
             <NavLink
               key={item.path}
               to={item.path}
+              end
               className={({ isActive }) =>
-                [
-                  "flex items-center justify-between rounded-comfy px-3 py-2 text-small font-signature transition-colors",
-                  isActive
-                    ? "bg-white/[0.05] text-text-primary"
-                    : "text-text-secondary hover:bg-white/[0.03] hover:text-text-primary",
-                ].join(" ")
+                ["sidebar-item", isActive ? "sidebar-item-active" : ""].join(" ")
               }
             >
               <span>{item.label}</span>
-              <span className="text-label text-text-quaternary">{item.uc}</span>
             </NavLink>
           ))}
         </nav>
       </aside>
 
       <div className="flex flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-white/[0.05] bg-bg-panel px-6 py-3">
-          <div className="text-caption text-text-tertiary">
-            Logged in as{" "}
-            <span className="text-text-secondary">{user.full_name}</span>
+        <header className="flex items-center gap-4 border-b border-border-secondary bg-bg-panel px-6 py-3">
+          {showGlobalSearch ? (
+            <form onSubmit={onSearch} className="flex-1 max-w-xl">
+              <label htmlFor="global-search" className="sr-only">
+                Global search
+              </label>
+              <div className="relative">
+                <input
+                  id="global-search"
+                  type="search"
+                  className="input pl-10"
+                  placeholder="Search staff, expertise, publications, departments…"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                />
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 20 20"
+                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-quaternary"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <circle cx="9" cy="9" r="6" />
+                  <path d="m17 17-3.5-3.5" strokeLinecap="round" />
+                </svg>
+              </div>
+            </form>
+          ) : (
+            <div className="flex-1" />
+          )}
+          <div className="text-caption text-text-tertiary whitespace-nowrap">
+            <span className="text-text-primary">{user.full_name}</span>
             <span className="mx-2 text-text-quaternary">·</span>
             <span className="text-text-tertiary">{user.email}</span>
           </div>
           <div className="flex items-center gap-2">
             {showToggle && (
-              <div className="flex items-center rounded-full border border-border-primary p-0.5">
+              <div className="flex items-center rounded-full border border-border-primary bg-white p-0.5">
                 <button
                   type="button"
                   onClick={() => setActiveView("staff")}
@@ -94,7 +129,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 navigate("/login", { replace: true });
               }}
             >
-              Sign out
+              Log out
             </button>
           </div>
         </header>

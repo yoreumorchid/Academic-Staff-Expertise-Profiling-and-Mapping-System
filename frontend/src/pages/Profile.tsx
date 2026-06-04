@@ -68,16 +68,9 @@ export function ProfileOverviewPage() {
     <div className="space-y-6">
       <header className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-caption font-signature uppercase tracking-wide text-text-quaternary">
-            UC-7 / UC-12
-          </p>
-          <h1 className="mt-1 text-heading-1 font-announce text-text-primary">
+          <h1 className="text-heading-1 font-announce text-text-primary">
             Profile Overview
           </h1>
-          <p className="mt-2 max-w-2xl text-body-lg text-text-tertiary">
-            Consolidated view of your AI-generated expertise tags, harvested
-            publications and recent synchronization activity.
-          </p>
         </div>
         <button
           type="button"
@@ -108,7 +101,7 @@ export function ProfileOverviewPage() {
           <h2 className="text-heading-3 font-announce text-text-primary">
             Expertise Tags
           </h2>
-          <Link to="/staff/tags" className="text-caption text-brand-violet hover:text-brand-hover">
+          <Link to="/staff/tags" className="text-caption text-brand-indigo hover:text-brand-hover">
             Refine tags →
           </Link>
         </div>
@@ -130,13 +123,13 @@ export function ProfileOverviewPage() {
           </h2>
           <Link
             to="/staff/publications"
-            className="text-caption text-brand-violet hover:text-brand-hover"
+            className="text-caption text-brand-indigo hover:text-brand-hover"
           >
             Manage abstracts →
           </Link>
         </div>
         {profile && profile.publications.length > 0 ? (
-          <ul className="divide-y divide-white/[0.05]">
+          <ul className="divide-y divide-border-secondary">
             {profile.publications.slice(0, 8).map((p) => (
               <PublicationRow key={p.id} publication={p} />
             ))}
@@ -153,7 +146,7 @@ export function ProfileOverviewPage() {
         {jobs.length === 0 ? (
           <EmptyState text="No sync jobs recorded yet." />
         ) : (
-          <table className="min-w-full divide-y divide-white/[0.05] text-small">
+          <table className="min-w-full divide-y divide-border-secondary text-small">
             <thead className="text-caption uppercase tracking-wide text-text-quaternary">
               <tr>
                 <th className="px-2 py-2 text-left font-signature">Trigger</th>
@@ -163,7 +156,7 @@ export function ProfileOverviewPage() {
                 <th className="px-2 py-2 text-left font-signature">Finished</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/[0.05]">
+            <tbody className="divide-y divide-border-secondary">
               {jobs.slice(0, 10).map((j) => (
                 <tr key={j.id}>
                   <td className="px-2 py-2 text-text-secondary">{j.trigger}</td>
@@ -215,13 +208,13 @@ export function Banner({
 }) {
   const tone =
     kind === "error"
-      ? "border-white/[0.08] text-text-secondary"
+      ? "border-border-primary text-text-secondary"
       : kind === "success"
       ? "border-status-green/40 text-status-emerald"
-      : "border-brand-violet/40 text-brand-violet";
+      : "border-brand-indigo/40 text-brand-indigo";
   return (
     <div
-      className={`rounded-comfy border bg-white/[0.02] p-3 text-caption ${tone}`}
+      className={`rounded-comfy border bg-bg-surface p-3 text-caption ${tone}`}
     >
       {children}
     </div>
@@ -234,7 +227,7 @@ export function TagPill({ tag }: { tag: UserExpertiseTag }) {
     <span
       className={`pill ${
         validated
-          ? "border-brand-violet/50 text-text-primary"
+          ? "border-brand-indigo/50 text-text-primary"
           : "text-text-secondary"
       }`}
       title={`Confidence: ${(tag.confidence * 100).toFixed(0)}% · Source: ${tag.source}`}
@@ -262,7 +255,7 @@ function PublicationRow({ publication }: { publication: Publication }) {
           </div>
         </div>
         {publication.abstract_missing && (
-          <span className="pill border-brand-violet/50 text-brand-violet">
+          <span className="pill border-brand-indigo/50 text-brand-indigo">
             Abstract missing
           </span>
         )}

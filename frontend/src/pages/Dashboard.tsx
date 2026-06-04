@@ -32,6 +32,38 @@ interface PendingRegistration {
   created_at: string;
 }
 
+const ROLE_LABELS: Record<string, string> = {
+  academic_staff: "Academic Staff",
+  faculty_administrator: "Faculty Administrator",
+};
+
+const PORTFOLIO_LABELS: Record<string, string> = {
+  faculty_manager: "Faculty Manager",
+  head_of_department: "Head of Department",
+  deputy_dean_research: "Deputy Dean (Research)",
+  deputy_dean_ugpg: "Deputy Dean (UG/PG)",
+};
+
+function prettyRole(role: string): string {
+  return (
+    ROLE_LABELS[role] ??
+    role
+      .split("_")
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(" ")
+  );
+}
+
+function prettyPortfolio(p: string): string {
+  return (
+    PORTFOLIO_LABELS[p] ??
+    p
+      .split("_")
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(" ")
+  );
+}
+
 export function PendingRegistrationsPage() {
   const [rows, setRows] = useState<PendingRegistration[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -68,27 +100,20 @@ export function PendingRegistrationsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-caption font-signature uppercase tracking-wide text-text-quaternary">
-          UC-2
-        </p>
-        <h1 className="mt-1 text-heading-1 font-announce text-text-primary">
+        <h1 className="text-heading-1 font-announce text-text-primary">
           Pending Registrations
         </h1>
-        <p className="mt-2 max-w-2xl text-body-lg text-text-tertiary">
-          Review and approve or reject newly submitted accounts. Approval
-          activates the account and dispatches a notification (UC-5).
-        </p>
       </div>
 
       {error && (
-        <div className="rounded-comfy border border-white/[0.08] bg-white/[0.02] p-3 text-caption text-text-secondary">
+        <div className="rounded-comfy border border-border-primary bg-bg-surface p-3 text-caption text-text-secondary">
           {error}
         </div>
       )}
 
       <div className="card overflow-hidden p-0">
-        <table className="min-w-full divide-y divide-white/[0.05] text-small">
-          <thead className="bg-white/[0.02] text-caption uppercase tracking-wide text-text-quaternary">
+        <table className="min-w-full divide-y divide-border-secondary text-small">
+          <thead className="bg-bg-surface text-caption uppercase tracking-wide text-text-quaternary">
             <tr>
               <th className="px-4 py-3 text-left font-signature">Name</th>
               <th className="px-4 py-3 text-left font-signature">Email</th>
@@ -97,7 +122,7 @@ export function PendingRegistrationsPage() {
               <th className="px-4 py-3 text-right font-signature">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-white/[0.05]">
+          <tbody className="divide-y divide-border-secondary">
             {rows === null ? (
               <tr>
                 <td colSpan={5} className="px-4 py-6 text-center text-text-tertiary">
@@ -115,7 +140,7 @@ export function PendingRegistrationsPage() {
                 <tr key={row.id}>
                   <td className="px-4 py-3 text-text-primary">{row.full_name}</td>
                   <td className="px-4 py-3 text-text-secondary">{row.email}</td>
-                  <td className="px-4 py-3 text-text-secondary">{row.role}</td>
+                  <td className="px-4 py-3 text-text-secondary">{prettyRole(row.role)}</td>
                   <td className="px-4 py-3 text-text-tertiary">
                     {row.department && <span>{row.department}</span>}
                     {row.orcid_id && (
@@ -123,7 +148,7 @@ export function PendingRegistrationsPage() {
                     )}
                     {row.portfolios.map((p) => (
                       <span key={p.portfolio_type} className="ml-2 pill">
-                        {p.portfolio_type}
+                        {prettyPortfolio(p.portfolio_type)}
                       </span>
                     ))}
                   </td>

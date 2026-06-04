@@ -140,10 +140,7 @@ function MappingWorkspace({
   return (
     <div className="space-y-6">
       <header>
-        <p className="text-caption font-signature uppercase tracking-wide text-text-quaternary">
-          UC-13 / UC-14
-        </p>
-        <h1 className="mt-1 text-heading-1 font-announce text-text-primary">
+        <h1 className="text-heading-1 font-announce text-text-primary">
           {title}
         </h1>
         <p className="mt-2 max-w-2xl text-body-lg text-text-tertiary">
@@ -178,9 +175,9 @@ function MappingWorkspace({
           </button>
         </div>
 
-        <div className="border-t border-white/[0.05] pt-3">
+        <div className="border-t border-border-secondary pt-3">
           <p className="text-caption text-text-tertiary">
-            Or upload a PDF / DOCX (UC-13 alternative flow):
+            Or upload a PDF / DOCX:
           </p>
           <div className="mt-2 flex items-center gap-2">
             <input
@@ -208,7 +205,7 @@ function MappingWorkspace({
         {specs.length === 0 ? (
           <EmptyState text="No specifications ingested yet." />
         ) : (
-          <ul className="divide-y divide-white/[0.05]">
+          <ul className="divide-y divide-border-secondary">
             {specs.map((s) => (
               <li
                 key={s.id}
@@ -243,9 +240,9 @@ function MappingWorkspace({
             <p className="mb-3 text-small text-text-secondary">{report.summary}</p>
           )}
           {report.entries.length === 0 ? (
-            <EmptyState text="No academic staff met the minimum semantic threshold (UC-14 exception)." />
+            <EmptyState text="No academic staff met the minimum semantic threshold." />
           ) : (
-            <table className="min-w-full divide-y divide-white/[0.05] text-small">
+            <table className="min-w-full divide-y divide-border-secondary text-small">
               <thead className="text-caption uppercase tracking-wide text-text-quaternary">
                 <tr>
                   <th className="px-2 py-2 text-left font-signature">Rank</th>
@@ -257,7 +254,7 @@ function MappingWorkspace({
                   <th className="px-2 py-2 text-left font-signature">Flag</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/[0.05]">
+              <tbody className="divide-y divide-border-secondary">
                 {report.entries.map((e) => {
                   const staff = staffIndex[e.user_id];
                   return (
@@ -280,7 +277,7 @@ function MappingWorkspace({
                       </td>
                       <td className="px-2 py-2">
                         {e.is_cross_department && (
-                          <span className="pill border-brand-violet/50 text-brand-violet">
+                          <span className="pill border-brand-indigo/50 text-brand-indigo">
                             Cross-dept
                           </span>
                         )}

@@ -1,8 +1,8 @@
 /**
  * Tailwind configuration encoding the Linear design system tokens
- * defined in DESIGN.md. Every color, radius, shadow, and font-size used
- * across the application must trace back to one of these tokens —
- * arbitrary inline values are prohibited per instructions.md §5.2.
+ * (DESIGN.md §2) in LIGHT MODE. Background surfaces use the
+ * "Light Mode Neutrals" palette; brand and status colors are inherited
+ * unchanged so the visual identity is preserved.
  */
 /** @type {import('tailwindcss').Config} */
 export default {
@@ -10,40 +10,42 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Background surfaces
+        // Background surfaces (LIGHT)
         bg: {
-          marketing: "#08090a",
-          deepest: "#010102",
-          panel: "#0f1011",
-          surface: "#191a1b",
-          secondary: "#28282c",
+          marketing: "#f7f8f8",
+          deepest: "#ffffff",
+          panel: "#ffffff",
+          surface: "#f5f6f7",
+          secondary: "#eef0f2",
         },
-        // Text
+        // Text (LIGHT — inverted hierarchy)
         text: {
-          primary: "#f7f8f8",
-          secondary: "#d0d6e0",
-          tertiary: "#8a8f98",
-          quaternary: "#62666d",
+          primary: "#0f1011",
+          secondary: "#3d4148",
+          tertiary: "#6b7079",
+          quaternary: "#8a8f98",
         },
-        // Brand & accent
+        // Brand & accent (slightly darkened violet for AA contrast on white)
         brand: {
           indigo: "#5e6ad2",
-          violet: "#7170ff",
-          hover: "#828fff",
+          violet: "#5b5fc7",
+          hover: "#4d51b8",
           lavender: "#7a7fad",
         },
         // Status
         status: {
-          green: "#27a644",
+          green: "#1f8a37",
           emerald: "#10b981",
+          red: "#d23f3f",
+          amber: "#b6791b",
         },
-        // Borders (solid variants)
+        // Borders (LIGHT — soft cool greys)
         border: {
-          primary: "#23252a",
-          secondary: "#34343a",
-          tertiary: "#3e3e44",
-          tint: "#141516",
-          line: "#18191a",
+          primary: "#d0d6e0",
+          secondary: "#e1e4ea",
+          tertiary: "#edeff2",
+          tint: "#f0f2f5",
+          line: "#e6e8ec",
         },
       },
       borderRadius: {
@@ -90,14 +92,19 @@ export default {
         caption: ["0.8125rem", { lineHeight: "1.5", letterSpacing: "-0.13px" }],
         label: ["0.75rem", { lineHeight: "1.4" }],
       },
+      // Light-mode shadow stack: soft, low-opacity drop shadows.
       boxShadow: {
-        subtle: "rgba(0,0,0,0.03) 0px 1.2px 0px 0px",
-        ring: "rgba(0,0,0,0.2) 0px 0px 0px 1px",
-        elevated: "rgba(0,0,0,0.4) 0px 2px 4px",
+        subtle: "0 1px 0 rgba(15,16,17,0.04)",
+        ring: "0 0 0 1px rgba(15,16,17,0.06)",
+        elevated:
+          "0 1px 2px rgba(15,16,17,0.04), 0 4px 12px rgba(15,16,17,0.06)",
+        floating:
+          "0 1px 2px rgba(15,16,17,0.06), 0 8px 24px rgba(15,16,17,0.10)",
         dialog:
-          "rgba(0,0,0,0) 0px 8px 2px, rgba(0,0,0,0.01) 0px 5px 2px, rgba(0,0,0,0.04) 0px 3px 2px, rgba(0,0,0,0.07) 0px 1px 1px, rgba(0,0,0,0.08) 0px 0px 1px",
-        focus: "rgba(0,0,0,0.1) 0px 4px 12px",
-        inset: "rgba(0,0,0,0.2) 0px 0px 12px 0px inset",
+          "0 1px 2px rgba(15,16,17,0.06), 0 16px 48px rgba(15,16,17,0.18)",
+        focus:
+          "0 0 0 3px rgba(94,106,210,0.18), 0 1px 2px rgba(15,16,17,0.04)",
+        inset: "inset 0 0 0 1px rgba(15,16,17,0.04)",
       },
     },
   },

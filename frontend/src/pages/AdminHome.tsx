@@ -45,16 +45,9 @@ export function AdminHomePage() {
   return (
     <div className="space-y-6">
       <header>
-        <p className="text-caption font-signature uppercase tracking-wide text-text-quaternary">
-          UC-6
-        </p>
-        <h1 className="mt-1 text-heading-1 font-announce text-text-primary">
+        <h1 className="text-heading-1 font-announce text-text-primary">
           Strategic Dashboard
         </h1>
-        <p className="mt-2 max-w-2xl text-body-lg text-text-tertiary">
-          High-level institutional summary scoped to your portfolio. Drill
-          into individual modules from the sidebar or via the shortcuts below.
-        </p>
       </header>
 
       {error && <Banner kind="error">{error}</Banner>}
@@ -77,10 +70,10 @@ export function AdminHomePage() {
               <li key={l.path}>
                 <Link
                   to={l.path}
-                  className="flex items-center justify-between rounded-comfy border border-white/[0.05] bg-white/[0.02] px-4 py-3 text-small text-text-secondary transition-colors hover:bg-white/[0.05] hover:text-text-primary"
+                  className="flex items-center justify-between rounded-comfy border border-border-secondary bg-bg-surface px-4 py-3 text-small text-text-secondary transition-colors hover:bg-bg-secondary hover:text-text-primary"
                 >
                   <span>{l.label}</span>
-                  <span className="text-label text-text-quaternary">{l.uc}</span>
+
                 </Link>
               </li>
             ))}
