@@ -428,8 +428,8 @@ class StaffSearchQuery(BaseModel):
     tag_label: Optional[str] = None
     category: Optional[str] = Field(
         default=None,
-        pattern="^(name|expertise|publication|department)$",
-        description="UC-7 alt flow — global header search category.",
+        pattern="^(all|name|expertise|publication|department)$",
+        description="UC-7 alt flow — global header search category. 'all' performs a full-text scan across name, department, expertise, and publication metadata.",
     )
 
 

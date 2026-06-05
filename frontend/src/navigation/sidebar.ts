@@ -26,8 +26,7 @@ const PORTFOLIO_LINKS: Record<PortfolioType, NavItem[]> = {
     { label: "Gap Analytics Overview", path: "/admin/gap", uc: "UC-15/17" },
     { label: "Global Benchmarking", path: "/admin/benchmarking/global", uc: "UC-15" },
     { label: "Staff Profiles", path: "/admin/staff", uc: "UC-7" },
-  ],
-  head_of_department: [
+  ],  head_of_department: [
     { label: "Gap Analytics Overview", path: "/admin/gap", uc: "UC-17" },
     { label: "Semantic Course Mapping", path: "/admin/mapping/course", uc: "UC-13/14" },
     { label: "Research Grant Mapping", path: "/admin/mapping/grant", uc: "UC-13/14" },
@@ -50,10 +49,12 @@ export function sidebarForActiveView(
 ): NavItem[] {
   if (activeView === "staff") return STAFF_LINKS;
 
-  // Merge portfolio-specific links, preserving order and de-duplicating
-  // by path so multi-portfolio admins see a clean union.
-  const merged: NavItem[] = [];
-  const seen = new Set<string>();
+  // Admin sidebar always begins with the strategic dashboard so users
+  // can return to the landing page from any module.
+  const merged: NavItem[] = [
+    { label: "Dashboard", path: "/admin", uc: "UC-6" },
+  ];
+  const seen = new Set<string>(merged.map((i) => i.path));
   for (const p of user.portfolios) {
     for (const item of PORTFOLIO_LINKS[p.portfolio_type] ?? []) {
       if (!seen.has(item.path)) {

@@ -146,6 +146,7 @@ export interface StaffProfileDetail extends StaffDirectoryEntry {
 }
 
 export type StaffSearchCategory =
+  | "all"
   | "name"
   | "expertise"
   | "publication"

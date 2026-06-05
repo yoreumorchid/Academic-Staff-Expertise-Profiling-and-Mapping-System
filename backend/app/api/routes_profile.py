@@ -23,6 +23,7 @@ from app.core.exceptions import ForbiddenError, NotFoundError, ValidationFailure
 from app.db.models import (
     AcademicBackground,
     AcademicBackgroundCategory,
+    AccountStatus,
     ExpertiseTag,
     Publication,
     PublicationAbstract,
@@ -74,6 +75,7 @@ async def search_staff(
     stmt = (
         select(User)
         .where(User.role == UserRole.ACADEMIC_STAFF)
+        .where(User.status == AccountStatus.ACTIVE)
         .options(
             selectinload(User.expertise_links).selectinload(UserExpertiseTag.tag),
             selectinload(User.publications),
@@ -102,8 +104,26 @@ async def search_staff(
                 )
             if category == "publication":
                 return any(
-                    keyword in (pub.title or "").lower() for pub in user.publications
+                    keyword in ((pub.title or "") + " " + (pub.venue or "") + " " + (pub.doi or "")).lower()
+                    for pub in user.publications
                 )
+            if category == "all":
+                # UC-7 — full-text deep search when no filter is active.
+                if keyword in user.full_name.lower():
+                    return True
+                if user.department and keyword in user.department.lower():
+                    return True
+                if any(
+                    keyword in link.tag.canonical_label.lower()
+                    for link in user.expertise_links
+                ):
+                    return True
+                if any(
+                    keyword in ((pub.title or "") + " " + (pub.venue or "") + " " + (pub.doi or "")).lower()
+                    for pub in user.publications
+                ):
+                    return True
+                return False
             return False
 
         rows = [u for u in rows if matches(u)]

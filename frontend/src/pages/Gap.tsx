@@ -174,24 +174,24 @@ export function GlobalBenchmarkingPage() {
       {error && <Banner kind="error">{error}</Banner>}
       {info && <Banner kind="success">{info}</Banner>}
 
-      <section className="card flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h2 className="text-heading-3 font-announce text-text-primary">
-            Global frontier
-          </h2>
-          <p className="text-caption text-text-tertiary">
-            Pulls eight benchmark queries from IEEE Xplore and clusters them
-            against the internal corpus.
-          </p>
+      <section className="card">
+        <h2 className="text-heading-3 font-announce text-text-primary">
+          Global frontier
+        </h2>
+        <p className="mt-1 text-caption text-text-tertiary">
+          Pulls eight benchmark queries from IEEE Xplore and clusters them
+          against the internal corpus.
+        </p>
+        <div className="mt-4 flex justify-end">
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={runGlobal}
+            disabled={busy}
+          >
+            {busy ? "Running…" : "Run global benchmark"}
+          </button>
         </div>
-        <button
-          type="button"
-          className="btn-primary"
-          onClick={runGlobal}
-          disabled={busy}
-        >
-          {busy ? "Running…" : "Run global benchmark"}
-        </button>
       </section>
 
       <section className="card">
@@ -202,7 +202,7 @@ export function GlobalBenchmarkingPage() {
           Upload one or more PDF/DOCX curriculum documents from peer
           institutions.
         </p>
-        <div className="mt-3 flex flex-col gap-2 md:flex-row md:items-center">
+        <div className="mt-3">
           <input
             type="file"
             accept=".pdf,.docx"
@@ -210,6 +210,8 @@ export function GlobalBenchmarkingPage() {
             onChange={(e) => setPeerFiles(Array.from(e.target.files ?? []))}
             className="text-small text-text-secondary"
           />
+        </div>
+        <div className="mt-4 flex justify-end">
           <button
             type="button"
             className="btn-primary"

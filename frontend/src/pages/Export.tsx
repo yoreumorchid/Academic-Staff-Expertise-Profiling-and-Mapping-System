@@ -138,7 +138,7 @@ export function ExportSnapshotPage() {
             onClick={generate}
             disabled={busy}
           >
-            {busy ? "Generating…" : "Generate &amp; download"}
+            {busy ? "Generating…" : "Generate & Download"}
           </button>
         </div>
       </section>

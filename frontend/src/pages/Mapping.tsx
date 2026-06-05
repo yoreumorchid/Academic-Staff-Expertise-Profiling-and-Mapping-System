@@ -23,7 +23,7 @@ function MappingWorkspace({
 }: {
   specType: SpecificationType;
   title: string;
-  description: string;
+  description?: string;
 }) {
   const [draftTitle, setDraftTitle] = useState("");
   const [draftText, setDraftText] = useState("");
@@ -143,9 +143,11 @@ function MappingWorkspace({
         <h1 className="text-heading-1 font-announce text-text-primary">
           {title}
         </h1>
-        <p className="mt-2 max-w-2xl text-body-lg text-text-tertiary">
-          {description}
-        </p>
+        {description && (
+          <p className="mt-2 max-w-2xl text-body-lg text-text-tertiary">
+            {description}
+          </p>
+        )}
       </header>
 
       {error && <Banner kind="error">{error}</Banner>}
@@ -179,13 +181,15 @@ function MappingWorkspace({
           <p className="text-caption text-text-tertiary">
             Or upload a PDF / DOCX:
           </p>
-          <div className="mt-2 flex items-center gap-2">
+          <div className="mt-2">
             <input
               type="file"
               accept=".pdf,.docx"
               onChange={(e) => setDraftFile(e.target.files?.[0] ?? null)}
               className="text-small text-text-secondary"
             />
+          </div>
+          <div className="mt-3 flex justify-end">
             <button
               type="button"
               className="btn-primary"
@@ -298,7 +302,6 @@ export const CourseMappingPage = () => (
   <MappingWorkspace
     specType="course"
     title="Semantic Course Mapping"
-    description="Ingest a syllabus (text or document) and produce a ranked list of best-matched academic staff via cosine similarity and spreading activation."
   />
 );
 
@@ -306,6 +309,5 @@ export const GrantMappingPage = () => (
   <MappingWorkspace
     specType="grant"
     title="Research Grant Mapping"
-    description="Ingest a grant call (text or document) and produce a ranked list of academic staff, including cross-department latent experts."
   />
 );

@@ -142,15 +142,47 @@ export function PendingRegistrationsPage() {
                   <td className="px-4 py-3 text-text-secondary">{row.email}</td>
                   <td className="px-4 py-3 text-text-secondary">{prettyRole(row.role)}</td>
                   <td className="px-4 py-3 text-text-tertiary">
-                    {row.department && <span>{row.department}</span>}
-                    {row.orcid_id && (
-                      <span className="ml-2 pill">{row.orcid_id}</span>
-                    )}
-                    {row.portfolios.map((p) => (
-                      <span key={p.portfolio_type} className="ml-2 pill">
-                        {prettyPortfolio(p.portfolio_type)}
-                      </span>
-                    ))}
+                    <dl className="space-y-1">
+                      {row.department && (
+                        <div className="flex gap-2">
+                          <dt className="w-24 text-caption text-text-quaternary">
+                            Department
+                          </dt>
+                          <dd className="text-text-secondary">
+                            {row.department}
+                          </dd>
+                        </div>
+                      )}
+                      {row.orcid_id && (
+                        <div className="flex gap-2">
+                          <dt className="w-24 text-caption text-text-quaternary">
+                            ORCID
+                          </dt>
+                          <dd className="text-text-secondary">
+                            {row.orcid_id}
+                          </dd>
+                        </div>
+                      )}
+                      {row.portfolios.length > 0 && (
+                        <div className="flex gap-2">
+                          <dt className="w-24 text-caption text-text-quaternary">
+                            Portfolio
+                          </dt>
+                          <dd className="text-text-secondary">
+                            {row.portfolios
+                              .map((p) => prettyPortfolio(p.portfolio_type))
+                              .join(", ")}
+                          </dd>
+                        </div>
+                      )}
+                      {!row.department &&
+                        !row.orcid_id &&
+                        row.portfolios.length === 0 && (
+                          <span className="text-caption text-text-quaternary">
+                            —
+                          </span>
+                        )}
+                    </dl>
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="inline-flex gap-2">
