@@ -1,0 +1,24 @@
+{
+  "generated_at": "2026-06-05T04:34:20.911355Z",
+  "gold_path": "evaluation\\datasets\\gold_tags.jsonl",
+  "n": 27,
+  "k": 5,
+  "scibert_only": {
+    "precision_hard": 0.0148,
+    "recall_hard": 0.0123,
+    "f1_hard": 0.0135,
+    "precision_soft": 0.1741,
+    "recall_soft": 0.1534,
+    "f1_soft": 0.1631,
+    "n": 27
+  },
+  "scibert_plus_llm": {
+    "precision_hard": 0.284,
+    "recall_hard": 0.1328,
+    "f1_hard": 0.181,
+    "precision_soft": 0.3395,
+    "recall_soft": 0.1661,
+    "f1_soft": 0.2231,
+    "n": 27
+  }
+}

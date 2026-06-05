@@ -39,7 +39,7 @@ class Settings(BaseSettings):
     # Database
     database_url: str
 
-    # SMTP (UC-5)
+    # SMTP
     smtp_host: str
     smtp_port: int = 587
     smtp_username: str | None = None

@@ -206,7 +206,13 @@ class HarvestService:
         if not candidate_phrases:
             return publications_added, 0, False
 
-        normalized = await normalize_keywords(candidate_phrases)
+        # Pass the combined abstracts as context so the LLM can
+        # disambiguate generic candidate words (e.g. "product",
+        # "feature") against the actual research topic.
+        combined_context = "\n\n".join(abstract_corpus[:5])
+        normalized = await normalize_keywords(
+            candidate_phrases, abstract=combined_context
+        )
         tags_added = await self._persist_tags(user, normalized)
         return publications_added, tags_added, False
 
@@ -296,7 +302,9 @@ class HarvestService:
         keywords = await extract_keywords(abstract_text, top_k=15)
         if not keywords:
             return 0
-        normalized = await normalize_keywords([k for k, _ in keywords])
+        normalized = await normalize_keywords(
+            [k for k, _ in keywords], abstract=abstract_text
+        )
         return await self._persist_tags(user, normalized)
 
 

@@ -1,0 +1,623 @@
+{
+  "generated_at": "2026-06-05T06:34:45.375266Z",
+  "gold_path": "evaluation\\datasets\\gold_tags.jsonl",
+  "n": 27,
+  "k": 5,
+  "soft_match": {
+    "kind": "scibert_cosine",
+    "threshold": 0.75
+  },
+  "scibert_only": {
+    "precision_hard": 0.0148,
+    "recall_hard": 0.0123,
+    "f1_hard": 0.0135,
+    "precision_soft": 0.0556,
+    "recall_soft": 0.0466,
+    "f1_soft": 0.0507,
+    "n": 27
+  },
+  "scibert_plus_llm": {
+    "precision_hard": 0.2623,
+    "recall_hard": 0.1275,
+    "f1_hard": 0.1716,
+    "precision_soft": 0.3519,
+    "recall_soft": 0.1713,
+    "f1_soft": 0.2305,
+    "n": 27
+  },
+  "per_paper": [
+    {
+      "publication_id": "cs_dr_chiam_01",
+      "gold": [
+        "natural language processing",
+        "information extraction",
+        "text mining",
+        "data mining"
+      ],
+      "scibert_raw": [
+        "customer",
+        "customer review",
+        "explicit feature",
+        "feature extraction",
+        "pattern"
+      ],
+      "scibert_llm": [
+        "Natural Language Processing",
+        "Feature Engineering",
+        "Pattern Recognition",
+        "Customer Analytics"
+      ]
+    },
+    {
+      "publication_id": "cs_dr_chiam_02",
+      "gold": [
+        "health informatics",
+        "healthcare information system",
+        "information system management",
+        "healthcare interoperability",
+        "organizational policy"
+      ],
+      "scibert_raw": [
+        "health",
+        "oiop",
+        "interoperability",
+        "refined ehealth",
+        "factor"
+      ],
+      "scibert_llm": [
+        "Health Informatics",
+        "Interoperability",
+        "Ontology and Information Processing",
+        "Factor Analysis"
+      ]
+    },
+    {
+      "publication_id": "cs_dr_chiam_03",
+      "gold": [
+        "natural language processing",
+        "information extraction",
+        "text mining",
+        "sentiment analysis"
+      ],
+      "scibert_raw": [
+        "feature",
+        "extract",
+        "rules",
+        "pattern rules",
+        "average"
+      ],
+      "scibert_llm": [
+        "Feature Engineering",
+        "Rule-Based Systems",
+        "Statistical Analysis"
+      ]
+    },
+    {
+      "publication_id": "cs_dr_chiam_04",
+      "gold": [
+        "medical imaging",
+        "cardiac image analysis",
+        "cardiovascular modeling",
+        "computational biomedicine",
+        "magnetic resonance imaging"
+      ],
+      "scibert_raw": [
+        "motion-corrected personalized",
+        "modeling",
+        "function",
+        "patients",
+        "wall thickening"
+      ],
+      "scibert_llm": [
+        "Medical Imaging",
+        "Computational Modeling",
+        "Clinical Research"
+      ]
+    },
+    {
+      "publication_id": "cs_dr_chiam_05",
+      "gold": [
+        "blockchain technology",
+        "multi-criteria decision making",
+        "decision support system",
+        "software engineering",
+        "fuzzy logic"
+      ],
+      "scibert_raw": [
+        "blockchain platform",
+        "project",
+        "selection",
+        "blockchain platforms",
+        "management"
+      ],
+      "scibert_llm": [
+        "Blockchain",
+        "Project Management"
+      ]
+    },
+    {
+      "publication_id": "cs_dr_chiam_06",
+      "gold": [
+        "computer science education",
+        "educational technology",
+        "program comprehension",
+        "data structure"
+      ],
+      "scibert_raw": [
+        "program",
+        "diagrams",
+        "program solving",
+        "code",
+        "students"
+      ],
+      "scibert_llm": [
+        "Programming Education",
+        "Visual Representation"
+      ]
+    },
+    {
+      "publication_id": "cs_dr_chiam_07",
+      "gold": [
+        "software engineering",
+        "software quality assurance",
+        "static code analysis",
+        "software metrics"
+      ],
+      "scibert_raw": [
+        "software",
+        "software quality",
+        "product",
+        "software product",
+        "products"
+      ],
+      "scibert_llm": [
+        "Software Engineering",
+        "Product Management"
+      ]
+    },
+    {
+      "publication_id": "cs_dr_amirrudin_01",
+      "gold": [
+        "computer vision",
+        "image forensics",
+        "multimedia security",
+        "reinforcement learning",
+        "ensemble learning"
+      ],
+      "scibert_raw": [
+        "localization",
+        "image",
+        "images",
+        "ensemble",
+        "branch"
+      ],
+      "scibert_llm": [
+        "Computer Vision",
+        "Ensemble Methods",
+        "Model Architecture"
+      ]
+    },
+    {
+      "publication_id": "cs_dr_amirrudin_02",
+      "gold": [
+        "virtual reality",
+        "human-computer interaction",
+        "user experience design",
+        "affective computing",
+        "emotional design"
+      ],
+      "scibert_raw": [
+        "empathy",
+        "visual",
+        "review",
+        "emotion",
+        "visual design"
+      ],
+      "scibert_llm": [
+        "Affective Computing",
+        "Computer Vision",
+        "Literature Review"
+      ]
+    },
+    {
+      "publication_id": "cs_dr_amirrudin_03",
+      "gold": [
+        "natural language processing",
+        "sentiment analysis",
+        "information extraction",
+        "in-context learning",
+        "dependency parsing"
+      ],
+      "scibert_raw": [
+        "synsem-icl",
+        "retrieval-based icl",
+        "semantic",
+        "propose synsem-icl",
+        "semeval-2022 multilingual"
+      ],
+      "scibert_llm": [
+        "Natural Language Processing"
+      ]
+    },
+    {
+      "publication_id": "cs_dr_amirrudin_04",
+      "gold": [
+        "cryptography",
+        "data security",
+        "hardware security",
+        "quantum-resistant cryptography",
+        "side-channel analysis",
+        "computer architecture"
+      ],
+      "scibert_raw": [
+        "aes",
+        "high-performance cloud",
+        "side-channel threats",
+        "quantum",
+        "real-world applications"
+      ],
+      "scibert_llm": [
+        "Cryptography",
+        "Cloud Computing",
+        "Quantum Computing",
+        "Applied Research"
+      ]
+    },
+    {
+      "publication_id": "cs_dr_amirrudin_05",
+      "gold": [
+        "virtual reality",
+        "human-computer interaction",
+        "computer science education",
+        "safety engineering",
+        "educational technology"
+      ],
+      "scibert_raw": [
+        "training",
+        "head-mounted displays",
+        "learning",
+        "high-end hmds",
+        "role-playing games"
+      ],
+      "scibert_llm": [
+        "Virtual Reality",
+        "Machine Learning",
+        "Game Design"
+      ]
+    },
+    {
+      "publication_id": "cs_dr_amirrudin_06",
+      "gold": [
+        "virtual reality",
+        "human-computer interaction",
+        "health informatics",
+        "computer science education"
+      ],
+      "scibert_raw": [
+        "child",
+        "health",
+        "review",
+        "children",
+        "long-term effects"
+      ],
+      "scibert_llm": [
+        "Pediatrics",
+        "Public Health",
+        "Longitudinal Studies",
+        "Literature Review"
+      ]
+    },
+    {
+      "publication_id": "cs_dr_badrul_01",
+      "gold": [
+        "machine learning",
+        "topic modeling",
+        "web content filtering",
+        "text classification",
+        "information security",
+        "hypertext markup language"
+      ],
+      "scibert_raw": [
+        "classification",
+        "content",
+        "subject-oriented",
+        "content classification",
+        "subject-oriented web"
+      ],
+      "scibert_llm": [
+        "Machine Learning",
+        "Information Retrieval"
+      ]
+    },
+    {
+      "publication_id": "cs_dr_badrul_02",
+      "gold": [
+        "agricultural e-commerce",
+        "blockchain technology",
+        "internet of things",
+        "supply chain management",
+        "information system",
+        "bibliometric analysis"
+      ],
+      "scibert_raw": [
+        "agricultural e-commerce",
+        "technologies",
+        "challenges",
+        "advanced technologies",
+        "products"
+      ],
+      "scibert_llm": [
+        "E-commerce",
+        "Agriculture",
+        "Technology"
+      ]
+    },
+    {
+      "publication_id": "cs_dr_badrul_03",
+      "gold": [
+        "federated learning",
+        "network traffic classification",
+        "network security",
+        "adversarial machine learning",
+        "generative adversarial network",
+        "deep learning",
+        "edge computing"
+      ],
+      "scibert_raw": [
+        "adversarial attacks",
+        "training",
+        "multiple",
+        "ntc",
+        "rate"
+      ],
+      "scibert_llm": [
+        "Adversarial Machine Learning",
+        "Machine Learning",
+        "Neural Text Compression",
+        "Rate-Distortion Theory"
+      ]
+    },
+    {
+      "publication_id": "cs_dr_badrul_04",
+      "gold": [
+        "wireless sensor network",
+        "internet of things",
+        "network security",
+        "intrusion detection system",
+        "anomaly detection"
+      ],
+      "scibert_raw": [
+        "routing protocol",
+        "attack",
+        "rpl protocol",
+        "attacks",
+        "routing protocols"
+      ],
+      "scibert_llm": [
+        "Network Routing",
+        "Network Security"
+      ]
+    },
+    {
+      "publication_id": "cs_dr_badrul_05",
+      "gold": [
+        "topic modeling",
+        "natural language processing",
+        "data mining",
+        "information extraction",
+        "unsupervised learning",
+        "hypertext markup language"
+      ],
+      "scibert_raw": [
+        "web content",
+        "documents",
+        "dirichlet",
+        "topics",
+        "topic modeling"
+      ],
+      "scibert_llm": [
+        "Topic Modeling",
+        "Web Content Analysis"
+      ]
+    },
+    {
+      "publication_id": "cs_dr_badrul_06",
+      "gold": [
+        "wireless sensor network",
+        "internet of things",
+        "intrusion detection system",
+        "network security"
+      ],
+      "scibert_raw": [
+        "routing attack",
+        "routing attacks",
+        "wsn",
+        "sensor",
+        "wsn-based iot"
+      ],
+      "scibert_llm": [
+        "Network Security",
+        "Wireless Sensor Networks"
+      ]
+    },
+    {
+      "publication_id": "cs_dr_badrul_07",
+      "gold": [
+        "mobile security",
+        "network traffic analysis",
+        "fuzzy logic",
+        "unsupervised learning",
+        "cyber threat intelligence"
+      ],
+      "scibert_raw": [
+        "android",
+        "malware",
+        "clustering",
+        "android malware",
+        "c-means clustering"
+      ],
+      "scibert_llm": [
+        "Mobile Security",
+        "Clustering"
+      ]
+    },
+    {
+      "publication_id": "social_science_dr_helena_01",
+      "gold": [
+        "environmental governance",
+        "transboundary pollution",
+        "environmental policy",
+        "non-governmental organization",
+        "international relations",
+        "sustainability science"
+      ],
+      "scibert_raw": [
+        "transboundary",
+        "haze",
+        "governance",
+        "state",
+        "national"
+      ],
+      "scibert_llm": [
+        "Environmental Science",
+        "Political Science"
+      ]
+    },
+    {
+      "publication_id": "social_science_dr_helena_02",
+      "gold": [
+        "environmental governance",
+        "sustainability standard",
+        "public policy",
+        "state transformation",
+        "international relations",
+        "trade policy"
+      ],
+      "scibert_raw": [
+        "governance",
+        "indonesia",
+        "ispo",
+        "indonesian",
+        "palm oil"
+      ],
+      "scibert_llm": [
+        "Sustainability and Environmental Policy",
+        "Agricultural Commodities",
+        "Regional Studies"
+      ]
+    },
+    {
+      "publication_id": "social_science_dr_helena_03",
+      "gold": [
+        "association of southeast asian nations",
+        "environmental governance",
+        "public policy",
+        "sustainable development",
+        "border and migration",
+        "international relations",
+        "coronavirus disease 2019"
+      ],
+      "scibert_raw": [
+        "border",
+        "cross-border flows",
+        "transboundary environmental",
+        "borders",
+        "pandemic"
+      ],
+      "scibert_llm": [
+        "Border Studies",
+        "Environmental Studies",
+        "Epidemiology"
+      ]
+    },
+    {
+      "publication_id": "social_science_dr_helena_04",
+      "gold": [
+        "atmospheric science",
+        "air pollution modeling",
+        "environmental monitoring",
+        "public health",
+        "remote sensing"
+      ],
+      "scibert_raw": [
+        "fires",
+        "borneo",
+        "haze",
+        "region",
+        "malaysian"
+      ],
+      "scibert_llm": [
+        "Environmental Science",
+        "Geography"
+      ]
+    },
+    {
+      "publication_id": "social_science_dr_helena_05",
+      "gold": [
+        "atmospheric science",
+        "air pollution modeling",
+        "public health",
+        "environmental governance",
+        "environmental economics"
+      ],
+      "scibert_raw": [
+        "haze episodes",
+        "malaysia",
+        "sea",
+        "reduce",
+        "per"
+      ],
+      "scibert_llm": [
+        "Atmospheric Science",
+        "Geography",
+        "Environmental Policy",
+        "Statistics"
+      ]
+    },
+    {
+      "publication_id": "social_science_dr_helena_06",
+      "gold": [
+        "political ecology",
+        "agrarian change",
+        "environmental governance",
+        "public policy",
+        "rural development",
+        "political economy"
+      ],
+      "scibert_raw": [
+        "palm oil",
+        "indonesia",
+        "development",
+        "indonesian",
+        "oil belt"
+      ],
+      "scibert_llm": [
+        "Agricultural Economics",
+        "Regional Development"
+      ]
+    },
+    {
+      "publication_id": "social_science_dr_helena_07",
+      "gold": [
+        "environmental governance",
+        "public policy",
+        "international relations",
+        "political economy",
+        "transboundary pollution",
+        "association of southeast asian nations"
+      ],
+      "scibert_raw": [
+        "haze",
+        "asean",
+        "fire",
+        "transboundary haze",
+        "haze pollution"
+      ],
+      "scibert_llm": [
+        "Atmospheric Science",
+        "Fire Ecology",
+        "Regional Studies"
+      ]
+    }
+  ]
+}
