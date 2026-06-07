@@ -84,7 +84,12 @@ async def login(
     # UC-3 alt flows: first-login (and dual-role first-login) automatically
     # trigger an ORCID/OpenAlex sync. The harvest is scheduled in the
     # background so the login response remains fast.
-    if first_login and user.orcid_profile is not None:
+    # Guard: check orcid_id on the profile row — the relationship object may
+    # not be loaded into the session even when the row exists.
+    has_orcid = (
+        user.orcid_profile is not None and bool(user.orcid_profile.orcid_id)
+    )
+    if first_login and has_orcid:
         background.add_task(_kick_off_first_login_sync, user.id)
     token = service.issue_token(user)
     return TokenResponse(access_token=token, user=_to_current_user_out(user))

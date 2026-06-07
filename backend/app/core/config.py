@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     # Security
     jwt_secret: str = Field(min_length=16)
     jwt_algorithm: str = "HS256"
-    jwt_access_ttl_minutes: int = 60
+    jwt_access_ttl_minutes: int = 10080  # 7 days
     password_reset_ttl_minutes: int = 30
 
     # Database

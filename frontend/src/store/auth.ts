@@ -66,6 +66,15 @@ export const useAuthStore = create<AuthState>()(
         user: state.user,
         activeView: state.activeView,
       }),
+      // Restore the axios Authorization header immediately when the store
+      // is rehydrated from localStorage on page load.  Without this the
+      // header is only set inside App's useEffect, which runs AFTER the
+      // first render — any API call fired during that render goes out
+      // without credentials, returns 401, and fires SESSION_EXPIRED_EVENT
+      // even though the token is perfectly valid.
+      onRehydrateStorage: () => (state) => {
+        if (state?.token) setAuthToken(state.token);
+      },
     }
   )
 );

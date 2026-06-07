@@ -49,6 +49,26 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _normalize_doi(doi: str) -> str:
+    """Return a lowercase bare DOI, stripping any URL prefix.
+
+    OpenAlex returns full URLs (``https://doi.org/10.xxx``); ORCID returns
+    bare strings (``10.xxx``). Normalising both sides prevents duplicate
+    publication rows caused purely by formatting differences.
+    """
+    return (
+        doi.strip()
+        .lower()
+        .removeprefix("https://doi.org/")
+        .removeprefix("http://doi.org/")
+        .removeprefix("doi:")
+    )
+
+
+# ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 
@@ -71,6 +91,19 @@ class HarvestService:
             raise NotFoundError(
                 "This user does not have an ORCID identifier configured.",
                 details={"user_id": str(user_id)},
+            )
+
+        # Guard against concurrent syncs for the same user.  A RUNNING job
+        # from a background first-login task can overlap with a manual trigger
+        # arriving seconds later, causing duplicate-publication IntegrityErrors.
+        running_stmt = (
+            select(SyncJob)
+            .where(SyncJob.user_id == user_id)
+            .where(SyncJob.status == SyncJobStatus.RUNNING)
+        )
+        if (await self._session.execute(running_stmt)).scalar_one_or_none():
+            raise ExternalServiceError(
+                "A sync is already running for this user. Please wait for it to complete."
             )
 
         job = SyncJob(
@@ -133,37 +166,90 @@ class HarvestService:
         self, user: User, orcid: OrcidProfile
     ) -> Tuple[int, int, bool]:
         """Execute the UC-8 pipeline; returns (pub_added, tag_added, no_new)."""
-        # Step 1: ORCID -> DOI list.
-        dois = await self._orcid.fetch_doi_list(orcid.orcid_id)
-        if not dois:
+        # Step 1: Resolve OpenAlex author ID from ORCID (cached after first sync).
+        if not orcid.openalex_author_id:
+            author_id = await self._openalex.fetch_author_by_orcid(orcid.orcid_id)
+            if author_id:
+                orcid.openalex_author_id = author_id
+                await self._session.flush()
+        else:
+            author_id = orcid.openalex_author_id
+
+        # Step 2: Fetch publication payloads.
+        # Primary path: OpenAlex author works (comprehensive — picks up papers
+        # the author didn't register on ORCID themselves).
+        # Fallback: ORCID DOI list → individual OpenAlex DOI lookups.
+        payloads: Dict[str, Any]
+        if author_id:
+            works = await self._openalex.fetch_works_by_author(author_id)
+            payloads = {}
+            for w in works:
+                raw_doi = (w.get("doi") or "").strip()
+                if not raw_doi:
+                    continue
+                # OpenAlex returns full URLs like "https://doi.org/10.xxx".
+                doi_key = _normalize_doi(raw_doi)
+                payloads[doi_key] = w
+        else:
+            # ORCID fallback: fetch DOIs then look up each one individually.
+            dois = await self._orcid.fetch_doi_list(orcid.orcid_id)
+            payloads = {}
+            for doi in dois:
+                doi_key = _normalize_doi(doi)
+                try:
+                    payloads[doi_key] = await self._openalex.fetch_work_by_doi(doi)
+                except ExternalServiceError as exc:
+                    logger.warning(
+                        "OpenAlex lookup failed for %s: %s", doi, exc.message
+                    )
+                    payloads[doi_key] = {}
+
+        if not payloads:
             return 0, 0, True
 
-        existing_dois = {p.doi for p in user.publications}
-        new_dois = [d for d in dois if d not in existing_dois]
-        if not new_dois:
-            return 0, 0, True
+        existing_dois = {_normalize_doi(p.doi) for p in user.publications}
+        new_items = {
+            doi: payload
+            for doi, payload in payloads.items()
+            if doi not in existing_dois
+        }
+        if not new_items:
+            # If the user already has tags, nothing more to do.
+            if user.expertise_links:
+                return 0, 0, True
+            # No new publications BUT no tags either — the NLP phase must have
+            # crashed on a previous sync (partial-success recovery).  Fall
+            # through and re-run NLP on the already-persisted abstract corpus.
+            abstract_corpus = [
+                p.abstract.abstract_text
+                for p in user.publications
+                if p.abstract is not None and p.abstract.abstract_text
+            ]
+            if not abstract_corpus:
+                return 0, 0, True
+            # Jump straight to NLP — skip publication persistence loop.
+            candidate_phrases = await self._extract_candidate_phrases(abstract_corpus)
+            if not candidate_phrases:
+                return 0, 0, True
+            combined_context = "\n\n".join(abstract_corpus[:5])
+            normalized = await normalize_keywords(candidate_phrases, abstract=combined_context)
+            tags_added = await self._persist_tags(user, normalized)
+            return 0, tags_added, False
 
-        # Step 2/3: OpenAlex -> publication metadata + abstract.
+        # Step 3: Persist publications + abstracts.
         abstract_corpus: List[str] = []
         publications_added = 0
 
-        for doi in new_dois:
-            try:
-                payload = await self._openalex.fetch_work_by_doi(doi)
-            except ExternalServiceError as exc:
-                # Missing record at OpenAlex is non-fatal for UC-9 fallback —
-                # store an empty publication row flagged as missing-abstract.
-                logger.warning("OpenAlex lookup failed for %s: %s", doi, exc.message)
-                payload = {}
-
+        for doi_key, payload in new_items.items():
             title = payload.get("title")
             year = payload.get("publication_year")
             openalex_id = (payload.get("id") or "").split("/")[-1] or None
+            primary_location = payload.get("primary_location") or {}
+            host_venue = payload.get("host_venue") or {}
+            primary_source = primary_location.get("source") or {}
             venue = (
-                (payload.get("host_venue") or {}).get("display_name")
-                or (payload.get("primary_location") or {}).get("source", {}).get(
-                    "display_name"
-                )
+                host_venue.get("display_name")
+                or primary_source.get("display_name")
             )
             abstract_text = self._openalex.reconstruct_abstract(
                 payload.get("abstract_inverted_index")
@@ -171,7 +257,7 @@ class HarvestService:
 
             publication = Publication(
                 user_id=user.id,
-                doi=doi,
+                doi=doi_key,
                 title=title,
                 venue=venue,
                 publication_year=year,
@@ -191,30 +277,69 @@ class HarvestService:
                     )
                 )
                 abstract_corpus.append(abstract_text)
-                # Persist a publication-level embedding for downstream UC-14
-                # spreading-activation lookups.
                 publication.embedding = await embed_text(abstract_text)
 
         await self._session.flush()
 
         if not abstract_corpus:
-            # UC-8 exception: nothing to extract from yet — UC-9 will handle it.
             return publications_added, 0, False
 
         # Steps 4–7: SciBERT keywords -> LLM normalization -> persist tags.
+        # No artificial cap: SciBERT iterates abstract-by-abstract (≈50ms each
+        # on CPU) and individual failures are swallowed.  For a 100-paper
+        # researcher this takes ~5s before LLM dispatch.
         candidate_phrases = await self._extract_candidate_phrases(abstract_corpus)
         if not candidate_phrases:
             return publications_added, 0, False
 
-        # Pass the combined abstracts as context so the LLM can
-        # disambiguate generic candidate words (e.g. "product",
-        # "feature") against the actual research topic.
-        combined_context = "\n\n".join(abstract_corpus[:5])
-        normalized = await normalize_keywords(
-            candidate_phrases, abstract=combined_context
+        # Batch LLM normalization to avoid blowing up the prompt or hitting
+        # provider response limits when the candidate set is large.
+        normalized = await self._normalize_in_batches(
+            candidate_phrases, abstract_corpus
         )
         tags_added = await self._persist_tags(user, normalized)
         return publications_added, tags_added, False
+
+    async def _normalize_in_batches(
+        self,
+        phrases: List[str],
+        abstracts: List[str],
+        batch_size: int = 50,
+    ) -> List[NormalizedTag]:
+        """Call the LLM in batches and concatenate the resulting tags.
+
+        For prolific researchers (50+ abstracts → 200+ candidate phrases) a
+        single LLM call risks truncation, timeouts, or unparseable JSON.
+        Batching keeps each call small while still giving the LLM enough
+        abstract context to make accurate domain decisions.
+        """
+        from app.services.llm_normalize import NormalizedTag
+
+        # Use a rotating window of abstracts as context: chunk N of the
+        # phrase list gets abstracts[N*5 : N*5+10] for variety.
+        all_tags: List[NormalizedTag] = []
+        seen_labels: set[str] = set()
+        for batch_idx in range(0, len(phrases), batch_size):
+            chunk = phrases[batch_idx : batch_idx + batch_size]
+            ctx_start = (batch_idx // batch_size) * 5
+            ctx = "\n\n".join(abstracts[ctx_start : ctx_start + 10]) or "\n\n".join(
+                abstracts[:10]
+            )
+            try:
+                batch_tags = await normalize_keywords(chunk, abstract=ctx)
+            except Exception:  # noqa: BLE001
+                logger.exception(
+                    "LLM normalization batch %d/%d failed; continuing",
+                    batch_idx // batch_size + 1,
+                    (len(phrases) + batch_size - 1) // batch_size,
+                )
+                continue
+            for tag in batch_tags:
+                key = tag.canonical_label.strip().lower()
+                if key and key not in seen_labels:
+                    seen_labels.add(key)
+                    all_tags.append(tag)
+        return all_tags
 
     async def _extract_candidate_phrases(self, abstracts: List[str]) -> List[str]:
         """Run SciBERT on every abstract and merge the keyword sets."""
@@ -227,9 +352,10 @@ class HarvestService:
                 continue
             for phrase, score in keywords:
                 merged[phrase] = max(merged.get(phrase, 0.0), score)
-        # Sort by score and cap to keep the LLM prompt compact.
+        # Sort by score; let downstream batching control LLM prompt size.
+        # For 100-abstract corpora this is typically ~200–400 unique phrases.
         ordered = sorted(merged.items(), key=lambda kv: kv[1], reverse=True)
-        return [phrase for phrase, _ in ordered[:60]]
+        return [phrase for phrase, _ in ordered[:300]]
 
     async def _persist_tags(
         self, user: User, tags: Iterable[NormalizedTag]
@@ -254,7 +380,11 @@ class HarvestService:
             label = tag_payload.canonical_label.strip()
             if not label or label in existing_map or label in new_tags_by_label:
                 continue
-            tag = ExpertiseTag(canonical_label=label, domain=tag_payload.domain)
+            tag = ExpertiseTag(
+                canonical_label=label,
+                parent_label=(tag_payload.parent_label or "").strip() or None,
+                domain=tag_payload.domain,
+            )
             self._session.add(tag)
             new_tags_by_label[label] = tag
             to_embed.append(label)

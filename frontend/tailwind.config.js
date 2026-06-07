@@ -31,6 +31,8 @@ export default {
           violet: "#5b5fc7",
           hover: "#4d51b8",
           lavender: "#7a7fad",
+          green: "#3b784b",
+          "green-hover": "#2e6040",
         },
         // Status
         status: {

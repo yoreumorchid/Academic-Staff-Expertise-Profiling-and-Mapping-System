@@ -56,6 +56,13 @@ export function ProfileOverviewPage() {
   const isAcademic =
     user?.role === "academic_staff" || user?.is_dual_role === true;
 
+  // Long-running sync state.  Once a sync is dispatched we set
+  // ``syncing=true`` so a blocking modal appears and beforeunload guards
+  // any close/refresh attempts.  The button click POSTs and AWAITS the
+  // backend, which is synchronous (returns only when the harvest finishes
+  // or fails) — there is no separate polling channel.
+  const [syncing, setSyncing] = useState(false);
+
   async function loadAll() {
     if (!user) return;
     try {
@@ -81,11 +88,15 @@ export function ProfileOverviewPage() {
   }, [user?.id]);
 
   async function triggerSync() {
+    if (syncing) return;  // double-click guard
+    setSyncing(true);
     setBusy(true);
     setError(null);
     setInfo(null);
     try {
-      const { data } = await api.post<SyncJob>("/sync/me");
+      const { data } = await api.post<SyncJob>("/sync/me", null, {
+        timeout: 600000,  // 10 min — large harvests can take a while
+      });
       setInfo(
         `Sync ${data.status}. ${data.publications_added} new publication(s), ${data.tags_added} new tag(s).`,
       );
@@ -94,8 +105,20 @@ export function ProfileOverviewPage() {
       setError(extractApiError(err, "Manual sync failed."));
     } finally {
       setBusy(false);
+      setSyncing(false);
     }
   }
+
+  // Block tab close / refresh while a sync is running.
+  useEffect(() => {
+    if (!syncing) return;
+    function onBeforeUnload(e: BeforeUnloadEvent) {
+      e.preventDefault();
+      e.returnValue = "";  // browsers ignore custom text but require this assignment
+    }
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [syncing]);
 
   async function changePassword(event: FormEvent) {
     event.preventDefault();
@@ -136,6 +159,35 @@ export function ProfileOverviewPage() {
 
   return (
     <div className="space-y-6">
+      {/* Blocking modal while a sync is in flight. */}
+      {syncing && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="sync-status-title"
+        >
+          <section className="card w-full max-w-md space-y-4 shadow-floating text-center">
+            <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-brand-green border-t-transparent" />
+            <h2
+              id="sync-status-title"
+              className="text-heading-3 font-announce text-text-primary"
+            >
+              Sync in progress…
+            </h2>
+            <p className="text-small text-text-secondary">
+              We are fetching your publications from ORCID + OpenAlex and
+              re-running the NLP pipeline. This can take a few minutes for
+              prolific researchers.
+            </p>
+            <p className="text-caption text-status-amber font-signature">
+              ⚠ Please do not refresh, close, or navigate away from this
+              page until the sync completes.
+            </p>
+          </section>
+        </div>
+      )}
+
       <header className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-heading-1 font-announce text-text-primary">
@@ -147,14 +199,14 @@ export function ProfileOverviewPage() {
             type="button"
             className="btn-primary"
             onClick={triggerSync}
-            disabled={busy || !user.orcid_id}
+            disabled={busy || syncing || !user.orcid_id}
             title={
               user.orcid_id
                 ? "Run a manual ORCID + OpenAlex harvest now."
                 : "Link an ORCID ID in your profile to enable harvesting."
             }
           >
-            {busy ? "Syncing…" : "Run manual sync"}
+            {syncing ? "Syncing…" : busy ? "Working…" : "Run manual sync"}
           </button>
         )}
       </header>

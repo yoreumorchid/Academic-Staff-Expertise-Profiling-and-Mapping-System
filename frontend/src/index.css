@@ -29,9 +29,9 @@ body {
 
 @layer components {
   .btn-primary {
-    @apply inline-flex items-center justify-center rounded-comfy bg-brand-indigo
+    @apply inline-flex items-center justify-center rounded-comfy bg-brand-green
            px-4 py-2 text-body font-signature text-white transition-colors
-           hover:bg-brand-hover focus:outline-none focus:shadow-focus;
+           hover:bg-brand-green-hover focus:outline-none focus:shadow-focus;
   }
   .btn-ghost {
     @apply inline-flex items-center justify-center rounded-comfy
@@ -59,8 +59,8 @@ body {
   }
   /* Sidebar floating-card hover effect. */
   .sidebar-item {
-    @apply flex items-center gap-2 rounded-comfy px-3 py-2.5 text-small
-           font-signature text-text-secondary transition-all duration-150
+    @apply flex items-center gap-2 rounded-comfy px-4 py-3 text-small
+           font-announce text-text-secondary transition-all duration-150
            hover:-translate-y-px hover:bg-white hover:text-text-primary
            hover:shadow-floating focus:outline-none focus:shadow-focus;
   }

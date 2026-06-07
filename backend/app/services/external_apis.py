@@ -136,6 +136,62 @@ class OpenAlexClient:
             )
         return response.json()
 
+    async def fetch_author_by_orcid(self, orcid_id: str) -> Optional[str]:
+        """Return the short OpenAlex author ID for a given ORCID (e.g. 'A12345678').
+
+        Returns ``None`` when OpenAlex does not have an author record for
+        this ORCID rather than raising — the caller should fall back to the
+        ORCID DOI-list path.
+        """
+        url = f"{self._settings.openalex_api_base}/authors"
+        params: Dict[str, str] = {"filter": f"orcid:{orcid_id}"}
+        if self._settings.openalex_mailto:
+            params["mailto"] = self._settings.openalex_mailto
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                response = await _request_with_retry(
+                    client, "GET", url, service_label="OpenAlex",
+                    params=params, headers={"Accept": "application/json"},
+                )
+        except ExternalServiceError:
+            logger.warning("OpenAlex author lookup failed for ORCID %s", orcid_id)
+            return None
+        results = response.json().get("results", [])
+        if not results:
+            return None
+        # ID is a full URL like "https://openalex.org/A12345678" — keep short form.
+        raw_id = results[0].get("id", "")
+        return raw_id.split("/")[-1] or None
+
+    async def fetch_works_by_author(
+        self, openalex_author_id: str, *, max_works: int = 1000
+    ) -> List[Dict[str, Any]]:
+        """Return all works attributed to an OpenAlex author using cursor pagination.
+
+        Stops after *max_works* to guard against unusually large profiles.
+        Each returned dict has the same shape as ``fetch_work_by_doi`` output.
+        """
+        url = f"{self._settings.openalex_api_base}/works"
+        all_works: List[Dict[str, Any]] = []
+        cursor: Optional[str] = "*"
+        while cursor and len(all_works) < max_works:
+            params: Dict[str, str] = {
+                "filter": f"authorships.author.id:{openalex_author_id}",
+                "per_page": "200",
+                "cursor": cursor,
+            }
+            if self._settings.openalex_mailto:
+                params["mailto"] = self._settings.openalex_mailto
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await _request_with_retry(
+                    client, "GET", url, service_label="OpenAlex",
+                    params=params, headers={"Accept": "application/json"},
+                )
+            data = response.json()
+            all_works.extend(data.get("results", []))
+            cursor = (data.get("meta") or {}).get("next_cursor")
+        return all_works
+
 
 # ---------------------------------------------------------------------------
 # IEEE Xplore API (UC-15)

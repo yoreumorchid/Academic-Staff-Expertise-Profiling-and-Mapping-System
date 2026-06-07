@@ -33,7 +33,9 @@ function MappingWorkspace({
   const [staffIndex, setStaffIndex] = useState<Record<string, StaffDirectoryEntry>>({});
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [textBusy, setTextBusy] = useState(false);
+  const [fileBusy, setFileBusy] = useState(false);
+  const [matchBusy, setMatchBusy] = useState(false);
 
   async function loadSpecs() {
     try {
@@ -71,7 +73,7 @@ function MappingWorkspace({
       setError("Provide a title and at least 80 characters of specification text.");
       return;
     }
-    setBusy(true);
+    setTextBusy(true);
     setError(null);
     setInfo(null);
     try {
@@ -87,7 +89,7 @@ function MappingWorkspace({
     } catch (err) {
       setError(extractApiError(err, "Ingestion failed."));
     } finally {
-      setBusy(false);
+      setTextBusy(false);
     }
   }
 
@@ -96,7 +98,7 @@ function MappingWorkspace({
       setError("Provide both a title and a file.");
       return;
     }
-    setBusy(true);
+    setFileBusy(true);
     setError(null);
     try {
       const fd = new FormData();
@@ -115,12 +117,12 @@ function MappingWorkspace({
     } catch (err) {
       setError(extractApiError(err, "Upload failed."));
     } finally {
-      setBusy(false);
+      setFileBusy(false);
     }
   }
 
   async function runMatch(specId: string) {
-    setBusy(true);
+    setMatchBusy(true);
     setError(null);
     setReport(null);
     try {
@@ -133,7 +135,7 @@ function MappingWorkspace({
     } catch (err) {
       setError(extractApiError(err, "Matching failed."));
     } finally {
-      setBusy(false);
+      setMatchBusy(false);
     }
   }
 
@@ -172,8 +174,8 @@ function MappingWorkspace({
           />
         </div>
         <div className="flex justify-end">
-          <button type="submit" className="btn-primary" disabled={busy}>
-            {busy ? "Ingesting…" : "Ingest text"}
+          <button type="submit" className="btn-primary" disabled={textBusy}>
+            {textBusy ? "Ingesting…" : "Ingest text"}
           </button>
         </div>
 
@@ -194,9 +196,9 @@ function MappingWorkspace({
               type="button"
               className="btn-primary"
               onClick={submitFile}
-              disabled={busy || !draftFile || !draftTitle.trim()}
+              disabled={fileBusy || !draftFile || !draftTitle.trim()}
             >
-              {busy ? "Uploading…" : "Upload"}
+              {fileBusy ? "Uploading…" : "Upload"}
             </button>
           </div>
         </div>
@@ -225,7 +227,7 @@ function MappingWorkspace({
                   type="button"
                   className="btn-ghost"
                   onClick={() => runMatch(s.id)}
-                  disabled={busy}
+                  disabled={matchBusy}
                 >
                   Run match
                 </button>
@@ -236,63 +238,88 @@ function MappingWorkspace({
       </section>
 
       {report && (
-        <section className="card">
-          <h2 className="mb-3 text-heading-3 font-announce text-text-primary">
-            Match results
-          </h2>
-          {report.summary && (
-            <p className="mb-3 text-small text-text-secondary">{report.summary}</p>
-          )}
-          {report.entries.length === 0 ? (
-            <EmptyState text="No academic staff met the minimum semantic threshold." />
-          ) : (
-            <table className="min-w-full divide-y divide-border-secondary text-small">
-              <thead className="text-caption uppercase tracking-wide text-text-quaternary">
-                <tr>
-                  <th className="px-2 py-2 text-left font-signature">Rank</th>
-                  <th className="px-2 py-2 text-left font-signature">Staff</th>
-                  <th className="px-2 py-2 text-left font-signature">Department</th>
-                  <th className="px-2 py-2 text-right font-signature">Cosine</th>
-                  <th className="px-2 py-2 text-right font-signature">Spread</th>
-                  <th className="px-2 py-2 text-right font-signature">Combined</th>
-                  <th className="px-2 py-2 text-left font-signature">Flag</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border-secondary">
-                {report.entries.map((e) => {
-                  const staff = staffIndex[e.user_id];
-                  return (
-                    <tr key={e.user_id}>
-                      <td className="px-2 py-2 text-text-secondary">{e.rank}</td>
-                      <td className="px-2 py-2 text-text-primary">
-                        {staff?.full_name ?? e.user_id.slice(0, 8)}
-                      </td>
-                      <td className="px-2 py-2 text-text-tertiary">
-                        {staff?.department ?? "—"}
-                      </td>
-                      <td className="px-2 py-2 text-right text-text-secondary">
-                        {e.cosine_score.toFixed(3)}
-                      </td>
-                      <td className="px-2 py-2 text-right text-text-secondary">
-                        {e.spreading_score.toFixed(3)}
-                      </td>
-                      <td className="px-2 py-2 text-right text-text-primary">
-                        {e.combined_score.toFixed(3)}
-                      </td>
-                      <td className="px-2 py-2">
-                        {e.is_cross_department && (
-                          <span className="pill border-brand-indigo/50 text-brand-indigo">
-                            Cross-dept
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-        </section>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="match-results-title"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setReport(null);
+          }}
+        >
+          <section className="card w-full max-w-4xl max-h-[80vh] overflow-y-auto space-y-4 shadow-floating">
+            <header className="flex items-start justify-between gap-4">
+              <div>
+                <h2
+                  id="match-results-title"
+                  className="text-heading-3 font-announce text-text-primary"
+                >
+                  Match results
+                </h2>
+                {report.summary && (
+                  <p className="mt-1 text-small text-text-secondary">{report.summary}</p>
+                )}
+              </div>
+              <button
+                type="button"
+                className="btn-ghost"
+                onClick={() => setReport(null)}
+                aria-label="Close"
+              >
+                Close
+              </button>
+            </header>
+            {report.entries.length === 0 ? (
+              <EmptyState text="No academic staff met the minimum semantic threshold." />
+            ) : (
+              <table className="min-w-full divide-y divide-border-secondary text-small">
+                <thead className="text-caption uppercase tracking-wide text-text-quaternary">
+                  <tr>
+                    <th className="px-2 py-2 text-left font-signature">Rank</th>
+                    <th className="px-2 py-2 text-left font-signature">Staff</th>
+                    <th className="px-2 py-2 text-left font-signature">Department</th>
+                    <th className="px-2 py-2 text-right font-signature">Cosine</th>
+                    <th className="px-2 py-2 text-right font-signature">Spread</th>
+                    <th className="px-2 py-2 text-right font-signature">Combined</th>
+                    <th className="px-2 py-2 text-left font-signature">Flag</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border-secondary">
+                  {report.entries.map((e) => {
+                    const staff = staffIndex[e.user_id];
+                    return (
+                      <tr key={e.user_id}>
+                        <td className="px-2 py-2 text-text-secondary">{e.rank}</td>
+                        <td className="px-2 py-2 text-text-primary">
+                          {staff?.full_name ?? e.user_id.slice(0, 8)}
+                        </td>
+                        <td className="px-2 py-2 text-text-tertiary">
+                          {staff?.department ?? "—"}
+                        </td>
+                        <td className="px-2 py-2 text-right text-text-secondary">
+                          {e.cosine_score.toFixed(3)}
+                        </td>
+                        <td className="px-2 py-2 text-right text-text-secondary">
+                          {e.spreading_score.toFixed(3)}
+                        </td>
+                        <td className="px-2 py-2 text-right text-text-primary">
+                          {e.combined_score.toFixed(3)}
+                        </td>
+                        <td className="px-2 py-2">
+                          {e.is_cross_department && (
+                            <span className="pill border-brand-indigo/50 text-brand-indigo">
+                              Cross-dept
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </section>
+        </div>
       )}
     </div>
   );

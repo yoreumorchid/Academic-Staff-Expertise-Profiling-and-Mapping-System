@@ -27,7 +27,7 @@ const FILTER_OPTIONS: { value: StaffSearchCategory; label: string }[] = [
   { value: "all", label: "All fields" },
   { value: "name", label: "Name" },
   { value: "department", label: "Department" },
-  { value: "expertise", label: "Expertise / Tags" },
+  { value: "expertise", label: "Expertise" },
   { value: "publication", label: "Publications" },
 ];
 
@@ -250,72 +250,86 @@ export function StaffDirectoryPage() {
       </section>
 
       {openProfile && (
-        <section className="card space-y-4">
-          <header className="flex items-start justify-between gap-4">
-            <div>
-              <h2 className="text-heading-3 font-announce text-text-primary">
-                {openProfile.full_name}
-              </h2>
-              <p className="text-caption text-text-tertiary">
-                {openProfile.department ?? "Department n/a"} · {openProfile.email}
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                className="btn-ghost"
-                onClick={() => triggerSync(openProfile.id)}
-              >
-                Trigger sync
-              </button>
-              <button
-                type="button"
-                className="btn-ghost"
-                onClick={() => setOpenProfile(null)}
-              >
-                Close
-              </button>
-            </div>
-          </header>
-
-          <div>
-            <div className="mb-2 text-caption uppercase tracking-wide text-text-quaternary">
-              Expertise
-            </div>
-            {openProfile.expertise.length === 0 ? (
-              <EmptyState text="No tags." />
-            ) : (
-              <div className="flex flex-wrap gap-2">
-                {openProfile.expertise.map((t) => (
-                  <TagPill key={t.id} tag={t} />
-                ))}
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="staff-profile-title"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setOpenProfile(null);
+          }}
+        >
+          <section className="card w-full max-w-2xl max-h-[80vh] overflow-y-auto space-y-4 shadow-floating">
+            <header className="flex items-start justify-between gap-4">
+              <div>
+                <h2
+                  id="staff-profile-title"
+                  className="text-heading-3 font-announce text-text-primary"
+                >
+                  {openProfile.full_name}
+                </h2>
+                <p className="text-caption text-text-tertiary">
+                  {openProfile.department ?? "Department n/a"} · {openProfile.email}
+                </p>
               </div>
-            )}
-          </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  className="btn-ghost"
+                  onClick={() => triggerSync(openProfile.id)}
+                >
+                  Trigger sync
+                </button>
+                <button
+                  type="button"
+                  className="btn-ghost"
+                  onClick={() => setOpenProfile(null)}
+                  aria-label="Close"
+                >
+                  Close
+                </button>
+              </div>
+            </header>
 
-          <div>
-            <div className="mb-2 text-caption uppercase tracking-wide text-text-quaternary">
-              Publications
+            <div>
+              <div className="mb-2 text-caption uppercase tracking-wide text-text-quaternary">
+                Expertise
+              </div>
+              {openProfile.expertise.length === 0 ? (
+                <EmptyState text="No tags." />
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {openProfile.expertise.map((t) => (
+                    <TagPill key={t.id} tag={t} />
+                  ))}
+                </div>
+              )}
             </div>
-            {openProfile.publications.length === 0 ? (
-              <EmptyState text="No publications." />
-            ) : (
-              <ul className="divide-y divide-border-secondary">
-                {openProfile.publications.slice(0, 10).map((p) => (
-                  <li key={p.id} className="py-2">
-                    <div className="text-body text-text-primary">
-                      {p.title ?? p.doi}
-                    </div>
-                    <div className="text-caption text-text-tertiary">
-                      {p.venue ?? "Venue n/a"}
-                      {p.publication_year && ` · ${p.publication_year}`}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </section>
+
+            <div>
+              <div className="mb-2 text-caption uppercase tracking-wide text-text-quaternary">
+                Publications
+              </div>
+              {openProfile.publications.length === 0 ? (
+                <EmptyState text="No publications." />
+              ) : (
+                <ul className="divide-y divide-border-secondary">
+                  {openProfile.publications.slice(0, 10).map((p) => (
+                    <li key={p.id} className="py-2">
+                      <div className="text-body text-text-primary">
+                        {p.title ?? p.doi}
+                      </div>
+                      <div className="text-caption text-text-tertiary">
+                        {p.venue ?? "Venue n/a"}
+                        {p.publication_year && ` · ${p.publication_year}`}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </section>
+        </div>
       )}
     </div>
   );

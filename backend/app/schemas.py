@@ -302,6 +302,7 @@ class SupplementAbstractRequest(BaseModel):
 class ExpertiseTagOut(_ORM):
     id: UUID
     canonical_label: str
+    parent_label: Optional[str]
     domain: Optional[str]
 
 

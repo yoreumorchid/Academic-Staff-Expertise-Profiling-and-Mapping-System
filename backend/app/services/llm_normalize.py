@@ -30,6 +30,16 @@ class NormalizedTag(BaseModel):
     canonical_label: str = Field(
         description="Broad, standardized expertise domain (e.g. 'Computer Vision')."
     )
+    parent_label: Optional[str] = Field(
+        default=None,
+        description=(
+            "The immediate umbrella field one level above canonical_label, "
+            "suitable for coarse-grained mapping. "
+            "E.g. 'Computer Vision' for 'Image Forensics', "
+            "'Cryptography' for 'Post-Quantum Cryptography'. "
+            "Omit (null) if canonical_label is already a top-level umbrella."
+        ),
+    )
     domain: Optional[str] = Field(
         default=None,
         description="Higher-level discipline (e.g. 'Artificial Intelligence').",
@@ -271,13 +281,22 @@ Return strictly valid JSON matching this schema:
 {{
   "tags": [
     {{
-      "canonical_label": "<broad sub-field name>",
-      "domain": "<higher-level discipline or null>",
+      "canonical_label": "<specific sub-field, CV-style>",
+      "parent_label": "<direct umbrella one level up, or null if already top-level>",
+      "domain": "<high-level discipline or null>",
       "source_phrases": ["<original raw phrase>", ...],
       "confidence": <float between 0 and 1>
     }}
   ]
 }}
+
+Examples of parent_label usage:
+  canonical_label="Image Forensics"         -> parent_label="Computer Vision"
+  canonical_label="Post-Quantum Cryptography" -> parent_label="Cryptography"
+  canonical_label="Federated Learning"       -> parent_label="Machine Learning"
+  canonical_label="Intrusion Detection"      -> parent_label="Network Security"
+  canonical_label="Computer Vision"          -> parent_label=null  (already umbrella)
+  canonical_label="Natural Language Processing" -> parent_label=null  (already umbrella)
 
 Do not include any prose outside the JSON.
 
@@ -337,6 +356,11 @@ async def normalize_keywords(
     except Exception:  # noqa: BLE001 — try a tolerant JSON fallback.
         try:
             raw = json.loads(content)
+            # DeepSeek sometimes wraps the result in a JSON array — unwrap it.
+            if isinstance(raw, list):
+                if not raw:
+                    raise ValueError("LLM returned an empty list")
+                raw = raw[0]
             parsed = NormalizationResult.model_validate(raw)
         except Exception as exc:  # noqa: BLE001
             logger.warning("LLM returned non-JSON payload: %s", content[:300])

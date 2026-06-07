@@ -207,7 +207,7 @@ class ExportService:
             flow.append(Paragraph(label_line, body))
 
         if publications:
-            flow.append(Paragraph("Selected Publications", section))
+            flow.append(Paragraph("Publications", section))
             for pub in publications:
                 line = (
                     f"&bull; <b>{pub.title or '(Untitled)'}</b> "
@@ -258,7 +258,7 @@ class ExportService:
             )
 
         if publications:
-            document.add_heading("Selected Publications", level=2)
+            document.add_heading("Publications", level=2)
             for pub in publications:
                 line = pub.title or "(Untitled)"
                 if pub.venue:

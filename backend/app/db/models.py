@@ -207,6 +207,8 @@ class OrcidProfile(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True
     )
     orcid_id: Mapped[str] = mapped_column(String(19), nullable=False)
+    # Cached OpenAlex author identifier resolved on first sync.
+    openalex_author_id: Mapped[Optional[str]] = mapped_column(String(64))
     last_sync_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
 
     user: Mapped[User] = relationship(back_populates="orcid_profile")
@@ -260,6 +262,9 @@ class ExpertiseTag(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __table_args__ = (UniqueConstraint("canonical_label", name="uq_expertise_canonical"),)
 
     canonical_label: Mapped[str] = mapped_column(String(255), nullable=False)
+    # parent_label: one level above canonical_label used for coarse-grained
+    # course/grant mapping (e.g. "Computer Vision" for "Image Forensics").
+    parent_label: Mapped[Optional[str]] = mapped_column(String(255))
     domain: Mapped[Optional[str]] = mapped_column(String(255))
     embedding: Mapped[Optional[List[float]]] = mapped_column(ARRAY(Float))
 

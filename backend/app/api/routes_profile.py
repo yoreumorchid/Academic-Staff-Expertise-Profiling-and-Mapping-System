@@ -10,11 +10,12 @@ Covers:
 """
 from __future__ import annotations
 
+import logging
 from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Query, UploadFile, status
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -49,6 +50,8 @@ from app.services.document_extract import extract_text_from_upload
 from app.services.embeddings import embed_text, embed_texts
 from app.services.harvest import HarvestService
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/profile", tags=["profile"])
 
 
@@ -74,7 +77,16 @@ async def search_staff(
 
     stmt = (
         select(User)
-        .where(User.role == UserRole.ACADEMIC_STAFF)
+        # Include true academic staff AND dual-role faculty admins who
+        # also hold an academic-staff identity (FR-012). Without the
+        # ``is_dual_role`` branch a dual-role admin would never surface
+        # in the global header search.
+        .where(
+            or_(
+                User.role == UserRole.ACADEMIC_STAFF,
+                User.is_dual_role.is_(True),
+            )
+        )
         .where(User.status == AccountStatus.ACTIVE)
         .options(
             selectinload(User.expertise_links).selectinload(UserExpertiseTag.tag),
@@ -431,7 +443,10 @@ async def refine_expertise(
 async def _load_full_profile(session: AsyncSession, user_id: UUID) -> User:
     stmt = (
         select(User)
-        .where(User.id == user_id, User.role == UserRole.ACADEMIC_STAFF)
+        .where(
+            User.id == user_id,
+            or_(User.role == UserRole.ACADEMIC_STAFF, User.is_dual_role.is_(True)),
+        )
         .options(
             selectinload(User.expertise_links).selectinload(UserExpertiseTag.tag),
             selectinload(User.publications).selectinload(Publication.abstract),
@@ -471,7 +486,15 @@ async def _persist_supplemented_abstract(
     publication_id: UUID,
     text: str,
 ) -> None:
-    publication = await session.get(Publication, publication_id)
+    # Eager-load the abstract relationship — touching ``publication.abstract``
+    # later would otherwise trigger a lazy load that crashes inside an async
+    # session with ``MissingGreenlet``.
+    stmt = (
+        select(Publication)
+        .where(Publication.id == publication_id)
+        .options(selectinload(Publication.abstract))
+    )
+    publication = (await session.execute(stmt)).scalar_one_or_none()
     if publication is None or publication.user_id != actor.id:
         raise NotFoundError("Publication not found.")
     if len(text.strip()) < 200:
@@ -481,6 +504,8 @@ async def _persist_supplemented_abstract(
             "for meaningful NLP extraction.",
         )
 
+    # Step A — store the user-supplied abstract first. This must succeed
+    # on its own; everything after is best-effort AI enrichment.
     if publication.abstract is None:
         publication.abstract = PublicationAbstract(
             publication_id=publication.id,
@@ -494,8 +519,30 @@ async def _persist_supplemented_abstract(
         publication.abstract.supplemented_by_user_id = actor.id
 
     publication.abstract_missing = False
-    publication.embedding = await embed_text(text)
     await session.commit()
 
-    # UC-9 step 7: re-run the NLP/LLM pipeline on the fresh abstract.
-    await HarvestService(session).regenerate_tags_from_abstract(actor.id, text)
+    # Step B — best-effort: refresh the publication embedding and re-run
+    # the NLP/LLM pipeline. Any failure here is logged but never bubbles
+    # up as a 500: the abstract is already saved and the user can
+    # re-trigger NLP enrichment from the next quarterly sync.
+    try:
+        publication.embedding = await embed_text(text)
+        await session.commit()
+    except Exception:  # noqa: BLE001
+        logger.exception(
+            "Embedding refresh failed for publication %s; abstract is saved",
+            publication_id,
+        )
+        await session.rollback()
+
+    try:
+        await HarvestService(session).regenerate_tags_from_abstract(
+            actor.id, text
+        )
+        await session.commit()
+    except Exception:  # noqa: BLE001
+        logger.exception(
+            "NLP tag regeneration failed for publication %s; abstract is saved",
+            publication_id,
+        )
+        await session.rollback()

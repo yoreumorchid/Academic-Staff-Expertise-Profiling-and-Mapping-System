@@ -94,7 +94,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             Expertise Insight
           </div>
         </div>
-        <nav className="mt-2 flex flex-col gap-4 px-3 pb-6">
+        <nav className="mt-2 flex flex-col gap-3 px-4 pb-6">
           {links.map((item) => (
             <NavLink
               key={item.path}

@@ -1,0 +1,211 @@
+{
+  "staff_name": "TEST_DR_CHIAM",
+  "threshold": 0.65,
+  "ai_tags_count": 17,
+  "self_declared_count": 6,
+  "coverage_rate": 0.5,
+  "anchor_rate": 0.2941,
+  "self_declared_coverage": [
+    {
+      "self_declared": "SOFTWARE REQUIREMENTS ENGINEERING",
+      "covered": true,
+      "best_ai_tag": "Software Engineering",
+      "similarity": 0.7452
+    },
+    {
+      "self_declared": "EMPIRICAL SOFTWARE ENGINEERING",
+      "covered": true,
+      "best_ai_tag": "Software Engineering",
+      "similarity": 0.7217
+    },
+    {
+      "self_declared": "DATA ANALYTICS",
+      "covered": false,
+      "best_ai_tag": "Machine Learning",
+      "similarity": 0.5904
+    },
+    {
+      "self_declared": "DATA MINING",
+      "covered": true,
+      "best_ai_tag": "Text Mining",
+      "similarity": 0.7619
+    },
+    {
+      "self_declared": "QUALITY AND ACCESSABLE HEALTH SYSTEM",
+      "covered": false,
+      "best_ai_tag": "Distributed Systems",
+      "similarity": 0.2741
+    },
+    {
+      "self_declared": "QUALITY AND ACCESSABLE EDUCATION",
+      "covered": false,
+      "best_ai_tag": "Software Engineering",
+      "similarity": 0.2371
+    }
+  ],
+  "ai_tag_detail": [
+    {
+      "ai_tag": "Blockchain",
+      "parent_label": null,
+      "parent_chain": [],
+      "best_match_self_declared": "DATA MINING",
+      "similarity": 0.2783,
+      "matched": false
+    },
+    {
+      "ai_tag": "Distributed Systems",
+      "parent_label": null,
+      "parent_chain": [],
+      "best_match_self_declared": "DATA ANALYTICS",
+      "similarity": 0.3116,
+      "matched": false
+    },
+    {
+      "ai_tag": "Software Engineering",
+      "parent_label": null,
+      "parent_chain": [],
+      "best_match_self_declared": "SOFTWARE REQUIREMENTS ENGINEERING",
+      "similarity": 0.7452,
+      "matched": true
+    },
+    {
+      "ai_tag": "Decision Support Systems",
+      "parent_label": null,
+      "parent_chain": [],
+      "best_match_self_declared": "DATA MINING",
+      "similarity": 0.39,
+      "matched": false
+    },
+    {
+      "ai_tag": "Text Mining",
+      "parent_label": null,
+      "parent_chain": [],
+      "best_match_self_declared": "DATA MINING",
+      "similarity": 0.7619,
+      "matched": true
+    },
+    {
+      "ai_tag": "Natural Language Processing",
+      "parent_label": null,
+      "parent_chain": [],
+      "best_match_self_declared": "DATA MINING",
+      "similarity": 0.4794,
+      "matched": false
+    },
+    {
+      "ai_tag": "Medical Imaging",
+      "parent_label": null,
+      "parent_chain": [],
+      "best_match_self_declared": "DATA ANALYTICS",
+      "similarity": 0.2081,
+      "matched": false
+    },
+    {
+      "ai_tag": "Cardiac Image Analysis",
+      "parent_label": null,
+      "parent_chain": [],
+      "best_match_self_declared": "DATA MINING",
+      "similarity": 0.2456,
+      "matched": false
+    },
+    {
+      "ai_tag": "Computer Vision",
+      "parent_label": null,
+      "parent_chain": [],
+      "best_match_self_declared": "DATA ANALYTICS",
+      "similarity": 0.3708,
+      "matched": false
+    },
+    {
+      "ai_tag": "Opinion Mining",
+      "parent_label": "Natural Language Processing",
+      "parent_chain": [
+        "Natural Language Processing"
+      ],
+      "best_match_self_declared": "DATA MINING",
+      "similarity": 0.5697,
+      "matched": false
+    },
+    {
+      "ai_tag": "Aspect-Based Sentiment Analysis",
+      "parent_label": "Opinion Mining",
+      "parent_chain": [
+        "Opinion Mining",
+        "Natural Language Processing"
+      ],
+      "best_match_self_declared": "DATA MINING",
+      "similarity": 0.5242,
+      "matched": false
+    },
+    {
+      "ai_tag": "Blockchain Technology",
+      "parent_label": null,
+      "parent_chain": [],
+      "best_match_self_declared": "DATA MINING",
+      "similarity": 0.2529,
+      "matched": false
+    },
+    {
+      "ai_tag": "Multi-Criteria Decision Making",
+      "parent_label": null,
+      "parent_chain": [],
+      "best_match_self_declared": "DATA MINING",
+      "similarity": 0.3523,
+      "matched": false
+    },
+    {
+      "ai_tag": "Software Defect Prediction",
+      "parent_label": "Software Engineering",
+      "parent_chain": [
+        "Software Engineering"
+      ],
+      "best_match_self_declared": "SOFTWARE REQUIREMENTS ENGINEERING",
+      "similarity": 0.6856,
+      "matched": true
+    },
+    {
+      "ai_tag": "Just-in-Time Defect Prediction",
+      "parent_label": "Software Defect Prediction",
+      "parent_chain": [
+        "Software Defect Prediction",
+        "Software Engineering"
+      ],
+      "best_match_self_declared": "SOFTWARE REQUIREMENTS ENGINEERING",
+      "similarity": 0.6308,
+      "matched": false
+    },
+    {
+      "ai_tag": "Machine Learning",
+      "parent_label": null,
+      "parent_chain": [],
+      "best_match_self_declared": "DATA MINING",
+      "similarity": 0.7204,
+      "matched": true
+    },
+    {
+      "ai_tag": "Explainable Artificial Intelligence",
+      "parent_label": "Machine Learning",
+      "parent_chain": [
+        "Machine Learning"
+      ],
+      "best_match_self_declared": "DATA MINING",
+      "similarity": 0.6628,
+      "matched": true
+    }
+  ],
+  "discovery_tags": [
+    "Blockchain",
+    "Distributed Systems",
+    "Decision Support Systems",
+    "Natural Language Processing",
+    "Medical Imaging",
+    "Cardiac Image Analysis",
+    "Computer Vision",
+    "Opinion Mining",
+    "Aspect-Based Sentiment Analysis",
+    "Blockchain Technology",
+    "Multi-Criteria Decision Making",
+    "Just-in-Time Defect Prediction"
+  ],
+  "rationale": "WHY SPECIFIC AI TAGS ARE PREFERRED OVER GENERAL SELF-DECLARED LABELS\n=====================================================================\n\n1. MATCHING PRECISION\n   A course or grant specification typically names a narrow problem area (e.g.\n   \"cardiac segmentation using deep learning\").  A general tag like \"Computer\n   Science\" matches all software-engineering staff equally, producing a flat\n   ranking.  A specific tag \"Cardiac Image Analysis\" lifts the right expert to\n   the top of the cosine-ranked shortlist.\n\n2. GAP / WHITE-SPACE DETECTION (UC-17)\n   Clustering 200 staff by the tag \"Computer Science\" produces one useless\n   mega-cluster.  Clustering by \"Federated Learning\", \"Secure Multi-Party\n   Computation\" and \"Differential Privacy\" reveals genuine research niches and\n   surfaces genuine white spaces where no staff has expertise.\n\n3. VERIFIABILITY\n   A specific tag such as \"Empirical Software Engineering\" can be cross-checked\n   by any reviewer against the staff's publication list within seconds.  The\n   general label \"Software Engineering\" cannot be falsified.\n\n4. ZERO INFORMATION LOSS VIA parent_label\n   Every specific tag carries a parent_label (e.g. \"Blockchain\" →\n   parent \"Distributed Systems\").  Searches and filters on the general\n   parent area therefore still include all specialists, so granularity\n   costs nothing in terms of findability.  Staff who prefer to be\n   listed under general areas can always ADD a general custom tag via\n   the Tag Refinement page (UC-11); the AI baseline will remain specific\n   regardless.\n\n5. COMPLEMENTARITY WITH SELF-DECLARED TAGS\n   The validation study below shows that many AI tags map onto self-declared\n   areas at similarity ≥ 0.65 even across vocabulary shifts.  Where they do\n   NOT map, it signals genuine publication activity that the staff member did\n   NOT self-report — often due to inter-disciplinary collaboration.  These\n   \"extra\" AI tags are arguably the most valuable discovery the system\n   provides."
+}

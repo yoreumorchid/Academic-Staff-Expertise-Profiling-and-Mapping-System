@@ -57,56 +57,82 @@ export function GapAnalyticsPage() {
 
       {error && <Banner kind="error">{error}</Banner>}
 
-      {report ? (
-        <>
-          <section className="card">
-            <h2 className="mb-3 text-heading-3 font-announce text-text-primary">
-              Narrative
-            </h2>
-            <p className="whitespace-pre-line text-small text-text-secondary">
-              {report.narrative}
-            </p>
-          </section>
-          <section className="card">
-            <h2 className="mb-3 text-heading-3 font-announce text-text-primary">
-              White spaces
-            </h2>
-            {report.white_spaces.length === 0 ? (
-              <EmptyState text="No white spaces flagged." />
-            ) : (
-              <table className="min-w-full divide-y divide-border-secondary text-small">
-                <thead className="text-caption uppercase tracking-wide text-text-quaternary">
-                  <tr>
-                    <th className="px-2 py-2 text-left font-signature">Source</th>
-                    <th className="px-2 py-2 text-left font-signature">Domain</th>
-                    <th className="px-2 py-2 text-right font-signature">
-                      Displacement
-                    </th>
-                    <th className="px-2 py-2 text-left font-signature">Recommendation</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border-secondary">
-                  {report.white_spaces.map((w, idx) => (
-                    <tr key={`${w.source}-${idx}`}>
-                      <td className="px-2 py-2 text-text-secondary">{w.source}</td>
-                      <td className="px-2 py-2 text-text-primary">{w.domain_label}</td>
-                      <td className="px-2 py-2 text-right text-text-secondary">
-                        {w.displacement_score.toFixed(3)}
-                      </td>
-                      <td className="px-2 py-2 text-text-tertiary">
-                        {w.recommendation ?? "—"}
-                      </td>
+      <section className="card">
+        <EmptyState text="Click 'Generate combined report' to consolidate the latest benchmark runs." />
+      </section>
+
+      {report && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="gap-report-title"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setReport(null);
+          }}
+        >
+          <section className="card w-full max-w-3xl max-h-[80vh] overflow-y-auto space-y-4 shadow-floating">
+            <header className="flex items-start justify-between gap-4">
+              <h2
+                id="gap-report-title"
+                className="text-heading-3 font-announce text-text-primary"
+              >
+                Gap Analytics Report
+              </h2>
+              <button
+                type="button"
+                className="btn-ghost"
+                onClick={() => setReport(null)}
+                aria-label="Close"
+              >
+                Close
+              </button>
+            </header>
+            <div>
+              <h3 className="mb-2 text-heading-3 font-announce text-text-primary">
+                Narrative
+              </h3>
+              <p className="whitespace-pre-line text-small text-text-secondary">
+                {report.narrative}
+              </p>
+            </div>
+            <div>
+              <h3 className="mb-2 text-heading-3 font-announce text-text-primary">
+                White spaces
+              </h3>
+              {report.white_spaces.length === 0 ? (
+                <EmptyState text="No white spaces flagged." />
+              ) : (
+                <table className="min-w-full divide-y divide-border-secondary text-small">
+                  <thead className="text-caption uppercase tracking-wide text-text-quaternary">
+                    <tr>
+                      <th className="px-2 py-2 text-left font-signature">Source</th>
+                      <th className="px-2 py-2 text-left font-signature">Domain</th>
+                      <th className="px-2 py-2 text-right font-signature">
+                        Displacement
+                      </th>
+                      <th className="px-2 py-2 text-left font-signature">Recommendation</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
+                  </thead>
+                  <tbody className="divide-y divide-border-secondary">
+                    {report.white_spaces.map((w, idx) => (
+                      <tr key={`${w.source}-${idx}`}>
+                        <td className="px-2 py-2 text-text-secondary">{w.source}</td>
+                        <td className="px-2 py-2 text-text-primary">{w.domain_label}</td>
+                        <td className="px-2 py-2 text-right text-text-secondary">
+                          {w.displacement_score.toFixed(3)}
+                        </td>
+                        <td className="px-2 py-2 text-text-tertiary">
+                          {w.recommendation ?? "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
           </section>
-        </>
-      ) : (
-        <section className="card">
-          <EmptyState text="Click 'Generate combined report' to consolidate the latest benchmark runs." />
-        </section>
+        </div>
       )}
     </div>
   );
@@ -224,54 +250,78 @@ export function GlobalBenchmarkingPage() {
       </section>
 
       {run && (
-        <>
-          <section className="card">
-            <h2 className="mb-3 text-heading-3 font-announce text-text-primary">
-              Narrative — {run.benchmark_type} run
-            </h2>
-            <p className="whitespace-pre-line text-small text-text-secondary">
-              {run.narrative ?? "No narrative produced."}
-            </p>
-          </section>
-
-          {run.visualization_payload && (
-            <section className="card">
-              <h2 className="mb-3 text-heading-3 font-announce text-text-primary">
-                UMAP projection
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="benchmark-run-title"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setRun(null);
+          }}
+        >
+          <section className="card w-full max-w-3xl max-h-[80vh] overflow-y-auto space-y-4 shadow-floating">
+            <header className="flex items-start justify-between gap-4">
+              <h2
+                id="benchmark-run-title"
+                className="text-heading-3 font-announce text-text-primary"
+              >
+                {run.benchmark_type} run results
               </h2>
-              <UmapScatter payload={run.visualization_payload} />
-            </section>
-          )}
-
-          <section className="card">
-            <h2 className="mb-3 text-heading-3 font-announce text-text-primary">
-              White spaces
-            </h2>
-            {run.white_spaces.length === 0 ? (
-              <EmptyState text="No white spaces flagged." />
-            ) : (
-              <ul className="divide-y divide-border-secondary">
-                {run.white_spaces.map((w, idx) => (
-                  <li key={idx} className="py-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-body text-text-primary">
-                        {w.domain_label}
-                      </span>
-                      <span className="text-caption text-text-tertiary">
-                        displacement {w.displacement_score.toFixed(3)}
-                      </span>
-                    </div>
-                    {w.recommendation && (
-                      <p className="mt-1 text-small text-text-secondary">
-                        {w.recommendation}
-                      </p>
-                    )}
-                  </li>
-                ))}
-              </ul>
+              <button
+                type="button"
+                className="btn-ghost"
+                onClick={() => setRun(null)}
+                aria-label="Close"
+              >
+                Close
+              </button>
+            </header>
+            <div>
+              <h3 className="mb-2 text-heading-3 font-announce text-text-primary">
+                Narrative
+              </h3>
+              <p className="whitespace-pre-line text-small text-text-secondary">
+                {run.narrative ?? "No narrative produced."}
+              </p>
+            </div>
+            {run.visualization_payload && (
+              <div>
+                <h3 className="mb-2 text-heading-3 font-announce text-text-primary">
+                  UMAP projection
+                </h3>
+                <UmapScatter payload={run.visualization_payload} />
+              </div>
             )}
+            <div>
+              <h3 className="mb-2 text-heading-3 font-announce text-text-primary">
+                White spaces
+              </h3>
+              {run.white_spaces.length === 0 ? (
+                <EmptyState text="No white spaces flagged." />
+              ) : (
+                <ul className="divide-y divide-border-secondary">
+                  {run.white_spaces.map((w, idx) => (
+                    <li key={idx} className="py-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-body text-text-primary">
+                          {w.domain_label}
+                        </span>
+                        <span className="text-caption text-text-tertiary">
+                          displacement {w.displacement_score.toFixed(3)}
+                        </span>
+                      </div>
+                      {w.recommendation && (
+                        <p className="mt-1 text-small text-text-secondary">
+                          {w.recommendation}
+                        </p>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </section>
-        </>
+        </div>
       )}
     </div>
   );
