@@ -317,7 +317,7 @@ class AcademicBackground(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     organization: Mapped[Optional[str]] = mapped_column(String(255))
     description: Mapped[Optional[str]] = mapped_column(Text)
-    start_date: Mapped[date] = mapped_column(Date, nullable=False)
+    start_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     end_date: Mapped[Optional[date]] = mapped_column(Date)
 
     user: Mapped[User] = relationship(back_populates="academic_background")

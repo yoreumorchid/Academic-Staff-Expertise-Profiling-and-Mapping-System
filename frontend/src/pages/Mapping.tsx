@@ -328,7 +328,7 @@ function MappingWorkspace({
 export const CourseMappingPage = () => (
   <MappingWorkspace
     specType="course"
-    title="Semantic Course Mapping"
+    title="Course Mapping"
   />
 );
 

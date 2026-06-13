@@ -28,7 +28,7 @@ const PORTFOLIO_LINKS: Record<PortfolioType, NavItem[]> = {
     { label: "Staff Profiles", path: "/admin/staff", uc: "UC-7" },
   ],  head_of_department: [
     { label: "Gap Analytics Overview", path: "/admin/gap", uc: "UC-17" },
-    { label: "Semantic Course Mapping", path: "/admin/mapping/course", uc: "UC-13/14" },
+    { label: "Course Mapping", path: "/admin/mapping/course", uc: "UC-13/14" },
     { label: "Research Grant Mapping", path: "/admin/mapping/grant", uc: "UC-13/14" },
     { label: "Staff Profiles", path: "/admin/staff", uc: "UC-7" },
   ],
@@ -38,7 +38,7 @@ const PORTFOLIO_LINKS: Record<PortfolioType, NavItem[]> = {
   ],
   deputy_dean_ugpg: [
     { label: "Gap Analytics Overview", path: "/admin/gap", uc: "UC-17" },
-    { label: "Semantic Course Mapping", path: "/admin/mapping/course", uc: "UC-13/14" },
+    { label: "Course Mapping", path: "/admin/mapping/course", uc: "UC-13/14" },
     { label: "Staff Profiles", path: "/admin/staff", uc: "UC-7" },
   ],
 };

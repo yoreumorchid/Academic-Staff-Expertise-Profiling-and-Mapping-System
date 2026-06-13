@@ -78,6 +78,30 @@ from app.services.embeddings import cosine_similarity, embed_text
 from evaluation.scripts._common import canonicalise, write_report
 
 # ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _split_csv_ignore_brackets(text: str) -> list[str]:
+    """Split *text* on commas, ignoring commas inside parentheses ``(…)``.
+
+    >>> _split_csv_ignore_brackets("UI,AI (ML, DL),UX")
+    ['UI', 'AI (ML, DL)', 'UX']
+    """
+    parts: list[str] = []
+    depth = 0
+    start = 0
+    for i, ch in enumerate(text):
+        if ch == '(':
+            depth += 1
+        elif ch == ')':
+            depth = max(depth - 1, 0)
+        elif ch == ',' and depth == 0:
+            parts.append(text[start:i])
+            start = i + 1
+    parts.append(text[start:])
+    return [p.strip() for p in parts if p.strip()]
+
+# ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
 
@@ -214,6 +238,10 @@ async def run_validation(
        rather than restricting to tags that already claimed that SD as their
        best match.  This prevents "Machine Learning" from being counted only
        under DATA MINING while leaving DATA ANALYTICS uncovered.
+
+    3. **Gap classification**: uncovered self-declared areas are categorised
+       into Vocab Gap, Granularity Gap, or Publication Gap so the report
+       explains *why* matching failed rather than simply reporting a low score.
     """
     # Pre-compute pairwise similarity matrix with parent-chain boost.
     # sim_matrix[i][j] = boosted_sim(ai_tags[i], self_declared[j])
@@ -275,6 +303,49 @@ async def run_validation(
     # Discovery tags: AI tags NOT anchored to any self-declared area
     discovery_tags = [r for r in tag_results if not r["matched"]]
 
+    # ── Gap analysis for uncovered self-declared areas ──────────────────
+    # Categorises each uncovered SD into one of three gap types so the
+    # report explains *why* matching failed rather than just reporting
+    # a low coverage number.  This is the "interpretability layer" — it
+    # does NOT change the similarity computation.
+    gap_analysis: list[dict] = []
+    for entry in sd_coverage:
+        if entry["covered"]:
+            continue
+        sim = entry["similarity"]
+        if sim >= 0.50:
+            gap_type = "vocab"
+            gap_label = "Vocab Gap — AI tags cover this area under different wording"
+            gap_note = (
+                "Semantically close (≥0.50) but below threshold.  "
+                "Refining tags via UC-11 or rephrasing the self-declared "
+                "description can bridge this."
+            )
+        elif sim < 0.40:
+            gap_type = "publication"
+            gap_label = "Publication Gap — no matching research activity found"
+            gap_note = (
+                "No AI tag is semantically close to this area.  This may be "
+                "an aspirational interest rather than active research, or "
+                "the relevant publications have not been ingested yet."
+            )
+        else:
+            gap_type = "granularity"
+            gap_label = "Granularity Gap — umbrella term vs. specific techniques"
+            gap_note = (
+                "Moderate similarity (0.40–0.49).  The self-declared label "
+                "is likely an umbrella term while the AI tags are specific "
+                "techniques / sub-fields — they are complementary, not mismatched."
+            )
+        gap_analysis.append({
+            "self_declared": entry["self_declared"],
+            "best_ai_tag": entry["best_ai_tag"],
+            "similarity": entry["similarity"],
+            "gap_type": gap_type,
+            "gap_label": gap_label,
+            "gap_note": gap_note,
+        })
+
     payload = {
         "staff_name": staff_name,
         "threshold": threshold,
@@ -285,6 +356,7 @@ async def run_validation(
         "self_declared_coverage": sd_coverage,
         "ai_tag_detail": tag_results,
         "discovery_tags": [d["ai_tag"] for d in discovery_tags],
+        "gap_analysis": gap_analysis,
         "rationale": SPECIFICITY_RATIONALE.strip(),
     }
     return payload
@@ -361,6 +433,24 @@ def build_markdown(payload: dict) -> str:
             for r in payload["self_declared_coverage"]
         ],
     )
+
+    # ── Gap Interpretation ──────────────────────────────────────────────
+    if payload.get("gap_analysis"):
+        h(2, "Gap Interpretation — Why Some Areas Were Not Matched")
+        p(
+            "Uncovered self-declared areas are categorised below to explain *why* "
+            "the AI tags did not map to them.  This helps distinguish between "
+            "vocabulary differences that refining can fix, genuine publication "
+            "gaps that the system is supposed to surface, and granularity "
+            "mismatches where the two vocabularies are complementary."
+        )
+        for g in payload["gap_analysis"]:
+            h(3, g["gap_label"])
+            p(g["gap_note"])
+            lines.append("")
+            lines.append(f"- **Self-declared**: {g['self_declared']}")
+            lines.append(f"- **Best AI tag**: {g['best_ai_tag']} (similarity {g['similarity']:.3f})")
+            lines.append("")
 
     h(2, "AI Tag Detail")
     p(
@@ -504,7 +594,7 @@ async def _main(args: argparse.Namespace) -> None:
             ai_tags = [str(x) for x in raw]
             parent_map = {}
     elif args.ai_tags:
-        ai_tags = [t.strip() for t in args.ai_tags.replace(";", ",").split(",") if t.strip()]
+        ai_tags = _split_csv_ignore_brackets(args.ai_tags.replace(";", ","))
         parent_map = {}
     else:
         print("ERROR: provide --user-id, --ai-tags, or --ai-tags-file", file=sys.stderr)
@@ -518,11 +608,7 @@ async def _main(args: argparse.Namespace) -> None:
             if line.strip()
         ]
     elif args.self_declared:
-        self_declared = [
-            t.strip()
-            for t in args.self_declared.replace(";", ",").split(",")
-            if t.strip()
-        ]
+        self_declared = _split_csv_ignore_brackets(args.self_declared.replace(";", ","))
     else:
         print("ERROR: provide --self-declared or --self-declared-file", file=sys.stderr)
         sys.exit(1)

@@ -23,7 +23,7 @@ const EMPTY_FORM: AcademicBackgroundInput = {
   title: "",
   organization: "",
   description: "",
-  start_date: "",
+  start_date: null,
   end_date: null,
 };
 
@@ -55,8 +55,8 @@ export function AcademicBackgroundPage() {
       title: record.title,
       organization: record.organization ?? "",
       description: record.description ?? "",
-      start_date: record.start_date,
-      end_date: record.end_date,
+      start_date: record.start_date ?? null,
+      end_date: record.end_date ?? null,
     });
     setError(null);
   }
@@ -68,7 +68,7 @@ export function AcademicBackgroundPage() {
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (form.end_date && form.end_date < form.start_date) {
+    if (form.start_date && form.end_date && form.end_date < form.start_date) {
       setError("end_date must be on or after start_date.");
       return;
     }
@@ -79,6 +79,7 @@ export function AcademicBackgroundPage() {
       ...form,
       organization: form.organization || null,
       description: form.description || null,
+      start_date: form.start_date || null,
       end_date: form.end_date || null,
     };
     try {
@@ -158,13 +159,12 @@ export function AcademicBackgroundPage() {
           />
         </div>
         <div>
-          <label className="label">Start date</label>
+          <label className="label">Start date (optional)</label>
           <input
             type="date"
             className="input"
-            value={form.start_date}
-            onChange={(e) => setForm({ ...form, start_date: e.target.value })}
-            required
+            value={form.start_date ?? ""}
+            onChange={(e) => setForm({ ...form, start_date: e.target.value || null })}
           />
         </div>
         <div>

@@ -1,15 +1,12 @@
 """Authentication endpoints — UC-1, UC-3, UC-4."""
 from __future__ import annotations
 
-import logging
-from uuid import UUID
-
-from fastapi import APIRouter, BackgroundTasks, Depends, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user
-from app.db.models import SyncTrigger, User
-from app.db.session import SessionLocal, get_session
+from app.db.models import User
+from app.db.session import get_session
 from app.schemas import (
     ChangePasswordRequest,
     CurrentUserOut,
@@ -22,9 +19,6 @@ from app.schemas import (
     TokenResponse,
 )
 from app.services.auth import AuthService
-from app.services.harvest import HarvestService
-
-logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -41,17 +35,6 @@ def _to_current_user_out(user: User) -> CurrentUserOut:
         portfolios=[PortfolioOut.model_validate(p) for p in user.portfolios],
         orcid_id=user.orcid_profile.orcid_id if user.orcid_profile else None,
     )
-
-
-async def _kick_off_first_login_sync(user_id: UUID) -> None:
-    """UC-3 alt flows — fire-and-forget harvest after first login."""
-    async with SessionLocal() as session:
-        try:
-            await HarvestService(session).run_for_user(
-                user_id, trigger=SyncTrigger.FIRST_LOGIN
-            )
-        except Exception:  # noqa: BLE001 — log and swallow; never block login.
-            logger.exception("First-login harvest failed for user %s", user_id)
 
 
 @router.post(
@@ -76,21 +59,10 @@ async def register(
 )
 async def login(
     payload: LoginRequest,
-    background: BackgroundTasks,
     session: AsyncSession = Depends(get_session),
 ) -> TokenResponse:
     service = AuthService(session)
-    user, first_login = await service.authenticate(payload.email, payload.password)
-    # UC-3 alt flows: first-login (and dual-role first-login) automatically
-    # trigger an ORCID/OpenAlex sync. The harvest is scheduled in the
-    # background so the login response remains fast.
-    # Guard: check orcid_id on the profile row — the relationship object may
-    # not be loaded into the session even when the row exists.
-    has_orcid = (
-        user.orcid_profile is not None and bool(user.orcid_profile.orcid_id)
-    )
-    if first_login and has_orcid:
-        background.add_task(_kick_off_first_login_sync, user.id)
+    user, _first_login = await service.authenticate(payload.email, payload.password)
     token = service.issue_token(user)
     return TokenResponse(access_token=token, user=_to_current_user_out(user))
 

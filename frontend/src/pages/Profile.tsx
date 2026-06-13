@@ -62,6 +62,14 @@ export function ProfileOverviewPage() {
   // backend, which is synchronous (returns only when the harvest finishes
   // or fails) — there is no separate polling channel.
   const [syncing, setSyncing] = useState(false);
+  // Show a sync-in-progress warning that persists for the entire duration.
+  useEffect(() => {
+    if (!syncing) return;
+    setInfo(
+      "Sync may take several minutes. Do NOT refresh, close the tab, or click the button again until it completes."
+    );
+  }, [syncing]);
+
 
   async function loadAll() {
     if (!user) return;
@@ -159,35 +167,6 @@ export function ProfileOverviewPage() {
 
   return (
     <div className="space-y-6">
-      {/* Blocking modal while a sync is in flight. */}
-      {syncing && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="sync-status-title"
-        >
-          <section className="card w-full max-w-md space-y-4 shadow-floating text-center">
-            <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-brand-green border-t-transparent" />
-            <h2
-              id="sync-status-title"
-              className="text-heading-3 font-announce text-text-primary"
-            >
-              Sync in progress…
-            </h2>
-            <p className="text-small text-text-secondary">
-              We are fetching your publications from ORCID + OpenAlex and
-              re-running the NLP pipeline. This can take a few minutes for
-              prolific researchers.
-            </p>
-            <p className="text-caption text-status-amber font-signature">
-              ⚠ Please do not refresh, close, or navigate away from this
-              page until the sync completes.
-            </p>
-          </section>
-        </div>
-      )}
-
       <header className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-heading-1 font-announce text-text-primary">
@@ -232,7 +211,7 @@ export function ProfileOverviewPage() {
               user.portfolios.length === 0
                 ? "—"
                 : user.portfolios
-                    .map(
+                    .map( 
                       (p) =>
                         PORTFOLIO_LABELS[p.portfolio_type] ?? p.portfolio_type,
                     )
@@ -300,7 +279,7 @@ export function ProfileOverviewPage() {
                 ))}
               </ul>
             ) : (
-              <EmptyState text="No publications harvested yet." />
+              <EmptyState text="There is no publications and please run manual sync first." />
             )}
           </section>
 
@@ -505,8 +484,8 @@ function PublicationRow({ publication }: { publication: Publication }) {
           </div>
         </div>
         {publication.abstract_missing && (
-          <span className="pill border-brand-indigo/50 text-brand-indigo">
-            Abstract missing
+          <span className="text-caption font-signature text-status-amber">
+            Missing
           </span>
         )}
       </div>

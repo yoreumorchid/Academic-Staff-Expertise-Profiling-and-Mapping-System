@@ -8,6 +8,7 @@ logged per-user but never crash the scheduler thread.
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timedelta, timezone
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
@@ -41,11 +42,14 @@ def start_scheduler() -> None:
     if _scheduler is not None:
         return
     _scheduler = AsyncIOScheduler()
-    # Every 90 days, fire at 02:00 server time.
+    # Every 90 days.  start_date is deferred so the job doesn't fire on
+    # every "uvicorn --reload" restart (which recreates the process).
     _scheduler.add_job(
         _quarterly_job,
         trigger="interval",
         days=90,
+        start_date=datetime.now(timezone.utc) + timedelta(days=90),
+        misfire_grace_time=3600,  # 1 h — prevents clock-drift misfires
         id="expertise_quarterly_sync",
         replace_existing=True,
     )

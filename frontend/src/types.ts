@@ -77,7 +77,7 @@ export interface AcademicBackground {
   title: string;
   organization: string | null;
   description: string | null;
-  start_date: string;
+  start_date: string | null;
   end_date: string | null;
 }
 
@@ -86,7 +86,7 @@ export interface AcademicBackgroundInput {
   title: string;
   organization?: string | null;
   description?: string | null;
-  start_date: string;
+  start_date?: string | null;
   end_date?: string | null;
 }
 

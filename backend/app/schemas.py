@@ -263,7 +263,7 @@ class AcademicBackgroundBase(BaseModel):
     title: str = Field(min_length=1, max_length=255)
     organization: Optional[str] = Field(default=None, max_length=255)
     description: Optional[str] = None
-    start_date: date
+    start_date: Optional[date] = None
     end_date: Optional[date] = None
 
     @model_validator(mode="after")
@@ -334,6 +334,14 @@ class SyncJobOut(_ORM):
     started_at: Optional[datetime]
     finished_at: Optional[datetime]
     error_message: Optional[str]
+
+
+class SyncStatusOut(BaseModel):
+    """Lightweight payload for the sync-progress poller (UC-12)."""
+
+    running: bool
+    trigger: Optional[SyncTrigger] = None
+    started_at: Optional[datetime] = None
 
 
 

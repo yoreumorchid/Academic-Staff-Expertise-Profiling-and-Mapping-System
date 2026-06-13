@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { api, extractApiError } from "../api/client";
 import { useAuthStore } from "../store/auth";
 import { canToggleView, sidebarForActiveView } from "../navigation/sidebar";
+import { SyncStatusGuard } from "./SyncStatusGuard";
 import type { StaffDirectoryEntry } from "../types";
 
 /**
@@ -88,6 +89,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen bg-bg-marketing text-text-primary">
+      <SyncStatusGuard />
       <aside className="w-64 shrink-0 border-r border-border-secondary bg-bg-panel">
         <div className="px-5 py-6">
           <div className="text-heading-3 font-announce text-text-primary">
@@ -205,7 +207,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <div className="flex items-center rounded-full border border-border-primary bg-white p-0.5">
                 <button
                   type="button"
-                  onClick={() => setActiveView("staff")}
+                  onClick={() => {
+                    setActiveView("staff");
+                    navigate("/staff/profile");
+                  }}
                   className={[
                     "rounded-full px-3 py-1 text-label font-signature transition-colors",
                     activeView === "staff"
@@ -217,7 +222,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setActiveView("admin")}
+                  onClick={() => {
+                    setActiveView("admin");
+                    navigate("/admin");
+                  }}
                   className={[
                     "rounded-full px-3 py-1 text-label font-signature transition-colors",
                     activeView === "admin"

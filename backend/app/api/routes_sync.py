@@ -10,9 +10,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user
 from app.core.exceptions import ForbiddenError
-from app.db.models import SyncJob, SyncTrigger, User, UserRole
+from app.db.models import SyncJob, SyncJobStatus, SyncTrigger, User, UserRole
 from app.db.session import get_session
-from app.schemas import SyncJobOut
+from app.schemas import SyncJobOut, SyncStatusOut
 from app.services.harvest import HarvestService
 
 router = APIRouter(prefix="/sync", tags=["sync"])
@@ -71,3 +71,35 @@ async def list_sync_jobs(
         stmt = stmt.where(SyncJob.user_id == actor.id)
     rows = (await session.execute(stmt)).scalars().all()
     return [SyncJobOut.model_validate(row) for row in rows]
+
+
+@router.get(
+    "/status",
+    response_model=SyncStatusOut,
+    summary="UC-12 — Lightweight poller for whether the actor has a sync running.",
+)
+async def get_sync_status(
+    session: AsyncSession = Depends(get_session),
+    actor: User = Depends(get_current_user),
+) -> SyncStatusOut:
+    """Return whether the calling user currently has a RUNNING sync job.
+
+    Polled every few seconds by the frontend so a global “Sync in progress…”
+    modal can appear regardless of whether the sync was kicked off by
+    first-login, manual button, or a Faculty Administrator trigger.
+    """
+    stmt = (
+        select(SyncJob)
+        .where(SyncJob.user_id == actor.id)
+        .where(SyncJob.status == SyncJobStatus.RUNNING)
+        .order_by(SyncJob.created_at.desc())
+        .limit(1)
+    )
+    job = (await session.execute(stmt)).scalar_one_or_none()
+    if job is None:
+        return SyncStatusOut(running=False)
+    return SyncStatusOut(
+        running=True,
+        trigger=job.trigger,
+        started_at=job.started_at,
+    )

@@ -20,8 +20,8 @@ completed.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
-from typing import Dict, Iterable, List, Optional, Tuple
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 from uuid import UUID
 
 from sqlalchemy import select
@@ -76,6 +76,11 @@ def _normalize_doi(doi: str) -> str:
 class HarvestService:
     """Coordinates external data ingestion and tag generation."""
 
+    # A RUNNING job older than this threshold is considered stale
+    # (orphaned by a process crash / restart) and is auto-failed so
+    # the user is not permanently blocked.
+    _STALE_RUNNING_TIMEOUT = timedelta(minutes=30)
+
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
         self._orcid = OrcidClient()
@@ -96,15 +101,40 @@ class HarvestService:
         # Guard against concurrent syncs for the same user.  A RUNNING job
         # from a background first-login task can overlap with a manual trigger
         # arriving seconds later, causing duplicate-publication IntegrityErrors.
+        #
+        # If the existing RUNNING job is older than _STALE_RUNNING_TIMEOUT
+        # (orphaned by a server restart that bypassed main.py's startup
+        # cleanup), auto-fail it so the user is not permanently blocked.
         running_stmt = (
             select(SyncJob)
             .where(SyncJob.user_id == user_id)
             .where(SyncJob.status == SyncJobStatus.RUNNING)
         )
-        if (await self._session.execute(running_stmt)).scalar_one_or_none():
-            raise ExternalServiceError(
-                "A sync is already running for this user. Please wait for it to complete."
-            )
+        running_job: Optional[SyncJob] = (
+            await self._session.execute(running_stmt)
+        ).scalar_one_or_none()
+        if running_job is not None:
+            if (
+                running_job.started_at is not None
+                and (datetime.now(timezone.utc) - running_job.started_at)
+                > self._STALE_RUNNING_TIMEOUT
+            ):
+                logger.warning(
+                    "Auto-failing stale RUNNING sync job %s (started %s)",
+                    running_job.id,
+                    running_job.started_at,
+                )
+                running_job.status = SyncJobStatus.FAILED
+                running_job.error_message = (
+                    "Auto-failed: stuck in RUNNING for >30 min (likely orphaned)"
+                )
+                running_job.finished_at = datetime.now(timezone.utc)
+                await self._session.flush()
+            else:
+                raise ExternalServiceError(
+                    "A sync is already running for this user. "
+                    "Please wait for it to complete."
+                )
 
         job = SyncJob(
             user_id=user.id,
@@ -115,6 +145,7 @@ class HarvestService:
         self._session.add(job)
         await self._session.flush()
 
+        _user_id_str = str(user.id)  # capture before any possible session rollback
         try:
             publications_added, tags_added, no_new_data = await self._harvest(
                 user, user.orcid_profile
@@ -133,7 +164,7 @@ class HarvestService:
         except Exception as exc:  # noqa: BLE001
             job.status = SyncJobStatus.FAILED
             job.error_message = str(exc)
-            logger.exception("Harvest pipeline failed for user %s", user.id)
+            logger.exception("Harvest pipeline failed for user %s", _user_id_str)
             job.finished_at = datetime.now(timezone.utc)
             await self._session.commit()
             raise
@@ -179,9 +210,26 @@ class HarvestService:
         # Primary path: OpenAlex author works (comprehensive — picks up papers
         # the author didn't register on ORCID themselves).
         # Fallback: ORCID DOI list → individual OpenAlex DOI lookups.
+        from app.core.config import get_settings
+
+        max_pubs = get_settings().max_publications_per_sync
+
         payloads: Dict[str, Any]
         if author_id:
             works = await self._openalex.fetch_works_by_author(author_id)
+            # Sort by publication_year descending so the most recent
+            # publications are processed by the NLP pipeline first.
+            # Missing year sorts to the bottom.
+            works.sort(
+                key=lambda w: (w.get("publication_year") or 0),
+                reverse=True,
+            )
+            logger.info(
+                "Author %s has %d total works; NLP will process at most %d",
+                author_id,
+                len(works),
+                max_pubs,
+            )
             payloads = {}
             for w in works:
                 raw_doi = (w.get("doi") or "").strip()
@@ -193,6 +241,12 @@ class HarvestService:
         else:
             # ORCID fallback: fetch DOIs then look up each one individually.
             dois = await self._orcid.fetch_doi_list(orcid.orcid_id)
+            logger.info(
+                "ORCID %s has %d DOIs; NLP will process at most %d",
+                orcid.orcid_id,
+                len(dois),
+                max_pubs,
+            )
             payloads = {}
             for doi in dois:
                 doi_key = _normalize_doi(doi)
@@ -228,19 +282,31 @@ class HarvestService:
             if not abstract_corpus:
                 return 0, 0, True
             # Jump straight to NLP — skip publication persistence loop.
+            if len(abstract_corpus) > max_pubs:
+                abstract_corpus = abstract_corpus[:max_pubs]
             candidate_phrases = await self._extract_candidate_phrases(abstract_corpus)
             if not candidate_phrases:
                 return 0, 0, True
             combined_context = "\n\n".join(abstract_corpus[:5])
-            normalized = await normalize_keywords(candidate_phrases, abstract=combined_context)
+            normalized = await normalize_keywords(
+                candidate_phrases, abstract=combined_context
+            )
             tags_added = await self._persist_tags(user, normalized)
             return 0, tags_added, False
 
         # Step 3: Persist publications + abstracts.
+        # ALL new publications are persisted to the database regardless of
+        # ``max_pubs``.  The cap only limits how many flow into the expensive
+        # NLP pipeline below.
         abstract_corpus: List[str] = []
         publications_added = 0
+        # Track DOIs we've already flushed during this run to prevent
+        # duplicate-key violations from payloads that share a DOI.
+        _flushed_dois: set[str] = set()
 
         for doi_key, payload in new_items.items():
+            if doi_key in _flushed_dois:
+                continue
             title = payload.get("title")
             year = payload.get("publication_year")
             openalex_id = (payload.get("id") or "").split("/")[-1] or None
@@ -266,6 +332,7 @@ class HarvestService:
             )
             self._session.add(publication)
             await self._session.flush()
+            _flushed_dois.add(doi_key)
             publications_added += 1
 
             if abstract_text:
@@ -285,9 +352,17 @@ class HarvestService:
             return publications_added, 0, False
 
         # Steps 4–7: SciBERT keywords -> LLM normalization -> persist tags.
-        # No artificial cap: SciBERT iterates abstract-by-abstract (≈50ms each
-        # on CPU) and individual failures are swallowed.  For a 100-paper
-        # researcher this takes ~5s before LLM dispatch.
+        # Cap to ``max_pubs`` most recent abstracts to keep NLP bounded.
+        # Publications are sorted newest-first (from Step 2 sort), so the
+        # first N abstracts in the corpus are the most recent ones.
+        if len(abstract_corpus) > max_pubs:
+            logger.info(
+                "Capping NLP pipeline to %d most recent abstracts (total: %d)",
+                max_pubs,
+                len(abstract_corpus),
+            )
+            abstract_corpus = abstract_corpus[:max_pubs]
+
         candidate_phrases = await self._extract_candidate_phrases(abstract_corpus)
         if not candidate_phrases:
             return publications_added, 0, False

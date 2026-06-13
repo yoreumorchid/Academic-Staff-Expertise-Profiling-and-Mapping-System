@@ -70,6 +70,12 @@ class Settings(BaseSettings):
     scibert_model: str = "allenai/scibert_scivocab_uncased"
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
 
+    # Harvest limits — cap publications processed per sync to keep the
+    # NLP pipeline bounded and avoid LLM provider rate-limits.  Most
+    # recent N papers are kept; older ones are still downloaded as bare
+    # rows but not fed into the NLP pipeline.
+    max_publications_per_sync: int = 30
+
     # Frontend
     frontend_base_url: str = "http://localhost:5173"
 
