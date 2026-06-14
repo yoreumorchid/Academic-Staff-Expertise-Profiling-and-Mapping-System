@@ -1,227 +1,101 @@
-# ExpertiseInsight — Evaluation Suite
+# Evaluation Suite
 
-This folder contains everything needed to run the five evaluation studies
-described in the project Methodology chapter:
+This directory contains reproducible evaluation scripts to measure the reliability of this system. Each script produces a Markdown report and a companion JSON file under `reports/`.
 
-| # | Study | Script | Input file(s) | Output |
-|---|---|---|---|---|
-| 1 | NLP tag extraction (P/R/F1, ablation) | `scripts/eval_nlp.py` | `datasets/gold_tags.jsonl` | `reports/nlp_<date>.json` + `.md` |
-| 2 | Recommender Top-N accuracy | `scripts/eval_recommender.py` | `datasets/gold_recommendations.jsonl` | `reports/recommender_<date>.json` + `.md` |
-| 3 | Terminology normalization expert review | `scripts/eval_expert_review.py` | `datasets/expert_review.csv` | `reports/expert_review_<date>.json` + `.md` |
-| 4 | Sync coverage vs. UMExpert | `scripts/eval_sync_coverage.py` | `datasets/profile_completion.csv` | `reports/sync_coverage_<date>.json` + `.md` |
-| 5 | Time-on-task / efficiency | `scripts/eval_efficiency.py` | `datasets/efficiency.csv` | `reports/efficiency_<date>.json` + `.md` |
+---
 
-There is also one supporting tool:
+## Quick Start
 
-| Tool | Purpose |
-|---|---|
-| `scripts/build_gold_set.py` | Sample N random publications from the DB and emit a CSV for human annotators |
-| `scripts/iaa_kappa.py`      | Compute Cohen's Kappa between two annotators on the same gold set |
-
-All scripts are runnable from the `backend/` directory after activating
-your `.venv`, e.g.:
+All scripts run from the `backend/` directory with the virtual environment activated:
 
 ```powershell
 cd backend
 .\.venv\Scripts\Activate.ps1
+
+# Example: run NLP evaluation
+python -m evaluation.scripts.eval_nlp --gold evaluation/datasets/gold_tags.jsonl
+```
+
+---
+
+## NLP Tag Extraction Accuracy
+
+**`eval_nlp.py`**
+
+| Aspect | Detail |
+|--------|--------|
+| **Purpose** | Measure how accurately the SciBERT → LLM pipeline extracts expertise tags from publication abstracts |
+| **Input** | `datasets/gold_tags.jsonl` — hand-curated (publication_id, title, abstract, gold_tags) |
+| **Metrics** | **Precision**, **Recall**, **F1** (both *hard match* — exact string after normalisation, and *soft match* — SciBERT cosine similarity ≥ 0.70) |
+| **Runs** | Two pipelines compared side-by-side: **SciBERT-only** (raw keyword extraction) vs **SciBERT + LLM** (normalised canonical tags) |
+| **Acceptance** | Hard-match F1 ≥ 0.85, Soft-match F1 ≥ 0.90 |
+| **Usage** | `python -m evaluation.scripts.eval_nlp --gold evaluation/datasets/gold_tags.jsonl --k 10` |
+| **Flags** | `--k 5` for stricter Top-5; `--verbose` to print per-paper predictions; `--emit-pairs <csv>` to dump raw/normalised/gold triples for Study 3 |
+
+---
+
+## Staff Tag Validation
+
+**`eval_staff_tags.py`**
+
+| Aspect | Detail |
+|--------|--------|
+| **Purpose** | Validate AI-extracted tags against staff self-declared expertise areas — do the fine-grained publication-anchored tags semantically cover what the staff member said they do? |
+| **Input** | AI tags (from DB via `--user-id`, or CLI via `--ai-tags`, or JSON file via `--ai-tags-file`) + self-declared areas (`--self-declared` or `--self-declared-file`) |
+| **Metrics** | **Self-declared coverage rate** (fraction of self-declared areas covered by ≥1 AI tag above threshold), **AI anchor rate** (fraction of AI tags that map to ≥1 self-declared area), **Discovery tags** (AI tags with no self-declared equivalent), **Gap analysis** (vocab/granularity/publication gap classification) |
+| **Method** | SciBERT soft-cosine similarity with parent-chain boosting (walks the `parent_label` hierarchy to bridge vocabulary gaps like "Software Defect Prediction" → "Software Engineering" → "Empirical Software Engineering") |
+| **Threshold** | Cosine ≥ 0.65 (softer than Study 1 to accommodate course-catalogue vs. publication vocabulary) |
+| **Usage** | `python -m evaluation.scripts.eval_staff_tags --user-id <uuid> --self-declared "Data Mining, Software Engineering"` |
+| **Data** | Provide a staff member's self-declared areas (from UMExpert or their CV). AI tags can be pulled from the DB or specified manually |
+
+---
+
+*THE BELOW IS METHOD TO BE USED LATER*
+## Recommender Ranking Accuracy
+
+**`eval_recommender.py`**
+
+| Aspect | Detail |
+|--------|--------|
+| **Purpose** | Evaluate the course/grant mapping engine's ability to rank relevant staff at the top |
+| **Input** | `datasets/gold_recommendations.jsonl` — specification items with expert-chosen top-5 staff UUIDs |
+| **Metrics** | **Hit@K** (fraction of items with ≥1 expert pick in top-K), **Precision@K**, **Recall@K**, **MRR** (Mean Reciprocal Rank), **nDCG@K** (Normalised Discounted Cumulative Gain) |
+| **Runs** | Three ablation variants: **hybrid** (cosine + spreading), **cosine-only**, **spreading-only** |
+| **Acceptance** | Hit@5 ≥ 0.80, MRR ≥ 0.60 |
+| **Usage** | `python -m evaluation.scripts.eval_recommender --gold evaluation/datasets/gold_recommendations.jsonl --runner-uuid <admin-uuid> --k 5` |
+| **Requirement** | Requires a populated database (tags + embeddings). `--runner-uuid` must point to an existing admin user |
+| **Data** | Collect 10 real course/grant specifications, have 2 senior academics independently pick top-5 staff, merge into the `.jsonl` schema|
+
+---
+
+## Supporting Tools
+
+### `build_gold_set.py` — Sample publications for annotation
+
+```powershell
 python -m evaluation.scripts.build_gold_set --n 50 --out evaluation/datasets/_to_annotate.csv
-python -m evaluation.scripts.eval_nlp        --gold evaluation/datasets/gold_tags.jsonl
 ```
 
----
+Stratified-samples N publications (by department) from the database, outputting a CSV with columns `publication_id`, `title`, `abstract`, `user_full_name`, `department`, plus empty `gold_tags` and `notes` columns for annotators to fill in.
 
-## What you (the human) must supply
+### `prepare_data.py` — Solo-developer annotation workflow
 
-There are **5 input artefacts** you need to produce by hand. Each one has
-a strict format below. Place every file under `evaluation/datasets/`.
+If you are working alone (no external annotators), maintain a single wide CSV (`my_raw_annotation.csv`) with columns:
 
-### 1. `gold_tags.jsonl` — NLP gold standard (Study 1)
-
-**Why:** ground truth for measuring Precision / Recall / F1 of the
-SciBERT-only and SciBERT+LLM pipelines.
-
-**How to obtain:**
-1. Run `python -m evaluation.scripts.build_gold_set --n 50` — this
-   exports 50 stratified-by-department publications into
-   `datasets/_to_annotate.csv` with columns
-   `publication_id,title,abstract,user_full_name,department`.
-2. Send the CSV to **2 independent annotators** (domain experts).
-3. Each annotator adds two columns:
-   - `gold_tags` — comma-separated canonical expertise tags they would
-     assign after reading the abstract (3–8 tags).
-   - `notes` — optional free text.
-4. Merge the two annotations (you keep the tags both annotators agreed
-   on; for disagreements, ask a third reviewer to break the tie).
-5. Save the final merged result as JSONL using this schema **(one
-   object per line, no trailing comma)**:
-
-```json
-{"publication_id":"e9f0...-uuid","title":"...","abstract":"...","gold_tags":["computer vision","medical image segmentation","convolutional neural network"]}
+```
+publication_id, title, abstract, author_tags, ai_tags, final_gold_tags
 ```
 
-**Minimum size:** 30 publications. **Recommended:** 50.
-**Pre-flight check:** run `python -m evaluation.scripts.iaa_kappa
---a annotator_a.csv --b annotator_b.csv` and confirm **Cohen's κ ≥ 0.60**
-before treating the set as gold.
+Run this script to split it into the three canonical files that feed `iaa_kappa.py` and `eval_nlp.py`:
 
-**Annotation rules to give the annotators (paste this verbatim into
-your email):**
-
-> - Read only the title + abstract. Do not Google the author.
-> - List **between 3 and 8 tags** per paper.
-> - Each tag is a **broad domain** (e.g. "Computer Vision"), **not a
->   method name** ("ResNet-50") and **not a generic word** ("analysis").
-> - Expand abbreviations: write "Natural Language Processing", not "NLP".
-> - Use lowercase, separate tags by commas, no quoting.
-> - If the abstract is too short / off-topic, leave `gold_tags` empty
->   and add a note "SKIP — insufficient signal".
-
----
-
-### 2. `gold_recommendations.jsonl` — Recommender ground truth (Study 2)
-
-**Why:** measure Hit@5, Precision@5, MRR, nDCG@5 for the course / grant
-matching engine, with an ablation against cosine-only and
-spreading-only.
-
-**How to obtain:**
-1. Collect **10 real items**: 5 grant calls (PDF or text) + 5 course
-   syllabi. Anonymise them if needed.
-2. Recruit **2 senior academics** (ideally HoDs). Give each one the
-   item *and* a printed list of all active staff names + departments
-   (NOT the system's recommendation list).
-3. Ask each reviewer to pick the **top-5 staff** they would recommend.
-4. Merge the two lists into a single ground-truth set per item
-   (union, with reviewer overlap flagged — overlap = stronger signal).
-
-**Schema:**
-
-```json
-{
-  "item_id": "grant_001",
-  "item_type": "grant",
-  "title": "AI-driven medical diagnostics seed grant",
-  "raw_text": "<full call text, ≥ 80 chars>",
-  "expert_picks": [
-    "uuid-of-staff-1",
-    "uuid-of-staff-2",
-    "uuid-of-staff-3",
-    "uuid-of-staff-4",
-    "uuid-of-staff-5"
-  ],
-  "expert_picks_consensus": ["uuid-of-staff-1", "uuid-of-staff-3"]
-}
+```powershell
+python -m evaluation.scripts.prepare_data --raw evaluation/datasets/my_raw_annotation.csv
 ```
 
-`item_type` must be one of `course` | `grant`. `expert_picks` is the
-union; `expert_picks_consensus` is the intersection (optional but
-useful for a stricter score).
+### `iaa_kappa.py` — Inter-Annotator Agreement
 
----
+```powershell
+python -m evaluation.scripts.iaa_kappa --a evaluation/datasets/annotator_author.csv --b evaluation/datasets/annotator_ai.csv
+```
 
-### 3. `expert_review.csv` — Terminology normalization Likert (Study 3)
-
-**Why:** prove that the LLM normalization step ("CNN" → "Computer
-Vision") is preferred by domain experts over raw SciBERT keywords.
-
-**How to obtain:**
-1. Pick **20 staff** that already have ≥ 5 harvested tags in the DB.
-2. For each, export the **raw SciBERT keywords** and the **LLM
-   normalized tags** side-by-side. (Use `eval_nlp.py --emit-pairs`
-   which dumps the two columns automatically.)
-3. Hand the table to **3 senior academics**. Each scores every pair on
-   a 5-point Likert and picks a preference.
-
-**Schema (one row per pair, per reviewer):**
-
-| Column | Type | Allowed values |
-|---|---|---|
-| `staff_id` | uuid | from DB |
-| `reviewer_id` | str | `R1`, `R2`, `R3` |
-| `raw_keywords` | str | semicolon-separated |
-| `normalized_tags` | str | semicolon-separated |
-| `accuracy` | int 1–5 | does normalized correctly represent domain? |
-| `specificity` | int 1–5 | is granularity right (not too broad, not too narrow)? |
-| `preference` | str | `raw` \| `normalized` \| `tie` |
-| `comment` | str | optional |
-
----
-
-### 4. `profile_completion.csv` — UMExpert coverage (Study 4)
-
-**Why:** show that automated harvesting yields a richer profile than
-manual UMExpert entry, justifying the "no double-entry" claim.
-
-**How to obtain:**
-1. Pick **20 staff** with public UMExpert profiles AND a working ORCID.
-2. Manually transcribe their UMExpert "Research Interests" field.
-3. Export the system's `UserExpertiseTag` list for each.
-
-**Schema:**
-
-| Column | Type | Notes |
-|---|---|---|
-| `staff_id` | uuid | from `users` table |
-| `staff_name` | str | for traceability |
-| `umexpert_interests` | str | semicolon-separated, as written on UMExpert |
-| `system_tags` | str | semicolon-separated, copied from the system |
-| `umexpert_pub_count` | int | publications listed on UMExpert |
-| `system_pub_count` | int | publications in our DB |
-| `system_latest_year` | int | most recent publication year in our DB |
-| `umexpert_latest_year` | int | most recent publication year listed on UMExpert |
-
-Script computes: coverage uplift, recency uplift, completeness rate.
-
----
-
-### 5. `efficiency.csv` — Time-on-task experiment (Study 5)
-
-**Why:** quantify the manual-labour reduction vs. the existing workflow.
-
-**How to obtain:**
-1. Recruit **3 participants** (admin staff or postgrads).
-2. Give each the SAME 10 staff CVs (PDF).
-3. Time them on the **manual** task: read each CV, write 5 expertise
-   tags + a 50-word bio.
-4. Then time them using the **ExpertiseInsight export** flow for the
-   same 10 staff.
-
-**Schema:**
-
-| Column | Type | Notes |
-|---|---|---|
-| `participant_id` | str | `P1`, `P2`, `P3` |
-| `staff_id` | uuid | one row per (participant × staff × mode) |
-| `mode` | str | `manual` \| `system` |
-| `time_seconds` | int | elapsed wall-clock |
-| `tags_produced` | int | number of distinct expertise tags written / accepted |
-| `subjective_load` | int 1–10 | NASA-TLX-lite self-report |
-
----
-
-## Acceptance thresholds (used in `reports/*.md`)
-
-| Metric | Target | Source |
-|---|---|---|
-| Inter-annotator κ (Study 1) | ≥ 0.60 | Cohen 1960; Landis & Koch 1977 ("substantial") |
-| NLP F1 (hard match, K=10) | ≥ 0.85 | Project SLA |
-| NLP F1 (soft match, K=10) | ≥ 0.90 | Project SLA |
-| Recommender Hit@5 | ≥ 0.80 | Project SLA |
-| Recommender MRR | ≥ 0.60 | Project SLA |
-| Expert review preference for normalized | ≥ 75 % | Project SLA |
-| Coverage uplift vs. UMExpert | ≥ +100 % tags | Project SLA |
-| Sync job success rate | ≥ 95 % | Operations target |
-| Time reduction (system vs. manual) | ≥ 5× faster | Project SLA |
-
----
-
-## Threats to validity (write up in §4.8 of your report)
-
-- Sample size limited to UM staff; results may not generalise to other
-  institutions.
-- Annotator pool is small (n=2) — mitigated by Cohen's κ reporting.
-- Recommender ground truth depends on HoD subjective judgement.
-- LLM responses are non-deterministic; rerun with `temperature=0` and
-  cache responses for reproducibility.
-- Efficiency experiment has only 3 participants — report effect size
-  and confidence interval, not just means.
+Computes **Cohen's κ** between two annotators on the same gold set. Target: κ ≥ 0.60 ("substantial agreement"). Run this before treating a merged set as ground truth.
