@@ -50,24 +50,6 @@ python -m evaluation.scripts.eval_nlp --gold evaluation/datasets/gold_tags.jsonl
 
 ---
 
-*THE BELOW IS METHOD TO BE USED LATER*
-## Recommender Ranking Accuracy
-
-**`eval_recommender.py`**
-
-| Aspect | Detail |
-|--------|--------|
-| **Purpose** | Evaluate the course/grant mapping engine's ability to rank relevant staff at the top |
-| **Input** | `datasets/gold_recommendations.jsonl` — specification items with expert-chosen top-5 staff UUIDs |
-| **Metrics** | **Hit@K** (fraction of items with ≥1 expert pick in top-K), **Precision@K**, **Recall@K**, **MRR** (Mean Reciprocal Rank), **nDCG@K** (Normalised Discounted Cumulative Gain) |
-| **Runs** | Three ablation variants: **hybrid** (cosine + spreading), **cosine-only**, **spreading-only** |
-| **Acceptance** | Hit@5 ≥ 0.80, MRR ≥ 0.60 |
-| **Usage** | `python -m evaluation.scripts.eval_recommender --gold evaluation/datasets/gold_recommendations.jsonl --runner-uuid <admin-uuid> --k 5` |
-| **Requirement** | Requires a populated database (tags + embeddings). `--runner-uuid` must point to an existing admin user |
-| **Data** | Collect 10 real course/grant specifications, have 2 senior academics independently pick top-5 staff, merge into the `.jsonl` schema|
-
----
-
 ## Supporting Tools
 
 ### `build_gold_set.py` — Sample publications for annotation
