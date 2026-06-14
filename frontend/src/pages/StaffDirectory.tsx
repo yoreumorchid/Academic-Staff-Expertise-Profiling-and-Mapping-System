@@ -218,7 +218,7 @@ export function StaffDirectoryPage() {
                 className={[
                   "rounded-full px-3 py-1 text-label font-signature transition-colors",
                   viewMode === m.value
-                    ? "bg-brand-indigo text-white"
+                    ? "bg-brand-green text-white"
                     : "text-text-tertiary hover:text-text-primary",
                 ].join(" ")}
               >

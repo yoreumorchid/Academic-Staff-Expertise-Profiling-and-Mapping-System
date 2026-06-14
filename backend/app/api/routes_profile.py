@@ -10,11 +10,15 @@ Covers:
 """
 from __future__ import annotations
 
+import csv
+import io
 import logging
+from datetime import date
 from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Query, UploadFile, status
+from fastapi.responses import Response
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -319,6 +323,164 @@ async def delete_background(
         raise NotFoundError("Background record not found.")
     await session.delete(record)
     await session.commit()
+
+
+# ===========================================================================
+# UC-10 alt — CSV bulk upload + template download
+# ===========================================================================
+
+_VALID_CATEGORIES = {c.value for c in AcademicBackgroundCategory}
+_BACKGROUND_CSV_HEADER = [
+    "category", "title", "organization",
+    "description", "start_date", "end_date",
+]
+_TEMPLATE_EXAMPLE = """category,title,organization,description,start_date,end_date
+education,PhD in Computer Science,University of Malaya,Dissertation on semantic mapping algorithms,2018-09-01,2022-06-30
+award,Best Paper Award,IEEE,Outstanding contribution to semantic web research,2023-06-15,
+"""
+
+
+@router.get(
+    "/background/template",
+    summary="UC-10 — Download a CSV template for bulk academic background import.",
+)
+async def download_background_template(
+    actor: User = Depends(get_current_user),
+) -> Response:
+    """Return a pre-formatted CSV file that users can populate offline."""
+    return Response(
+        content=_TEMPLATE_EXAMPLE,
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=academic_background_template.csv"},
+    )
+
+
+@router.post(
+    "/background/upload",
+    response_model=List[AcademicBackgroundOut],
+    status_code=status.HTTP_201_CREATED,
+    summary=(
+        "UC-10 alt — Bulk-import academic background records from a CSV file."
+    ),
+)
+async def upload_background_csv(
+    file: UploadFile = File(...),
+    session: AsyncSession = Depends(get_session),
+    actor: User = Depends(get_current_user),
+) -> List[AcademicBackgroundOut]:
+    """Parse, validate, and insert academic background records from CSV."""
+    if not file.filename or not file.filename.lower().endswith(".csv"):
+        raise ValidationFailure("Only CSV files are accepted.")
+
+    raw = (await file.read()).decode("utf-8-sig").strip()
+    if not raw:
+        raise ValidationFailure("The uploaded CSV file is empty.")
+
+    reader = csv.DictReader(io.StringIO(raw))
+    if reader.fieldnames is None:
+        raise ValidationFailure("Could not parse CSV header.")
+
+    # Normalise header to lower-case, stripped.
+    actual_cols = [h.strip().lower() for h in reader.fieldnames]
+    if actual_cols != _BACKGROUND_CSV_HEADER:
+        raise ValidationFailure(
+            "CSV header mismatch. Expected columns: "
+            + ", ".join(_BACKGROUND_CSV_HEADER)
+            + ". Got: "
+            + ", ".join(actual_cols)
+        )
+
+    row_errors: List[str] = []
+    parsed_rows: List[dict] = []
+
+    for idx, raw_row in enumerate(reader, start=2):  # row 1 = header
+        row = {k.strip().lower(): (v or "").strip() for k, v in raw_row.items()}
+        errors: List[str] = []
+
+        # --- category ---
+        cat = row.get("category", "").strip().lower()
+        if not cat:
+            errors.append("category is required")
+        elif cat not in _VALID_CATEGORIES:
+            errors.append(
+                f"category '{cat}' is invalid; must be one of: "
+                + ", ".join(sorted(_VALID_CATEGORIES))
+            )
+
+        # --- title ---
+        title = row.get("title", "")
+        if not title:
+            errors.append("title is required")
+        elif len(title) > 255:
+            errors.append("title exceeds 255 characters")
+
+        # --- organization ---
+        org = row.get("organization", "")
+        if len(org) > 255:
+            errors.append("organization exceeds 255 characters")
+
+        # --- description ---
+        desc = row.get("description", "")
+
+        # --- start_date / end_date ---
+        start_date_str = row.get("start_date", "")
+        end_date_str = row.get("end_date", "")
+
+        start_date = None
+        end_date = None
+        if start_date_str:
+            try:
+                start_date = date.fromisoformat(start_date_str)
+            except ValueError:
+                errors.append(
+                    f"start_date '{start_date_str}' is not a valid YYYY-MM-DD date"
+                )
+        if end_date_str:
+            try:
+                end_date = date.fromisoformat(end_date_str)
+            except ValueError:
+                errors.append(
+                    f"end_date '{end_date_str}' is not a valid YYYY-MM-DD date"
+                )
+
+        if start_date and end_date and end_date < start_date:
+            errors.append(
+                f"end_date ({end_date_str}) is before start_date ({start_date_str})"
+            )
+
+        if errors:
+            row_errors.append(f"Row {idx}: " + "; ".join(errors))
+        else:
+            parsed_rows.append(
+                {
+                    "category": cat,
+                    "title": title,
+                    "organization": org or None,
+                    "description": desc or None,
+                    "start_date": start_date,
+                    "end_date": end_date,
+                }
+            )
+
+    if row_errors:
+        raise ValidationFailure(
+            "CSV validation failed:\n" + "\n".join(row_errors[:20])
+        )
+
+    if not parsed_rows:
+        raise ValidationFailure("CSV contains no valid data rows.")
+
+    records: List[AcademicBackground] = []
+    for pr in parsed_rows:
+        rec = AcademicBackground(user_id=actor.id, **pr)
+        session.add(rec)
+        records.append(rec)
+
+    await session.commit()
+    for rec in records:
+        await session.refresh(rec)
+
+    return [AcademicBackgroundOut.model_validate(r) for r in records]
 
 
 # ===========================================================================

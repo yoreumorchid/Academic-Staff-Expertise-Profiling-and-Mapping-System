@@ -34,6 +34,7 @@ export function AcademicBackgroundPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<AcademicBackgroundInput>(EMPTY_FORM);
   const [busy, setBusy] = useState(false);
+  const [uploadBusy, setUploadBusy] = useState(false);
 
   async function load() {
     try {
@@ -110,6 +111,44 @@ export function AcademicBackgroundPage() {
     }
   }
 
+  function downloadTemplate() {
+    const template =
+      "category,title,organization,description,start_date,end_date\n" +
+      "education,PhD in Computer Science,University of Malaya,\"Dissertation on semantic mapping algorithms\",2018-09-01,2022-06-30\n" +
+      "award,Best Paper Award,IEEE,\"Outstanding contribution to semantic web research\",2023-06-15,\n" +
+      "education,Bachelor of Science in Physics,University of Cambridge,First Class Honours,2014-09-01,2017-06-30\n" +
+      "award,Research Excellence Award,UM,\"Recognised for outstanding contributions to AI research\",2024-03-01,\n";
+    const blob = new Blob([template], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "academic_background_template.csv";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  async function handleFileUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setUploadBusy(true);
+    setError(null);
+    setInfo(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const { data } = await api.post("/profile/background/upload", fd);
+      setInfo(`Imported ${data.length} record(s).`);
+      event.target.value = "";
+      await load();
+    } catch (err) {
+      setError(extractApiError(err, "CSV upload failed."));
+    } finally {
+      setUploadBusy(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <header>
@@ -120,6 +159,38 @@ export function AcademicBackgroundPage() {
 
       {error && <Banner kind="error">{error}</Banner>}
       {info && <Banner kind="success">{info}</Banner>}
+
+      <div className="card flex items-center justify-between gap-4">
+        <div>
+          <p className="text-body text-text-primary font-signature">
+            Bulk import via CSV
+          </p>
+          <p className="mt-1 text-caption text-text-tertiary">
+            Download the template, fill in your records, and upload.
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            className="btn-ghost"
+            onClick={downloadTemplate}
+          >
+            Download Template
+          </button>
+          <label
+            className={`btn-primary cursor-pointer ${uploadBusy ? "opacity-50" : ""}`}
+          >
+            {uploadBusy ? "Uploading…" : "Upload CSV"}
+            <input
+              type="file"
+              accept=".csv"
+              className="hidden"
+              onChange={handleFileUpload}
+              disabled={uploadBusy}
+            />
+          </label>
+        </div>
+      </div>
 
       <form onSubmit={submit} className="card grid grid-cols-1 gap-3 md:grid-cols-2">
         <div>

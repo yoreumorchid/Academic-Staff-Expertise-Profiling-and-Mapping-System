@@ -163,6 +163,7 @@ export interface SpecIngestResponse {
   spec_type: SpecificationType;
   title: string;
   source_filename: string | null;
+  latest_report_id: string | null;
 }
 
 export interface MappingReportEntry {
@@ -171,12 +172,13 @@ export interface MappingReportEntry {
   cosine_score: number;
   spreading_score: number;
   combined_score: number;
-  is_cross_department: boolean;
 }
 
 export interface MappingReport {
   id: string;
   spec_id: string;
+  spec_title: string;
+  spec_text: string;
   summary: string | null;
   entries: MappingReportEntry[];
 }

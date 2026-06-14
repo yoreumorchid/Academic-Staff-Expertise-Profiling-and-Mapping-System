@@ -6,7 +6,6 @@ import axios from "axios";
  */
 export const api = axios.create({
   baseURL: "/api/v1",
-  headers: { "Content-Type": "application/json" },
 });
 
 export const SESSION_EXPIRED_EVENT = "expertise-insight:session-expired";

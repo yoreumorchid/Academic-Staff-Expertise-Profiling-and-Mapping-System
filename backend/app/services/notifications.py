@@ -75,31 +75,31 @@ class NotificationService:
             if approved
             else NotificationKind.REGISTRATION_REJECTED
         )
-        verdict = "approved" if approved else "rejected"
-        subject = f"ExpertiseInsight registration {verdict}"
+        verdict = "Approved" if approved else "Rejected"
+        subject = f"Expertise Insight Registration {verdict}"
         body = (
             f"Hello {user.full_name},\n\n"
-            f"Your ExpertiseInsight account registration has been {verdict}.\n"
+            f"Your Expertise Insight account registration has been {verdict}.\n"
             + (
                 "You may now sign in at "
                 f"{self._settings.frontend_base_url}/login.\n"
                 if approved
                 else "If you believe this decision was made in error, please contact your Faculty Manager.\n"
             )
-            + "\nRegards,\nExpertiseInsight"
+            + "\nRegards,\nExpertise Insight"
         )
         await self.send(recipient=user, kind=kind, subject=subject, body=body)
 
     async def notify_password_reset(self, user: User, token: str) -> None:
         link = f"{self._settings.frontend_base_url}/reset-password?token={token}"
-        subject = "Reset your ExpertiseInsight password"
+        subject = "Reset Your Expertise Insight Password"
         body = (
             f"Hello {user.full_name},\n\n"
             f"A password reset was requested for your account. The following link "
             f"is valid for {self._settings.password_reset_ttl_minutes} minutes:\n\n"
             f"{link}\n\n"
             "If you did not request this reset, you may safely ignore this message.\n\n"
-            "Regards,\nExpertiseInsight"
+            "Regards,\nExpertise Insight"
         )
         await self.send(
             recipient=user,

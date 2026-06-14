@@ -108,7 +108,6 @@ function MappingWorkspace({
       const { data } = await api.post<SpecIngestResponse>(
         "/mapping/specs/upload",
         fd,
-        { headers: { "Content-Type": "multipart/form-data" } },
       );
       setInfo(`Document "${data.title}" parsed and ingested.`);
       setDraftTitle("");
@@ -121,19 +120,28 @@ function MappingWorkspace({
     }
   }
 
-  async function runMatch(specId: string) {
+  async function runMatch(specId: string, reportId: string | null) {
     setMatchBusy(true);
     setError(null);
     setReport(null);
     try {
-      const { data } = await api.post<MappingReport>(
-        `/mapping/specs/${specId}/match`,
-        null,
-        { params: { top_n: 25 } },
-      );
-      setReport(data);
+      if (reportId) {
+        // View existing result — just fetch the saved report.
+        // Also refresh the spec list so latest_report_ids are up-to-date.
+        const { data } = await api.get<MappingReport>(`/mapping/reports/${reportId}`);
+        setReport(data);
+      } else {
+        // Run fresh match.
+        const { data } = await api.post<MappingReport>(
+          `/mapping/specs/${specId}/match`,
+          null,
+          { params: { top_n: 25 } },
+        );
+        setReport(data);
+        await loadSpecs(); // refresh to show "Matched" + latest_report_id
+      }
     } catch (err) {
-      setError(extractApiError(err, "Matching failed."));
+      setError(extractApiError(err, reportId ? "Could not load report." : "Matching failed."));
     } finally {
       setMatchBusy(false);
     }
@@ -191,6 +199,11 @@ function MappingWorkspace({
               className="text-small text-text-secondary"
             />
           </div>
+          {draftFile && !draftTitle.trim() && (
+            <p className="mt-2 text-caption text-status-amber">
+              Please fill in the Title field above before uploading.
+            </p>
+          )}
           <div className="mt-3 flex justify-end">
             <button
               type="button"
@@ -212,30 +225,94 @@ function MappingWorkspace({
           <EmptyState text="No specifications ingested yet." />
         ) : (
           <ul className="divide-y divide-border-secondary">
-            {specs.map((s) => (
-              <li
-                key={s.id}
-                className="flex items-center justify-between py-2"
-              >
-                <div>
-                  <div className="text-body text-text-primary">{s.title}</div>
-                  <div className="text-caption text-text-tertiary">
-                    {s.source_filename ?? "text input"}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  className="btn-ghost"
-                  onClick={() => runMatch(s.id)}
-                  disabled={matchBusy}
+            {specs.map((s) => {
+              const hasReport = !!s.latest_report_id;
+              return (
+                <li
+                  key={s.id}
+                  className="flex items-center justify-between py-2"
                 >
-                  Run match
-                </button>
-              </li>
-            ))}
+                  <div>
+                    <div className="text-body text-text-primary">{s.title}</div>
+                    <div className="text-caption text-text-tertiary">
+                      {s.source_filename ?? "text input"}
+                      {hasReport && (
+                        <span className="ml-2 text-brand-green">· Matched</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {hasReport && (
+                      <button
+                        type="button"
+                        className="btn-ghost"
+                        onClick={async () => {
+                          try {
+                            const response = await api.get(
+                              `/mapping/specs/${s.id}/export`,
+                              { responseType: "blob" },
+                            );
+                            const blob = new Blob([response.data], { type: "application/pdf" });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement("a");
+                            a.href = url;
+                            a.download = `match_report_${s.title.slice(0, 20)}.pdf`;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(url);
+                          } catch (err) {
+                            setError(extractApiError(err, "Export failed."));
+                          }
+                        }}
+                      >
+                        Export PDF
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className={`btn-ghost ${hasReport ? "text-brand-green" : ""}`}
+                      onClick={() => runMatch(s.id, s.latest_report_id)}
+                      disabled={matchBusy}
+                    >
+                      {hasReport ? "View Result" : "Run match"}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-ghost text-status-red"
+                      onClick={async () => {
+                        if (!window.confirm("Delete this specification and all its reports permanently?")) return;
+                        try {
+                          await api.delete(`/mapping/specs/${s.id}`);
+                          await loadSpecs();
+                          setInfo("Specification deleted.");
+                        } catch (err) {
+                          setError(extractApiError(err, "Delete failed."));
+                        }
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>
+
+      {matchBusy && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/30 backdrop-blur-sm">
+          <div className="card text-center space-y-3">
+            <p className="text-body font-signature text-text-primary">
+              Running semantic match...
+            </p>
+            <p className="text-caption text-text-tertiary">
+              Computing cosine similarity and spreading activation across all staff profiles. This may take a moment.
+            </p>
+          </div>
+        </div>
+      )}
 
       {report && (
         <div
@@ -254,11 +331,8 @@ function MappingWorkspace({
                   id="match-results-title"
                   className="text-heading-3 font-announce text-text-primary"
                 >
-                  Match results
+                  Mapping Report
                 </h2>
-                {report.summary && (
-                  <p className="mt-1 text-small text-text-secondary">{report.summary}</p>
-                )}
               </div>
               <button
                 type="button"
@@ -272,51 +346,87 @@ function MappingWorkspace({
             {report.entries.length === 0 ? (
               <EmptyState text="No academic staff met the minimum semantic threshold." />
             ) : (
-              <table className="min-w-full divide-y divide-border-secondary text-small">
-                <thead className="text-caption uppercase tracking-wide text-text-quaternary">
-                  <tr>
-                    <th className="px-2 py-2 text-left font-signature">Rank</th>
-                    <th className="px-2 py-2 text-left font-signature">Staff</th>
-                    <th className="px-2 py-2 text-left font-signature">Department</th>
-                    <th className="px-2 py-2 text-right font-signature">Cosine</th>
-                    <th className="px-2 py-2 text-right font-signature">Spread</th>
-                    <th className="px-2 py-2 text-right font-signature">Combined</th>
-                    <th className="px-2 py-2 text-left font-signature">Flag</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border-secondary">
-                  {report.entries.map((e) => {
-                    const staff = staffIndex[e.user_id];
-                    return (
-                      <tr key={e.user_id}>
-                        <td className="px-2 py-2 text-text-secondary">{e.rank}</td>
-                        <td className="px-2 py-2 text-text-primary">
-                          {staff?.full_name ?? e.user_id.slice(0, 8)}
-                        </td>
-                        <td className="px-2 py-2 text-text-tertiary">
-                          {staff?.department ?? "—"}
-                        </td>
-                        <td className="px-2 py-2 text-right text-text-secondary">
-                          {e.cosine_score.toFixed(3)}
-                        </td>
-                        <td className="px-2 py-2 text-right text-text-secondary">
-                          {e.spreading_score.toFixed(3)}
-                        </td>
-                        <td className="px-2 py-2 text-right text-text-primary">
-                          {e.combined_score.toFixed(3)}
-                        </td>
-                        <td className="px-2 py-2">
-                          {e.is_cross_department && (
-                            <span className="pill border-brand-indigo/50 text-brand-indigo">
-                              Cross-dept
-                            </span>
-                          )}
-                        </td>
+              <div className="space-y-6">
+                {/* Section 1: Spec Title */}
+                <div>
+                  <div className="text-caption uppercase tracking-wide text-text-quaternary mb-1">
+                    Specification Title
+                  </div>
+                  <h3 className="text-heading-3 font-announce text-text-primary">
+                    {report.spec_title}
+                  </h3>
+                </div>
+
+                {/* Section 2: Spec Content */}
+                <div>
+                  <div className="text-caption uppercase tracking-wide text-text-quaternary mb-1">
+                    Specification Content
+                  </div>
+                  <p className="text-small text-text-secondary leading-relaxed whitespace-pre-line max-h-40 overflow-y-auto">
+                    {report.spec_text}
+                  </p>
+                </div>
+
+                {/* Section 3: Match Results */}
+                <div>
+                  <div className="text-caption uppercase tracking-wide text-text-quaternary mb-2">
+                    Match Results
+                  </div>
+                  <table className="min-w-full divide-y divide-border-secondary text-small">
+                    <thead className="text-caption uppercase tracking-wide text-text-quaternary">
+                      <tr>
+                        <th className="px-2 py-2 text-left font-signature">Rank</th>
+                        <th className="px-2 py-2 text-left font-signature">Staff</th>
+                        <th className="px-2 py-2 text-left font-signature">Department</th>
+                        <th className="px-2 py-2 text-right font-signature">Cosine</th>
+                        <th className="px-2 py-2 text-right font-signature">Spread</th>
+                        <th className="px-2 py-2 text-right font-signature">Combined</th>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                    </thead>
+                    <tbody className="divide-y divide-border-secondary">
+                      {report.entries.map((e) => {
+                        const staff = staffIndex[e.user_id];
+                        return (
+                          <tr key={e.user_id}>
+                            <td className="px-2 py-2 text-text-secondary">{e.rank}</td>
+                            <td className="px-2 py-2 text-text-primary">
+                              {staff?.full_name ?? e.user_id.slice(0, 8)}
+                            </td>
+                            <td className="px-2 py-2 text-text-tertiary">
+                              {staff?.department ?? "—"}
+                            </td>
+                            <td className="px-2 py-2 text-right text-text-secondary">
+                              {e.cosine_score.toFixed(3)}
+                            </td>
+                            <td className="px-2 py-2 text-right text-text-secondary">
+                              {e.spreading_score.toFixed(3)}
+                            </td>
+                            <td className="px-2 py-2 text-right text-text-primary">
+                              {e.combined_score.toFixed(3)}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Section 4: AI Analysis */}
+                <div>
+                  <div className="text-caption uppercase tracking-wide text-text-quaternary mb-2">
+                    AI Analysis
+                  </div>
+                  {report.summary ? (
+                    <p className="text-body leading-relaxed text-text-secondary whitespace-pre-line">
+                      {report.summary}
+                    </p>
+                  ) : (
+                    <p className="text-caption text-text-quaternary italic">
+                      Explanation will appear here once generated.
+                    </p>
+                  )}
+                </div>
+              </div>
             )}
           </section>
         </div>

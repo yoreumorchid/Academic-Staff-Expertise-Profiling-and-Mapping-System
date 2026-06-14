@@ -43,7 +43,7 @@ function AuthShell({
 // Validation helpers
 // ---------------------------------------------------------------------------
 
-const UM_EMAIL_PATTERN = /^[A-Za-z0-9._%+-]+@um\.edu\.my$/;
+const UM_EMAIL_PATTERN = /^[A-Za-z0-9._%+-]+@(um\.edu\.my|siswa\.um\.edu\.my)$/;
 const PASSWORD_PATTERN =
   /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>/?`~]).{8,16}$/;
 
@@ -125,7 +125,7 @@ export function LoginPage() {
             id="email"
             type="email"
             className="input"
-            placeholder="staffname@um.edu.my"
+            placeholder="staffname@um.edu.my or @siswa.um.edu.my"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -155,12 +155,12 @@ export function LoginPage() {
           {loading ? "Logging in..." : "Log in"}
         </button>
         <div className="flex justify-between text-caption">
-          <Link to="/register" className="text-brand-indigo hover:text-brand-hover">
+          <Link to="/register" className="text-brand-green hover:text-brand-green-hover">
             Create account
           </Link>
           <Link
             to="/forgot-password"
-            className="text-brand-indigo hover:text-brand-hover"
+            className="text-brand-green hover:text-brand-green-hover"
           >
             Forgot password?
           </Link>
@@ -305,7 +305,7 @@ export function RegisterPage() {
             id="email"
             type="email"
             className="input"
-            placeholder="staffname@um.edu.my"
+            placeholder="staffname@um.edu.my or @siswa.um.edu.my"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -341,7 +341,7 @@ export function RegisterPage() {
                 className={[
                   "flex-1 rounded-comfy border px-3 py-2 text-small font-signature transition-colors",
                   role === r
-                    ? "border-brand-indigo bg-bg-secondary text-text-primary"
+                    ? "border-brand-green bg-bg-secondary text-text-primary"
                     : "border-border-primary bg-white text-text-secondary hover:bg-bg-surface",
                 ].join(" ")}
               >
@@ -446,7 +446,7 @@ export function RegisterPage() {
         </button>
         <p className="text-center text-caption text-text-tertiary">
           Already have an account?{" "}
-          <Link to="/login" className="text-brand-indigo hover:text-brand-hover">
+          <Link to="/login" className="text-brand-green hover:text-brand-green-hover">
             Log in
           </Link>
         </p>
@@ -496,7 +496,7 @@ export function ForgotPasswordPage() {
               id="email"
               type="email"
               className="input"
-              placeholder="staffname@um.edu.my"
+              placeholder="staffname@um.edu.my or @siswa.um.edu.my"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -511,7 +511,7 @@ export function ForgotPasswordPage() {
             {loading ? "Sending..." : "Send reset link"}
           </button>
           <p className="text-center text-caption text-text-tertiary">
-            <Link to="/login" className="text-brand-indigo hover:text-brand-hover">
+            <Link to="/login" className="text-brand-green hover:text-brand-green-hover">
               Back to log in
             </Link>
           </p>

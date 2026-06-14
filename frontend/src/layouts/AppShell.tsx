@@ -214,7 +214,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   className={[
                     "rounded-full px-3 py-1 text-label font-signature transition-colors",
                     activeView === "staff"
-                      ? "bg-brand-indigo text-white"
+                      ? "bg-brand-green text-white"
                       : "text-text-tertiary hover:text-text-primary",
                   ].join(" ")}
                 >
@@ -229,7 +229,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   className={[
                     "rounded-full px-3 py-1 text-label font-signature transition-colors",
                     activeView === "admin"
-                      ? "bg-brand-indigo text-white"
+                      ? "bg-brand-green text-white"
                       : "text-text-tertiary hover:text-text-primary",
                   ].join(" ")}
                 >

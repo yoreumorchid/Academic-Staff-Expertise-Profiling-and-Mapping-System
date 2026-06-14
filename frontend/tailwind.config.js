@@ -105,7 +105,7 @@ export default {
         dialog:
           "0 1px 2px rgba(15,16,17,0.06), 0 16px 48px rgba(15,16,17,0.18)",
         focus:
-          "0 0 0 3px rgba(94,106,210,0.18), 0 1px 2px rgba(15,16,17,0.04)",
+          "0 0 0 3px rgba(59,120,75,0.18), 0 1px 2px rgba(15,16,17,0.04)",
         inset: "inset 0 0 0 1px rgba(15,16,17,0.04)",
       },
     },

@@ -185,7 +185,7 @@ export function ProfileOverviewPage() {
                 : "Link an ORCID ID in your profile to enable harvesting."
             }
           >
-            {syncing ? "Syncing…" : busy ? "Working…" : "Run manual sync"}
+            {syncing ? "Syncing…" : busy ? "Working…" : "Manual Sync"}
           </button>
         )}
       </header>
@@ -244,7 +244,7 @@ export function ProfileOverviewPage() {
               </h2>
               <Link
                 to="/staff/tags"
-                className="text-caption text-brand-indigo hover:text-brand-hover"
+                className="text-caption text-brand-green hover:text-brand-green-hover"
               >
                 Refine tags →
               </Link>
@@ -267,7 +267,7 @@ export function ProfileOverviewPage() {
               </h2>
               <Link
                 to="/staff/publications"
-                className="text-caption text-brand-indigo hover:text-brand-hover"
+                className="text-caption text-brand-green hover:text-brand-green-hover"
               >
                 Manage abstracts →
               </Link>
@@ -440,7 +440,7 @@ export function Banner({
       ? "border-border-primary text-text-secondary"
       : kind === "success"
       ? "border-status-green/40 text-status-emerald"
-      : "border-brand-indigo/40 text-brand-indigo";
+      : "border-brand-green/40 text-brand-green";
   return (
     <div
       className={`rounded-comfy border bg-bg-surface p-3 text-caption ${tone}`}
@@ -456,7 +456,7 @@ export function TagPill({ tag }: { tag: UserExpertiseTag }) {
     <span
       className={`pill ${
         validated
-          ? "border-brand-indigo/50 text-text-primary"
+          ? "border-brand-green/50 text-text-primary"
           : "text-text-secondary"
       }`}
       title={`Confidence: ${(tag.confidence * 100).toFixed(0)}% · Source: ${tag.source}`}

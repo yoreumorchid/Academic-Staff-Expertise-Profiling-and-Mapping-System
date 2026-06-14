@@ -162,7 +162,7 @@ export function ExportSnapshotPage() {
                   }
                   className={`pill ${
                     active
-                      ? "border-brand-indigo bg-brand-indigo text-white"
+                      ? "border-brand-green bg-brand-green text-white"
                       : ""
                   }`}
                 >

@@ -29,7 +29,7 @@ from app.db.models import (
 # Shared validation primitives (UM Email, password complexity, department).
 
 
-UM_EMAIL_PATTERN = re.compile(r"^[A-Za-z0-9._%+-]+@um\.edu\.my$")
+UM_EMAIL_PATTERN = re.compile(r"^[A-Za-z0-9._%+-]+@(um\.edu\.my|siswa\.um\.edu\.my)$")
 # 8-16 chars: at least one lower, upper, digit and special.
 PASSWORD_PATTERN = re.compile(
     r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)"
@@ -361,12 +361,13 @@ class MappingReportEntryOut(_ORM):
     cosine_score: float
     spreading_score: float
     combined_score: float
-    is_cross_department: bool
 
 
 class MappingReportOut(_ORM):
     id: UUID
     spec_id: UUID
+    spec_title: str
+    spec_text: str
     summary: Optional[str]
     entries: List[MappingReportEntryOut]
 
@@ -467,6 +468,7 @@ class SpecIngestResponse(_ORM):
     spec_type: SpecificationType
     title: str
     source_filename: Optional[str]
+    latest_report_id: Optional[UUID] = None
 
 
 

@@ -48,7 +48,7 @@ body {
     @apply w-full rounded-comfy border border-border-primary bg-white
            px-3.5 py-3 text-body text-text-primary
            placeholder:text-text-quaternary
-           focus:outline-none focus:border-brand-indigo focus:shadow-focus;
+           focus:outline-none focus:border-brand-green focus:shadow-focus;
   }
   .label {
     @apply block text-caption font-signature text-text-tertiary mb-2;
@@ -65,6 +65,6 @@ body {
            hover:shadow-floating focus:outline-none focus:shadow-focus;
   }
   .sidebar-item-active {
-    @apply bg-white text-text-primary shadow-floating border border-border-secondary;
+    @apply bg-white text-brand-green shadow-floating border-l-4 border-brand-green;
   }
 }

@@ -79,9 +79,10 @@ class AccountStatus(str, enum.Enum):
 class AcademicBackgroundCategory(str, enum.Enum):
     """UC-10 input categories."""
 
-    ADMINISTRATIVE_ROLE = "administrative_role"
-    AWARD = "award"
     EDUCATION = "education"
+    APPOINTMENT = "appointment"
+    AWARD = "award"
+    SERVICE = "service"
 
 
 class SyncJobStatus(str, enum.Enum):
@@ -311,7 +312,12 @@ class AcademicBackground(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
     category: Mapped[AcademicBackgroundCategory] = mapped_column(
-        Enum(AcademicBackgroundCategory, name="academic_background_category"),
+        Enum(
+            AcademicBackgroundCategory,
+            name="academic_background_category",
+            create_type=False,
+            values_callable=lambda x: [e.value for e in x],
+        ),
         nullable=False,
     )
     title: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -412,8 +418,6 @@ class MappingReportEntry(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     cosine_score: Mapped[float] = mapped_column(Float, nullable=False)
     spreading_score: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     combined_score: Mapped[float] = mapped_column(Float, nullable=False)
-    is_cross_department: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-
     report: Mapped[MappingReport] = relationship(back_populates="entries")
 
 

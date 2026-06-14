@@ -33,8 +33,22 @@ from app.db.models import (
     UserExpertiseTag,
 )
 from app.services.embeddings import cosine_similarity, embed_text
+from app.services.llm import get_chat_llm
 
 logger = logging.getLogger(__name__)
+
+_EXPLANATION_PROMPT = """You are a faculty expertise analyst. Below is a course or research grant specification, followed by the top 3 matching academic staff with their expertise tags and semantic similarity scores.
+
+Specification:
+{spec_title}
+{spec_text}
+
+Top-3 Matched Staff:
+{staff_summary}
+
+Write a concise paragraph (150-250 words) interpreting these results. Explain which expertise areas drove the high scores, what makes these staff suitable, and any notable patterns (e.g. all top matches share a common subfield, or the scores drop significantly after rank 2). Use natural academic language suitable for a faculty dean or HoD reading this. Do NOT repeat the raw scores verbatim — synthesize insights.
+
+Response format: plain English paragraph only, no markdown, no bullet points."""
 
 
 COSINE_WEIGHT = 0.7
@@ -117,12 +131,6 @@ class MappingService:
         self._session.add(report)
         await self._session.flush()
 
-        # Identify cross-department experts (UC-14 alt flow).
-        requestor_department = await self._get_user_department(generated_by)
-        user_departments = await self._load_user_departments(
-            [uid for uid, _ in ranked]
-        )
-
         for rank, (user_id, score) in enumerate(ranked, start=1):
             self._session.add(
                 MappingReportEntry(
@@ -132,17 +140,80 @@ class MappingService:
                     cosine_score=cosine_scores.get(user_id, 0.0),
                     spreading_score=spreading_scores.get(user_id, 0.0),
                     combined_score=score,
-                    is_cross_department=(
-                        requestor_department is not None
-                        and user_departments.get(user_id) is not None
-                        and user_departments[user_id] != requestor_department
-                    ),
                 )
             )
 
         await self._session.commit()
         await self._session.refresh(report)
+
+        # Generate AI explanation for the top-3 matches.
+        try:
+            report = await self._generate_explanation(report, ranked[:3], spec)
+            await self._session.commit()
+            await self._session.refresh(report)
+        except Exception:
+            logger.warning("LLM explanation generation failed, continuing without summary.")
+
         return await self._load_report(report.id)
+
+    async def _generate_explanation(
+        self,
+        report: MappingReport,
+        top3: List[Tuple[UUID, float]],
+        spec: CourseGrantSpec,
+    ) -> MappingReport:
+        """Generate an LLM-powered explanation for the top-3 matches."""
+        try:
+            llm = get_chat_llm()
+        except Exception:
+            logger.warning("LLM not configured, skipping explanation.")
+            return report
+
+        staff_summary = await self._build_top3_staff_summary(top3)
+        prompt = _EXPLANATION_PROMPT.format(
+            spec_title=spec.title,
+            spec_text=spec.raw_text[:2000],
+            staff_summary=staff_summary,
+        )
+        try:
+            response = await llm.ainvoke(prompt)
+            report.summary = response.content.strip()
+        except Exception as exc:
+            logger.warning("LLM explanation call failed: %s", exc)
+        return report
+
+    async def _build_top3_staff_summary(
+        self, top3: List[Tuple[UUID, float]]
+    ) -> str:
+        """Build a text summary of the top-3 staff for the LLM prompt."""
+        user_ids = [uid for uid, _ in top3]
+        stmt = select(User).where(User.id.in_(user_ids))
+        users = (await self._session.execute(stmt)).scalars().all()
+        user_map: Dict[UUID, User] = {u.id: u for u in users}
+
+        # Load expertise tags for these users.
+        tag_stmt = (
+            select(UserExpertiseTag)
+            .where(UserExpertiseTag.user_id.in_(user_ids))
+            .options(selectinload(UserExpertiseTag.tag))
+        )
+        tag_links = (await self._session.execute(tag_stmt)).scalars().all()
+        user_tags: Dict[UUID, List[str]] = defaultdict(list)
+        for link in tag_links:
+            user_tags[link.user_id].append(link.tag.canonical_label)
+
+        lines: List[str] = []
+        for rank, (uid, score) in enumerate(top3, start=1):
+            user = user_map.get(uid)
+            name = user.full_name if user else str(uid)
+            dept = user.department if user and user.department else "N/A"
+            tags = user_tags.get(uid, [])[:5]
+            tag_str = ", ".join(tags) if tags else "no tags"
+            lines.append(
+                f"Rank {rank}: {name} | Department: {dept} | "
+                f"Combined Score: {score:.4f} | Tags: {tag_str}"
+            )
+        return "\n".join(lines)
 
     # ------------------------------------------------------------------ Loaders
     async def _load_spec(self, spec_id: UUID) -> CourseGrantSpec:
@@ -155,7 +226,10 @@ class MappingService:
         stmt = (
             select(MappingReport)
             .where(MappingReport.id == report_id)
-            .options(selectinload(MappingReport.entries))
+            .options(
+                selectinload(MappingReport.entries),
+                selectinload(MappingReport.spec),
+            )
         )
         report = (await self._session.execute(stmt)).scalar_one_or_none()
         if report is None:
@@ -172,19 +246,6 @@ class MappingService:
             if link.tag.embedding:
                 result.append((link.user_id, link.tag, float(link.confidence or 0.5)))
         return result
-
-    async def _get_user_department(self, user_id: UUID) -> str | None:
-        user = await self._session.get(User, user_id)
-        return user.department if user else None
-
-    async def _load_user_departments(
-        self, user_ids: Sequence[UUID]
-    ) -> Dict[UUID, str | None]:
-        if not user_ids:
-            return {}
-        stmt = select(User.id, User.department).where(User.id.in_(list(user_ids)))
-        rows = (await self._session.execute(stmt)).all()
-        return {row[0]: row[1] for row in rows}
 
     # ------------------------------------------------------------------ Scoring
     @staticmethod
