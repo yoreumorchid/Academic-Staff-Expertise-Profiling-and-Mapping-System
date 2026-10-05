@@ -150,8 +150,8 @@ ieee_xplore_api_key=<your-api-key>
 
 # LLM (optional — mapping report summaries require this)
 llm_provider=openai
-openai_api_key=<your-api-key>
-openai_api_base=<optional-custom-endpoint>
+llm_api_key=<your-provider-api-key>
+llm_api_base=<optional-openai-compatible-endpoint>
 llm_model=gpt-4o-mini
 
 # Embedding model

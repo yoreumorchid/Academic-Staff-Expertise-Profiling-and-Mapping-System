@@ -56,13 +56,13 @@ class Settings(BaseSettings):
     )
     ieee_xplore_api_key: str | None = None
 
-    # LLM (LangChain). ``openai_api_base`` is passed through to the
+    # LLM (LangChain). ``llm_api_base`` is passed through to the
     # OpenAI-compatible client so the same code path can target official
     # OpenAI, DeepSeek, Azure-compatible gateways, or local llama.cpp
     # servers without code changes.
     llm_provider: str = "openai"
-    openai_api_key: str | None = None
-    openai_api_base: str | None = None
+    llm_api_key: str | None = None
+    llm_api_base: str | None = None
     llm_model: str = "gpt-4o-mini"
     llm_temperature: float = 0.1
 

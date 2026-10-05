@@ -284,16 +284,16 @@ async def _eval_provider(
     from app.services.llm import get_chat_llm
     from app.core.config import get_settings
 
-    saved_api_key = os.getenv("OPENAI_API_KEY", "")
-    saved_api_base = os.getenv("OPENAI_API_BASE", "")
-    saved_model = os.getenv("LLM_MODEL", "")
+    saved_api_key = os.environ.get("LLM_API_KEY")
+    saved_api_base = os.environ.get("LLM_API_BASE")
+    saved_model = os.environ.get("LLM_MODEL")
 
-    os.environ["OPENAI_API_KEY"] = provider.api_key
+    os.environ["LLM_API_KEY"] = provider.api_key
     os.environ["LLM_MODEL"] = provider.model
     if provider.api_base:
-        os.environ["OPENAI_API_BASE"] = provider.api_base
+        os.environ["LLM_API_BASE"] = provider.api_base
     else:
-        os.environ.pop("OPENAI_API_BASE", None)
+        os.environ.pop("LLM_API_BASE", None)
     get_chat_llm.cache_clear()
     get_settings.cache_clear()
 
@@ -350,12 +350,18 @@ async def _eval_provider(
                 print(f"FAIL ({error_type})", flush=True)
                 print(f"  [{provider.key}] FAIL on {pub_id} ({error_type}): {str(exc)[:120]}")
     finally:
-        os.environ["OPENAI_API_KEY"] = saved_api_key
-        os.environ["LLM_MODEL"] = saved_model
-        if saved_api_base:
-            os.environ["OPENAI_API_BASE"] = saved_api_base
+        if saved_api_key is not None:
+            os.environ["LLM_API_KEY"] = saved_api_key
         else:
-            os.environ.pop("OPENAI_API_BASE", None)
+            os.environ.pop("LLM_API_KEY", None)
+        if saved_model is not None:
+            os.environ["LLM_MODEL"] = saved_model
+        else:
+            os.environ.pop("LLM_MODEL", None)
+        if saved_api_base is not None:
+            os.environ["LLM_API_BASE"] = saved_api_base
+        else:
+            os.environ.pop("LLM_API_BASE", None)
         get_chat_llm.cache_clear()
         get_settings.cache_clear()
 

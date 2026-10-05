@@ -128,7 +128,7 @@ Two files under `backend/evaluation/reports/`:
 
 | File | Purpose | Contains |
 |------|---------|----------|
-| `.env` | Production runtime | `OPENAI_API_KEY`, `DATABASE_URL`, JWT secret, etc. |
+| `.env` | Production runtime | `LLM_API_KEY`, `DATABASE_URL`, JWT secret, etc. |
 | `.env.eval` | Evaluation only | `DEEPSEEK_API_KEY`, `GEMINI_API_KEY`, eval `OPENAI_API_KEY` |
 | `.env.eval.example` | Template | Copy to `.env.eval` and fill in your keys |
 
