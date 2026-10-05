@@ -196,11 +196,11 @@ export function TagRefinementPage() {
                         ) : (
                           <button
                             type="button"
-                            className={`text-caption ${
+                            className={
                               newlyValidated
-                                ? "btn-ghost"
-                                : "btn-primary px-3 py-1"
-                            }`}
+                                ? "btn-ghost text-caption"
+                                : "btn-primary text-caption"
+                            }
                             onClick={() => toggleValidate(t.tag.id)}
                           >
                             {newlyValidated ? "Cancel" : "Validate"}

@@ -372,7 +372,16 @@ async def upload_background_csv(
     if not file.filename or not file.filename.lower().endswith(".csv"):
         raise ValidationFailure("Only CSV files are accepted.")
 
-    raw = (await file.read()).decode("utf-8-sig").strip()
+    try:
+        raw = (await file.read()).decode("utf-8-sig").strip()
+    except UnicodeDecodeError:
+        raise ValidationFailure(
+            "The uploaded CSV file is not valid UTF-8.  "
+            "Please re-save the file with UTF-8 encoding: in Excel use "
+            "\"File → Save As → CSV UTF-8\", or in VS Code click the "
+            "encoding label in the status bar and choose "
+            "\"Save with Encoding → UTF-8\"."
+        ) from None
     if not raw:
         raise ValidationFailure("The uploaded CSV file is empty.")
 

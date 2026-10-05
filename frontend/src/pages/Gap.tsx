@@ -6,7 +6,7 @@
  * GlobalBenchmarkingPage focuses on UC-15 alone and exposes a peer
  * upload area for UC-16.
  */
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { api, extractApiError } from "../api/client";
 import type {
   BenchmarkRun,

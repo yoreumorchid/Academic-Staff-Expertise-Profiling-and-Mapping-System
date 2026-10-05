@@ -33,6 +33,7 @@ dependencies = [
     "numpy>=1.26",
     "apscheduler>=3.10",
     "rapidfuzz>=3.9",
+    "python-dotenv>=1.0",
 ]
 
 [build-system]

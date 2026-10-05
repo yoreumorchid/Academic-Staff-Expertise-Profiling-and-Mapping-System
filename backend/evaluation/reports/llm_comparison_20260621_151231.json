@@ -1,0 +1,1054 @@
+{
+  "generated_at": "2026-06-21T15:12:31.432629Z",
+  "gold_path": "evaluation\\datasets\\gold_tags.jsonl",
+  "n_papers": 27,
+  "k": 15,
+  "soft_threshold": 0.7,
+  "providers_tested": [
+    "deepseek"
+  ],
+  "providers_skipped": [],
+  "results": [
+    {
+      "provider": "deepseek",
+      "model": "deepseek-chat",
+      "n_total": 27,
+      "n_success": 27,
+      "n_failure": 0,
+      "success_rate": 1.0,
+      "precision_hard": 0.5197,
+      "recall_hard": 0.4567,
+      "f1_hard": 0.4862,
+      "precision_soft": 0.7221,
+      "recall_soft": 0.5567,
+      "f1_soft": 0.6287,
+      "latency_p50_s": 13.672,
+      "latency_p95_s": 23.389,
+      "estimated_cost_per_1k_papers": 0.266,
+      "error_categories": {
+        "json_parse_error": 0,
+        "empty_response": 0,
+        "api_timeout": 0,
+        "api_other": 0
+      },
+      "per_paper": [
+        {
+          "publication_id": "cs_dr_chiam_01",
+          "gold": [
+            "natural language processing",
+            "information extraction",
+            "text mining",
+            "data mining"
+          ],
+          "predicted": [
+            "Natural Language Processing",
+            "Opinion Mining",
+            "Aspect-Based Sentiment Analysis",
+            "Information Extraction"
+          ],
+          "latency_s": 12.019,
+          "success": true
+        },
+        {
+          "publication_id": "cs_dr_chiam_02",
+          "gold": [
+            "health informatics",
+            "healthcare information system",
+            "information system management",
+            "healthcare interoperability",
+            "organizational policy"
+          ],
+          "predicted": [
+            "Health Informatics",
+            "Health Information Systems",
+            "Healthcare Interoperability",
+            "eHealth"
+          ],
+          "latency_s": 14.173,
+          "success": true
+        },
+        {
+          "publication_id": "cs_dr_chiam_03",
+          "gold": [
+            "natural language processing",
+            "information extraction",
+            "text mining",
+            "sentiment analysis"
+          ],
+          "predicted": [
+            "Natural Language Processing",
+            "Opinion Mining",
+            "Aspect-Based Sentiment Analysis"
+          ],
+          "latency_s": 13.672,
+          "success": true
+        },
+        {
+          "publication_id": "cs_dr_chiam_04",
+          "gold": [
+            "medical imaging",
+            "cardiac image analysis",
+            "cardiovascular modeling",
+            "computational biomedicine",
+            "magnetic resonance imaging"
+          ],
+          "predicted": [
+            "Cardiac Image Analysis",
+            "Medical Image Analysis"
+          ],
+          "latency_s": 13.541,
+          "success": true
+        },
+        {
+          "publication_id": "cs_dr_chiam_05",
+          "gold": [
+            "blockchain technology",
+            "multi-criteria decision making",
+            "decision support system",
+            "software engineering",
+            "fuzzy logic"
+          ],
+          "predicted": [
+            "Blockchain",
+            "Multi-Criteria Decision Making",
+            "Decision Support Systems"
+          ],
+          "latency_s": 15.874,
+          "success": true
+        },
+        {
+          "publication_id": "cs_dr_chiam_06",
+          "gold": [
+            "computer science education",
+            "educational technology",
+            "program comprehension",
+            "data structure"
+          ],
+          "predicted": [
+            "Computer Science Education",
+            "Programming Education",
+            "Data Structures Education"
+          ],
+          "latency_s": 10.272,
+          "success": true
+        },
+        {
+          "publication_id": "cs_dr_chiam_07",
+          "gold": [
+            "software engineering",
+            "software quality assurance",
+            "static code analysis",
+            "software metrics"
+          ],
+          "predicted": [
+            "Software Engineering",
+            "Software Quality Assurance",
+            "Software Metrics",
+            "Code Analysis"
+          ],
+          "latency_s": 11.792,
+          "success": true
+        },
+        {
+          "publication_id": "cs_dr_amirrudin_01",
+          "gold": [
+            "computer vision",
+            "image forensics",
+            "multimedia security",
+            "reinforcement learning",
+            "ensemble learning"
+          ],
+          "predicted": [
+            "Image Forensics",
+            "Computer Vision",
+            "Deep Learning",
+            "Reinforcement Learning"
+          ],
+          "latency_s": 22.181,
+          "success": true
+        },
+        {
+          "publication_id": "cs_dr_amirrudin_02",
+          "gold": [
+            "virtual reality",
+            "human-computer interaction",
+            "user experience design",
+            "affective computing",
+            "emotional design"
+          ],
+          "predicted": [
+            "Virtual Reality",
+            "Human-Computer Interaction",
+            "Affective Computing",
+            "Visual Design",
+            "Cross-Cultural Design"
+          ],
+          "latency_s": 12.765,
+          "success": true
+        },
+        {
+          "publication_id": "cs_dr_amirrudin_03",
+          "gold": [
+            "natural language processing",
+            "sentiment analysis",
+            "information extraction",
+            "in-context learning",
+            "dependency parsing"
+          ],
+          "predicted": [
+            "Natural Language Processing",
+            "Large Language Models",
+            "In-Context Learning",
+            "Sentiment Analysis",
+            "Aspect-Based Sentiment Analysis"
+          ],
+          "latency_s": 14.378,
+          "success": true
+        },
+        {
+          "publication_id": "cs_dr_amirrudin_04",
+          "gold": [
+            "cryptography",
+            "data security",
+            "hardware security",
+            "quantum-resistant cryptography",
+            "side-channel analysis",
+            "computer architecture"
+          ],
+          "predicted": [
+            "Cryptography",
+            "Post-Quantum Cryptography",
+            "Side-Channel Analysis",
+            "Key Management"
+          ],
+          "latency_s": 23.389,
+          "success": true
+        },
+        {
+          "publication_id": "cs_dr_amirrudin_05",
+          "gold": [
+            "virtual reality",
+            "human-computer interaction",
+            "computer science education",
+            "safety engineering",
+            "educational technology"
+          ],
+          "predicted": [
+            "Virtual Reality",
+            "Educational Technology",
+            "Safety Training",
+            "Game-Based Learning"
+          ],
+          "latency_s": 14.149,
+          "success": true
+        },
+        {
+          "publication_id": "cs_dr_amirrudin_06",
+          "gold": [
+            "virtual reality",
+            "human-computer interaction",
+            "health informatics",
+            "computer science education"
+          ],
+          "predicted": [
+            "Human-Computer Interaction",
+            "Virtual Reality",
+            "Health Informatics",
+            "Health Behavior",
+            "Physical Activity",
+            "Nutrition"
+          ],
+          "latency_s": 28.221,
+          "success": true
+        },
+        {
+          "publication_id": "cs_dr_badrul_01",
+          "gold": [
+            "machine learning",
+            "topic modeling",
+            "web content filtering",
+            "text classification",
+            "information security",
+            "hypertext markup language"
+          ],
+          "predicted": [
+            "Web Content Filtering",
+            "Web Security",
+            "Machine Learning",
+            "Text Classification",
+            "Information Filtering"
+          ],
+          "latency_s": 13.329,
+          "success": true
+        },
+        {
+          "publication_id": "cs_dr_badrul_02",
+          "gold": [
+            "agricultural e-commerce",
+            "blockchain technology",
+            "internet of things",
+            "supply chain management",
+            "information system",
+            "bibliometric analysis"
+          ],
+          "predicted": [
+            "Agricultural E-commerce",
+            "E-commerce",
+            "Internet of Things",
+            "Blockchain",
+            "Sustainable Agriculture"
+          ],
+          "latency_s": 20.314,
+          "success": true
+        },
+        {
+          "publication_id": "cs_dr_badrul_03",
+          "gold": [
+            "federated learning",
+            "network traffic classification",
+            "network security",
+            "adversarial machine learning",
+            "generative adversarial network",
+            "deep learning",
+            "edge computing"
+          ],
+          "predicted": [
+            "Network Traffic Classification",
+            "Federated Learning",
+            "Adversarial Machine Learning",
+            "Network Security"
+          ],
+          "latency_s": 11.134,
+          "success": true
+        },
+        {
+          "publication_id": "cs_dr_badrul_04",
+          "gold": [
+            "wireless sensor network",
+            "internet of things",
+            "network security",
+            "intrusion detection system",
+            "anomaly detection"
+          ],
+          "predicted": [
+            "Wireless Sensor Networks",
+            "Internet of Things",
+            "Routing Protocols",
+            "Network Security",
+            "Intrusion Detection System",
+            "Anomaly Detection",
+            "Trust Management"
+          ],
+          "latency_s": 11.686,
+          "success": true
+        },
+        {
+          "publication_id": "cs_dr_badrul_05",
+          "gold": [
+            "topic modeling",
+            "natural language processing",
+            "data mining",
+            "information extraction",
+            "unsupervised learning",
+            "hypertext markup language"
+          ],
+          "predicted": [
+            "Topic Modeling",
+            "Natural Language Processing",
+            "Data Mining",
+            "Web Mining"
+          ],
+          "latency_s": 9.328,
+          "success": true
+        },
+        {
+          "publication_id": "cs_dr_badrul_06",
+          "gold": [
+            "wireless sensor network",
+            "internet of things",
+            "intrusion detection system",
+            "network security"
+          ],
+          "predicted": [
+            "Wireless Sensor Networks",
+            "Internet of Things",
+            "Network Security",
+            "Intrusion Detection",
+            "Routing Protocols"
+          ],
+          "latency_s": 19.156,
+          "success": true
+        },
+        {
+          "publication_id": "cs_dr_badrul_07",
+          "gold": [
+            "mobile security",
+            "network traffic analysis",
+            "fuzzy logic",
+            "unsupervised learning",
+            "cyber threat intelligence"
+          ],
+          "predicted": [
+            "Android Malware Detection",
+            "Malware Detection",
+            "Mobile Security",
+            "Network Security",
+            "Machine Learning"
+          ],
+          "latency_s": 14.172,
+          "success": true
+        },
+        {
+          "publication_id": "social_science_dr_helena_01",
+          "gold": [
+            "environmental governance",
+            "transboundary pollution",
+            "environmental policy",
+            "non-governmental organization",
+            "international relations",
+            "sustainability science"
+          ],
+          "predicted": [
+            "Environmental Governance",
+            "Transboundary Governance",
+            "Environmental Policy",
+            "Southeast Asian Studies",
+            "ASEAN Studies"
+          ],
+          "latency_s": 8.989,
+          "success": true
+        },
+        {
+          "publication_id": "social_science_dr_helena_02",
+          "gold": [
+            "environmental governance",
+            "sustainability standard",
+            "public policy",
+            "state transformation",
+            "international relations",
+            "trade policy"
+          ],
+          "predicted": [
+            "Environmental Governance",
+            "Sustainability Science",
+            "Private Governance",
+            "Transnational Governance",
+            "Sustainability Standards",
+            "Southeast Asian Studies"
+          ],
+          "latency_s": 12.057,
+          "success": true
+        },
+        {
+          "publication_id": "social_science_dr_helena_03",
+          "gold": [
+            "association of southeast asian nations",
+            "environmental governance",
+            "public policy",
+            "sustainable development",
+            "border and migration",
+            "international relations",
+            "coronavirus disease 2019"
+          ],
+          "predicted": [
+            "Environmental Governance",
+            "Transboundary Environmental Governance",
+            "Sustainability Science",
+            "Environmental Policy",
+            "Environmental Justice"
+          ],
+          "latency_s": 13.343,
+          "success": true
+        },
+        {
+          "publication_id": "social_science_dr_helena_04",
+          "gold": [
+            "atmospheric science",
+            "air pollution modeling",
+            "environmental monitoring",
+            "public health",
+            "remote sensing"
+          ],
+          "predicted": [
+            "Atmospheric Science",
+            "Air Quality",
+            "Air Pollution",
+            "Environmental Monitoring",
+            "Wildfire Emissions"
+          ],
+          "latency_s": 14.607,
+          "success": true
+        },
+        {
+          "publication_id": "social_science_dr_helena_05",
+          "gold": [
+            "atmospheric science",
+            "air pollution modeling",
+            "public health",
+            "environmental governance",
+            "environmental economics"
+          ],
+          "predicted": [
+            "Atmospheric Science",
+            "Air Pollution",
+            "Environmental Health",
+            "Environmental Governance"
+          ],
+          "latency_s": 21.594,
+          "success": true
+        },
+        {
+          "publication_id": "social_science_dr_helena_06",
+          "gold": [
+            "political ecology",
+            "agrarian change",
+            "environmental governance",
+            "public policy",
+            "rural development",
+            "political economy"
+          ],
+          "predicted": [
+            "Political Economy",
+            "Development Studies",
+            "Environmental Governance",
+            "Southeast Asian Studies",
+            "Agricultural Policy"
+          ],
+          "latency_s": 8.536,
+          "success": true
+        },
+        {
+          "publication_id": "social_science_dr_helena_07",
+          "gold": [
+            "environmental governance",
+            "public policy",
+            "international relations",
+            "political economy",
+            "transboundary pollution",
+            "association of southeast asian nations"
+          ],
+          "predicted": [
+            "Environmental Governance",
+            "Southeast Asian Studies",
+            "Political Economy",
+            "Environmental Policy",
+            "Natural Resource Governance",
+            "Transboundary Pollution"
+          ],
+          "latency_s": 15.361,
+          "success": true
+        }
+      ]
+    }
+  ],
+  "per_paper": {
+    "deepseek": [
+      {
+        "publication_id": "cs_dr_chiam_01",
+        "gold": [
+          "natural language processing",
+          "information extraction",
+          "text mining",
+          "data mining"
+        ],
+        "predicted": [
+          "Natural Language Processing",
+          "Opinion Mining",
+          "Aspect-Based Sentiment Analysis",
+          "Information Extraction"
+        ],
+        "latency_s": 12.019,
+        "success": true
+      },
+      {
+        "publication_id": "cs_dr_chiam_02",
+        "gold": [
+          "health informatics",
+          "healthcare information system",
+          "information system management",
+          "healthcare interoperability",
+          "organizational policy"
+        ],
+        "predicted": [
+          "Health Informatics",
+          "Health Information Systems",
+          "Healthcare Interoperability",
+          "eHealth"
+        ],
+        "latency_s": 14.173,
+        "success": true
+      },
+      {
+        "publication_id": "cs_dr_chiam_03",
+        "gold": [
+          "natural language processing",
+          "information extraction",
+          "text mining",
+          "sentiment analysis"
+        ],
+        "predicted": [
+          "Natural Language Processing",
+          "Opinion Mining",
+          "Aspect-Based Sentiment Analysis"
+        ],
+        "latency_s": 13.672,
+        "success": true
+      },
+      {
+        "publication_id": "cs_dr_chiam_04",
+        "gold": [
+          "medical imaging",
+          "cardiac image analysis",
+          "cardiovascular modeling",
+          "computational biomedicine",
+          "magnetic resonance imaging"
+        ],
+        "predicted": [
+          "Cardiac Image Analysis",
+          "Medical Image Analysis"
+        ],
+        "latency_s": 13.541,
+        "success": true
+      },
+      {
+        "publication_id": "cs_dr_chiam_05",
+        "gold": [
+          "blockchain technology",
+          "multi-criteria decision making",
+          "decision support system",
+          "software engineering",
+          "fuzzy logic"
+        ],
+        "predicted": [
+          "Blockchain",
+          "Multi-Criteria Decision Making",
+          "Decision Support Systems"
+        ],
+        "latency_s": 15.874,
+        "success": true
+      },
+      {
+        "publication_id": "cs_dr_chiam_06",
+        "gold": [
+          "computer science education",
+          "educational technology",
+          "program comprehension",
+          "data structure"
+        ],
+        "predicted": [
+          "Computer Science Education",
+          "Programming Education",
+          "Data Structures Education"
+        ],
+        "latency_s": 10.272,
+        "success": true
+      },
+      {
+        "publication_id": "cs_dr_chiam_07",
+        "gold": [
+          "software engineering",
+          "software quality assurance",
+          "static code analysis",
+          "software metrics"
+        ],
+        "predicted": [
+          "Software Engineering",
+          "Software Quality Assurance",
+          "Software Metrics",
+          "Code Analysis"
+        ],
+        "latency_s": 11.792,
+        "success": true
+      },
+      {
+        "publication_id": "cs_dr_amirrudin_01",
+        "gold": [
+          "computer vision",
+          "image forensics",
+          "multimedia security",
+          "reinforcement learning",
+          "ensemble learning"
+        ],
+        "predicted": [
+          "Image Forensics",
+          "Computer Vision",
+          "Deep Learning",
+          "Reinforcement Learning"
+        ],
+        "latency_s": 22.181,
+        "success": true
+      },
+      {
+        "publication_id": "cs_dr_amirrudin_02",
+        "gold": [
+          "virtual reality",
+          "human-computer interaction",
+          "user experience design",
+          "affective computing",
+          "emotional design"
+        ],
+        "predicted": [
+          "Virtual Reality",
+          "Human-Computer Interaction",
+          "Affective Computing",
+          "Visual Design",
+          "Cross-Cultural Design"
+        ],
+        "latency_s": 12.765,
+        "success": true
+      },
+      {
+        "publication_id": "cs_dr_amirrudin_03",
+        "gold": [
+          "natural language processing",
+          "sentiment analysis",
+          "information extraction",
+          "in-context learning",
+          "dependency parsing"
+        ],
+        "predicted": [
+          "Natural Language Processing",
+          "Large Language Models",
+          "In-Context Learning",
+          "Sentiment Analysis",
+          "Aspect-Based Sentiment Analysis"
+        ],
+        "latency_s": 14.378,
+        "success": true
+      },
+      {
+        "publication_id": "cs_dr_amirrudin_04",
+        "gold": [
+          "cryptography",
+          "data security",
+          "hardware security",
+          "quantum-resistant cryptography",
+          "side-channel analysis",
+          "computer architecture"
+        ],
+        "predicted": [
+          "Cryptography",
+          "Post-Quantum Cryptography",
+          "Side-Channel Analysis",
+          "Key Management"
+        ],
+        "latency_s": 23.389,
+        "success": true
+      },
+      {
+        "publication_id": "cs_dr_amirrudin_05",
+        "gold": [
+          "virtual reality",
+          "human-computer interaction",
+          "computer science education",
+          "safety engineering",
+          "educational technology"
+        ],
+        "predicted": [
+          "Virtual Reality",
+          "Educational Technology",
+          "Safety Training",
+          "Game-Based Learning"
+        ],
+        "latency_s": 14.149,
+        "success": true
+      },
+      {
+        "publication_id": "cs_dr_amirrudin_06",
+        "gold": [
+          "virtual reality",
+          "human-computer interaction",
+          "health informatics",
+          "computer science education"
+        ],
+        "predicted": [
+          "Human-Computer Interaction",
+          "Virtual Reality",
+          "Health Informatics",
+          "Health Behavior",
+          "Physical Activity",
+          "Nutrition"
+        ],
+        "latency_s": 28.221,
+        "success": true
+      },
+      {
+        "publication_id": "cs_dr_badrul_01",
+        "gold": [
+          "machine learning",
+          "topic modeling",
+          "web content filtering",
+          "text classification",
+          "information security",
+          "hypertext markup language"
+        ],
+        "predicted": [
+          "Web Content Filtering",
+          "Web Security",
+          "Machine Learning",
+          "Text Classification",
+          "Information Filtering"
+        ],
+        "latency_s": 13.329,
+        "success": true
+      },
+      {
+        "publication_id": "cs_dr_badrul_02",
+        "gold": [
+          "agricultural e-commerce",
+          "blockchain technology",
+          "internet of things",
+          "supply chain management",
+          "information system",
+          "bibliometric analysis"
+        ],
+        "predicted": [
+          "Agricultural E-commerce",
+          "E-commerce",
+          "Internet of Things",
+          "Blockchain",
+          "Sustainable Agriculture"
+        ],
+        "latency_s": 20.314,
+        "success": true
+      },
+      {
+        "publication_id": "cs_dr_badrul_03",
+        "gold": [
+          "federated learning",
+          "network traffic classification",
+          "network security",
+          "adversarial machine learning",
+          "generative adversarial network",
+          "deep learning",
+          "edge computing"
+        ],
+        "predicted": [
+          "Network Traffic Classification",
+          "Federated Learning",
+          "Adversarial Machine Learning",
+          "Network Security"
+        ],
+        "latency_s": 11.134,
+        "success": true
+      },
+      {
+        "publication_id": "cs_dr_badrul_04",
+        "gold": [
+          "wireless sensor network",
+          "internet of things",
+          "network security",
+          "intrusion detection system",
+          "anomaly detection"
+        ],
+        "predicted": [
+          "Wireless Sensor Networks",
+          "Internet of Things",
+          "Routing Protocols",
+          "Network Security",
+          "Intrusion Detection System",
+          "Anomaly Detection",
+          "Trust Management"
+        ],
+        "latency_s": 11.686,
+        "success": true
+      },
+      {
+        "publication_id": "cs_dr_badrul_05",
+        "gold": [
+          "topic modeling",
+          "natural language processing",
+          "data mining",
+          "information extraction",
+          "unsupervised learning",
+          "hypertext markup language"
+        ],
+        "predicted": [
+          "Topic Modeling",
+          "Natural Language Processing",
+          "Data Mining",
+          "Web Mining"
+        ],
+        "latency_s": 9.328,
+        "success": true
+      },
+      {
+        "publication_id": "cs_dr_badrul_06",
+        "gold": [
+          "wireless sensor network",
+          "internet of things",
+          "intrusion detection system",
+          "network security"
+        ],
+        "predicted": [
+          "Wireless Sensor Networks",
+          "Internet of Things",
+          "Network Security",
+          "Intrusion Detection",
+          "Routing Protocols"
+        ],
+        "latency_s": 19.156,
+        "success": true
+      },
+      {
+        "publication_id": "cs_dr_badrul_07",
+        "gold": [
+          "mobile security",
+          "network traffic analysis",
+          "fuzzy logic",
+          "unsupervised learning",
+          "cyber threat intelligence"
+        ],
+        "predicted": [
+          "Android Malware Detection",
+          "Malware Detection",
+          "Mobile Security",
+          "Network Security",
+          "Machine Learning"
+        ],
+        "latency_s": 14.172,
+        "success": true
+      },
+      {
+        "publication_id": "social_science_dr_helena_01",
+        "gold": [
+          "environmental governance",
+          "transboundary pollution",
+          "environmental policy",
+          "non-governmental organization",
+          "international relations",
+          "sustainability science"
+        ],
+        "predicted": [
+          "Environmental Governance",
+          "Transboundary Governance",
+          "Environmental Policy",
+          "Southeast Asian Studies",
+          "ASEAN Studies"
+        ],
+        "latency_s": 8.989,
+        "success": true
+      },
+      {
+        "publication_id": "social_science_dr_helena_02",
+        "gold": [
+          "environmental governance",
+          "sustainability standard",
+          "public policy",
+          "state transformation",
+          "international relations",
+          "trade policy"
+        ],
+        "predicted": [
+          "Environmental Governance",
+          "Sustainability Science",
+          "Private Governance",
+          "Transnational Governance",
+          "Sustainability Standards",
+          "Southeast Asian Studies"
+        ],
+        "latency_s": 12.057,
+        "success": true
+      },
+      {
+        "publication_id": "social_science_dr_helena_03",
+        "gold": [
+          "association of southeast asian nations",
+          "environmental governance",
+          "public policy",
+          "sustainable development",
+          "border and migration",
+          "international relations",
+          "coronavirus disease 2019"
+        ],
+        "predicted": [
+          "Environmental Governance",
+          "Transboundary Environmental Governance",
+          "Sustainability Science",
+          "Environmental Policy",
+          "Environmental Justice"
+        ],
+        "latency_s": 13.343,
+        "success": true
+      },
+      {
+        "publication_id": "social_science_dr_helena_04",
+        "gold": [
+          "atmospheric science",
+          "air pollution modeling",
+          "environmental monitoring",
+          "public health",
+          "remote sensing"
+        ],
+        "predicted": [
+          "Atmospheric Science",
+          "Air Quality",
+          "Air Pollution",
+          "Environmental Monitoring",
+          "Wildfire Emissions"
+        ],
+        "latency_s": 14.607,
+        "success": true
+      },
+      {
+        "publication_id": "social_science_dr_helena_05",
+        "gold": [
+          "atmospheric science",
+          "air pollution modeling",
+          "public health",
+          "environmental governance",
+          "environmental economics"
+        ],
+        "predicted": [
+          "Atmospheric Science",
+          "Air Pollution",
+          "Environmental Health",
+          "Environmental Governance"
+        ],
+        "latency_s": 21.594,
+        "success": true
+      },
+      {
+        "publication_id": "social_science_dr_helena_06",
+        "gold": [
+          "political ecology",
+          "agrarian change",
+          "environmental governance",
+          "public policy",
+          "rural development",
+          "political economy"
+        ],
+        "predicted": [
+          "Political Economy",
+          "Development Studies",
+          "Environmental Governance",
+          "Southeast Asian Studies",
+          "Agricultural Policy"
+        ],
+        "latency_s": 8.536,
+        "success": true
+      },
+      {
+        "publication_id": "social_science_dr_helena_07",
+        "gold": [
+          "environmental governance",
+          "public policy",
+          "international relations",
+          "political economy",
+          "transboundary pollution",
+          "association of southeast asian nations"
+        ],
+        "predicted": [
+          "Environmental Governance",
+          "Southeast Asian Studies",
+          "Political Economy",
+          "Environmental Policy",
+          "Natural Resource Governance",
+          "Transboundary Pollution"
+        ],
+        "latency_s": 15.361,
+        "success": true
+      }
+    ]
+  }
+}

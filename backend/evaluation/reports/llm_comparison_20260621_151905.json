@@ -1,0 +1,556 @@
+{
+  "generated_at": "2026-06-21T15:19:05.359399Z",
+  "gold_path": "evaluation\\datasets\\gold_tags.jsonl",
+  "n_papers": 5,
+  "k": 15,
+  "soft_threshold": 0.7,
+  "providers_tested": [
+    "deepseek",
+    "gpt4o-mini",
+    "gemini"
+  ],
+  "providers_skipped": [],
+  "results": [
+    {
+      "provider": "deepseek",
+      "model": "deepseek-chat",
+      "n_total": 5,
+      "n_success": 5,
+      "n_failure": 0,
+      "success_rate": 1.0,
+      "precision_hard": 0.5,
+      "recall_hard": 0.3,
+      "f1_hard": 0.375,
+      "precision_soft": 0.7,
+      "recall_soft": 0.47,
+      "f1_soft": 0.5624,
+      "latency_p50_s": 20.299,
+      "latency_p95_s": 24.349,
+      "estimated_cost_per_1k_papers": 0.266,
+      "error_categories": {
+        "json_parse_error": 0,
+        "empty_response": 0,
+        "api_timeout": 0,
+        "api_other": 0
+      },
+      "per_paper": [
+        {
+          "publication_id": "cs_dr_chiam_01",
+          "gold": [
+            "natural language processing",
+            "information extraction",
+            "text mining",
+            "data mining"
+          ],
+          "predicted": [
+            "Aspect-Based Sentiment Analysis",
+            "Opinion Mining",
+            "Natural Language Processing"
+          ],
+          "latency_s": 14.398,
+          "success": true
+        },
+        {
+          "publication_id": "cs_dr_chiam_02",
+          "gold": [
+            "health informatics",
+            "healthcare information system",
+            "information system management",
+            "healthcare interoperability",
+            "organizational policy"
+          ],
+          "predicted": [
+            "Health Informatics",
+            "Health Information Systems",
+            "Interoperability"
+          ],
+          "latency_s": 22.598,
+          "success": true
+        },
+        {
+          "publication_id": "cs_dr_chiam_03",
+          "gold": [
+            "natural language processing",
+            "information extraction",
+            "text mining",
+            "sentiment analysis"
+          ],
+          "predicted": [
+            "Natural Language Processing",
+            "Opinion Mining",
+            "Aspect-Based Sentiment Analysis"
+          ],
+          "latency_s": 20.299,
+          "success": true
+        },
+        {
+          "publication_id": "cs_dr_chiam_04",
+          "gold": [
+            "medical imaging",
+            "cardiac image analysis",
+            "cardiovascular modeling",
+            "computational biomedicine",
+            "magnetic resonance imaging"
+          ],
+          "predicted": [
+            "Medical Imaging",
+            "Cardiac Image Analysis",
+            "Patient-Specific Modeling",
+            "Computational Modeling"
+          ],
+          "latency_s": 16.871,
+          "success": true
+        },
+        {
+          "publication_id": "cs_dr_chiam_05",
+          "gold": [
+            "blockchain technology",
+            "multi-criteria decision making",
+            "decision support system",
+            "software engineering",
+            "fuzzy logic"
+          ],
+          "predicted": [
+            "Blockchain Technology",
+            "Multi-Criteria Decision Making"
+          ],
+          "latency_s": 24.349,
+          "success": true
+        }
+      ]
+    },
+    {
+      "provider": "gpt4o-mini",
+      "model": "gpt-4o-mini",
+      "n_total": 5,
+      "n_success": 0,
+      "n_failure": 5,
+      "success_rate": 0.0,
+      "precision_hard": 0.0,
+      "recall_hard": 0.0,
+      "f1_hard": 0.0,
+      "precision_soft": 0.0,
+      "recall_soft": 0.0,
+      "f1_soft": 0.0,
+      "latency_p50_s": 0.0,
+      "latency_p95_s": 0.0,
+      "estimated_cost_per_1k_papers": 0.39,
+      "error_categories": {
+        "json_parse_error": 0,
+        "empty_response": 0,
+        "api_timeout": 0,
+        "api_other": 5
+      },
+      "per_paper": [
+        {
+          "publication_id": "cs_dr_chiam_01",
+          "gold": [
+            "natural language processing",
+            "information extraction",
+            "text mining",
+            "data mining"
+          ],
+          "predicted": [],
+          "latency_s": 1.259,
+          "success": false,
+          "error": "api_other",
+          "error_detail": "LLM provider failed to respond during semantic normalization."
+        },
+        {
+          "publication_id": "cs_dr_chiam_02",
+          "gold": [
+            "health informatics",
+            "healthcare information system",
+            "information system management",
+            "healthcare interoperability",
+            "organizational policy"
+          ],
+          "predicted": [],
+          "latency_s": 0.196,
+          "success": false,
+          "error": "api_other",
+          "error_detail": "LLM provider failed to respond during semantic normalization."
+        },
+        {
+          "publication_id": "cs_dr_chiam_03",
+          "gold": [
+            "natural language processing",
+            "information extraction",
+            "text mining",
+            "sentiment analysis"
+          ],
+          "predicted": [],
+          "latency_s": 0.208,
+          "success": false,
+          "error": "api_other",
+          "error_detail": "LLM provider failed to respond during semantic normalization."
+        },
+        {
+          "publication_id": "cs_dr_chiam_04",
+          "gold": [
+            "medical imaging",
+            "cardiac image analysis",
+            "cardiovascular modeling",
+            "computational biomedicine",
+            "magnetic resonance imaging"
+          ],
+          "predicted": [],
+          "latency_s": 0.192,
+          "success": false,
+          "error": "api_other",
+          "error_detail": "LLM provider failed to respond during semantic normalization."
+        },
+        {
+          "publication_id": "cs_dr_chiam_05",
+          "gold": [
+            "blockchain technology",
+            "multi-criteria decision making",
+            "decision support system",
+            "software engineering",
+            "fuzzy logic"
+          ],
+          "predicted": [],
+          "latency_s": 0.199,
+          "success": false,
+          "error": "api_other",
+          "error_detail": "LLM provider failed to respond during semantic normalization."
+        }
+      ]
+    },
+    {
+      "provider": "gemini",
+      "model": "gemini-2.0-flash",
+      "n_total": 5,
+      "n_success": 0,
+      "n_failure": 5,
+      "success_rate": 0.0,
+      "precision_hard": 0.0,
+      "recall_hard": 0.0,
+      "f1_hard": 0.0,
+      "precision_soft": 0.0,
+      "recall_soft": 0.0,
+      "f1_soft": 0.0,
+      "latency_p50_s": 0.0,
+      "latency_p95_s": 0.0,
+      "estimated_cost_per_1k_papers": 0.195,
+      "error_categories": {
+        "json_parse_error": 0,
+        "empty_response": 0,
+        "api_timeout": 0,
+        "api_other": 5
+      },
+      "per_paper": [
+        {
+          "publication_id": "cs_dr_chiam_01",
+          "gold": [
+            "natural language processing",
+            "information extraction",
+            "text mining",
+            "data mining"
+          ],
+          "predicted": [],
+          "latency_s": 1.239,
+          "success": false,
+          "error": "api_other",
+          "error_detail": "LLM provider failed to respond during semantic normalization."
+        },
+        {
+          "publication_id": "cs_dr_chiam_02",
+          "gold": [
+            "health informatics",
+            "healthcare information system",
+            "information system management",
+            "healthcare interoperability",
+            "organizational policy"
+          ],
+          "predicted": [],
+          "latency_s": 0.146,
+          "success": false,
+          "error": "api_other",
+          "error_detail": "LLM provider failed to respond during semantic normalization."
+        },
+        {
+          "publication_id": "cs_dr_chiam_03",
+          "gold": [
+            "natural language processing",
+            "information extraction",
+            "text mining",
+            "sentiment analysis"
+          ],
+          "predicted": [],
+          "latency_s": 0.123,
+          "success": false,
+          "error": "api_other",
+          "error_detail": "LLM provider failed to respond during semantic normalization."
+        },
+        {
+          "publication_id": "cs_dr_chiam_04",
+          "gold": [
+            "medical imaging",
+            "cardiac image analysis",
+            "cardiovascular modeling",
+            "computational biomedicine",
+            "magnetic resonance imaging"
+          ],
+          "predicted": [],
+          "latency_s": 0.147,
+          "success": false,
+          "error": "api_other",
+          "error_detail": "LLM provider failed to respond during semantic normalization."
+        },
+        {
+          "publication_id": "cs_dr_chiam_05",
+          "gold": [
+            "blockchain technology",
+            "multi-criteria decision making",
+            "decision support system",
+            "software engineering",
+            "fuzzy logic"
+          ],
+          "predicted": [],
+          "latency_s": 0.155,
+          "success": false,
+          "error": "api_other",
+          "error_detail": "LLM provider failed to respond during semantic normalization."
+        }
+      ]
+    }
+  ],
+  "per_paper": {
+    "deepseek": [
+      {
+        "publication_id": "cs_dr_chiam_01",
+        "gold": [
+          "natural language processing",
+          "information extraction",
+          "text mining",
+          "data mining"
+        ],
+        "predicted": [
+          "Aspect-Based Sentiment Analysis",
+          "Opinion Mining",
+          "Natural Language Processing"
+        ],
+        "latency_s": 14.398,
+        "success": true
+      },
+      {
+        "publication_id": "cs_dr_chiam_02",
+        "gold": [
+          "health informatics",
+          "healthcare information system",
+          "information system management",
+          "healthcare interoperability",
+          "organizational policy"
+        ],
+        "predicted": [
+          "Health Informatics",
+          "Health Information Systems",
+          "Interoperability"
+        ],
+        "latency_s": 22.598,
+        "success": true
+      },
+      {
+        "publication_id": "cs_dr_chiam_03",
+        "gold": [
+          "natural language processing",
+          "information extraction",
+          "text mining",
+          "sentiment analysis"
+        ],
+        "predicted": [
+          "Natural Language Processing",
+          "Opinion Mining",
+          "Aspect-Based Sentiment Analysis"
+        ],
+        "latency_s": 20.299,
+        "success": true
+      },
+      {
+        "publication_id": "cs_dr_chiam_04",
+        "gold": [
+          "medical imaging",
+          "cardiac image analysis",
+          "cardiovascular modeling",
+          "computational biomedicine",
+          "magnetic resonance imaging"
+        ],
+        "predicted": [
+          "Medical Imaging",
+          "Cardiac Image Analysis",
+          "Patient-Specific Modeling",
+          "Computational Modeling"
+        ],
+        "latency_s": 16.871,
+        "success": true
+      },
+      {
+        "publication_id": "cs_dr_chiam_05",
+        "gold": [
+          "blockchain technology",
+          "multi-criteria decision making",
+          "decision support system",
+          "software engineering",
+          "fuzzy logic"
+        ],
+        "predicted": [
+          "Blockchain Technology",
+          "Multi-Criteria Decision Making"
+        ],
+        "latency_s": 24.349,
+        "success": true
+      }
+    ],
+    "gpt4o-mini": [
+      {
+        "publication_id": "cs_dr_chiam_01",
+        "gold": [
+          "natural language processing",
+          "information extraction",
+          "text mining",
+          "data mining"
+        ],
+        "predicted": [],
+        "latency_s": 1.259,
+        "success": false,
+        "error": "api_other",
+        "error_detail": "LLM provider failed to respond during semantic normalization."
+      },
+      {
+        "publication_id": "cs_dr_chiam_02",
+        "gold": [
+          "health informatics",
+          "healthcare information system",
+          "information system management",
+          "healthcare interoperability",
+          "organizational policy"
+        ],
+        "predicted": [],
+        "latency_s": 0.196,
+        "success": false,
+        "error": "api_other",
+        "error_detail": "LLM provider failed to respond during semantic normalization."
+      },
+      {
+        "publication_id": "cs_dr_chiam_03",
+        "gold": [
+          "natural language processing",
+          "information extraction",
+          "text mining",
+          "sentiment analysis"
+        ],
+        "predicted": [],
+        "latency_s": 0.208,
+        "success": false,
+        "error": "api_other",
+        "error_detail": "LLM provider failed to respond during semantic normalization."
+      },
+      {
+        "publication_id": "cs_dr_chiam_04",
+        "gold": [
+          "medical imaging",
+          "cardiac image analysis",
+          "cardiovascular modeling",
+          "computational biomedicine",
+          "magnetic resonance imaging"
+        ],
+        "predicted": [],
+        "latency_s": 0.192,
+        "success": false,
+        "error": "api_other",
+        "error_detail": "LLM provider failed to respond during semantic normalization."
+      },
+      {
+        "publication_id": "cs_dr_chiam_05",
+        "gold": [
+          "blockchain technology",
+          "multi-criteria decision making",
+          "decision support system",
+          "software engineering",
+          "fuzzy logic"
+        ],
+        "predicted": [],
+        "latency_s": 0.199,
+        "success": false,
+        "error": "api_other",
+        "error_detail": "LLM provider failed to respond during semantic normalization."
+      }
+    ],
+    "gemini": [
+      {
+        "publication_id": "cs_dr_chiam_01",
+        "gold": [
+          "natural language processing",
+          "information extraction",
+          "text mining",
+          "data mining"
+        ],
+        "predicted": [],
+        "latency_s": 1.239,
+        "success": false,
+        "error": "api_other",
+        "error_detail": "LLM provider failed to respond during semantic normalization."
+      },
+      {
+        "publication_id": "cs_dr_chiam_02",
+        "gold": [
+          "health informatics",
+          "healthcare information system",
+          "information system management",
+          "healthcare interoperability",
+          "organizational policy"
+        ],
+        "predicted": [],
+        "latency_s": 0.146,
+        "success": false,
+        "error": "api_other",
+        "error_detail": "LLM provider failed to respond during semantic normalization."
+      },
+      {
+        "publication_id": "cs_dr_chiam_03",
+        "gold": [
+          "natural language processing",
+          "information extraction",
+          "text mining",
+          "sentiment analysis"
+        ],
+        "predicted": [],
+        "latency_s": 0.123,
+        "success": false,
+        "error": "api_other",
+        "error_detail": "LLM provider failed to respond during semantic normalization."
+      },
+      {
+        "publication_id": "cs_dr_chiam_04",
+        "gold": [
+          "medical imaging",
+          "cardiac image analysis",
+          "cardiovascular modeling",
+          "computational biomedicine",
+          "magnetic resonance imaging"
+        ],
+        "predicted": [],
+        "latency_s": 0.147,
+        "success": false,
+        "error": "api_other",
+        "error_detail": "LLM provider failed to respond during semantic normalization."
+      },
+      {
+        "publication_id": "cs_dr_chiam_05",
+        "gold": [
+          "blockchain technology",
+          "multi-criteria decision making",
+          "decision support system",
+          "software engineering",
+          "fuzzy logic"
+        ],
+        "predicted": [],
+        "latency_s": 0.155,
+        "success": false,
+        "error": "api_other",
+        "error_detail": "LLM provider failed to respond during semantic normalization."
+      }
+    ]
+  }
+}

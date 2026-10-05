@@ -34,6 +34,23 @@ python -m evaluation.scripts.eval_nlp --gold evaluation/datasets/gold_tags.jsonl
 
 ---
 
+## LLM Provider Comparison
+
+**`eval_llm.py`**
+
+| Aspect | Detail |
+|--------|--------|
+| **Purpose** | Quantitatively compare multiple LLM providers (DeepSeek, GPT-4o-mini, Gemini 2.0 Flash, custom) on the same tag-normalisation task to answer: *"Is DeepSeek's quality acceptable despite its lower cost? What is the concrete trade-off?"* |
+| **Input** | `datasets/gold_tags.jsonl` — the same gold set used by Study 1 |
+| **Metrics** | **Hard/Soft Precision, Recall, F1** (same definitions as Study 1), **Success Rate** (fraction of papers where the LLM returned parseable JSON), **p50/p95 Latency**, **Estimated Cost per 1 000 papers**, **Error Categorisation** (json_parse_error, api_timeout, empty_response, api_other) |
+| **Runs** | Each provider goes through the identical SciBERT → LLM pipeline. The script temporarily overrides the LLM factory with provider-specific credentials, runs all gold-set papers, then restores the original configuration |
+| **Providers** | `deepseek` (needs `DEEPSEEK_API_KEY`), `gpt4o-mini` (needs `OPENAI_API_KEY`), `gemini` (needs `GEMINI_API_KEY`, uses Google's OpenAI-compatible endpoint), `custom` (generic OpenAI-compatible endpoint via `EVAL_LLM_*` env vars) |
+| **Usage** | `python -m evaluation.scripts.eval_llm --gold evaluation/datasets/gold_tags.jsonl --providers deepseek,gpt4o-mini,gemini` |
+| **Flags** | `--sample 10` to test on first N papers only; `--k 15` for SciBERT top-K; `--quiet` to suppress console output; `--providers deepseek` for single-provider run |
+| **Output** | A Markdown + JSON pair under `reports/llm_comparison_*.md` and `.json` containing the aggregate metrics table, per-provider error breakdown, per-paper predictions, and an interpretation guide |
+
+---
+
 ## Staff Tag Validation
 
 **`eval_staff_tags.py`**

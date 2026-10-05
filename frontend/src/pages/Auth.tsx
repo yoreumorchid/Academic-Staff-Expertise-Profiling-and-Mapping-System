@@ -125,7 +125,7 @@ export function LoginPage() {
             id="email"
             type="email"
             className="input"
-            placeholder="staffname@um.edu.my or @siswa.um.edu.my"
+            placeholder="staffname@um.edu.my"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -305,7 +305,7 @@ export function RegisterPage() {
             id="email"
             type="email"
             className="input"
-            placeholder="staffname@um.edu.my or @siswa.um.edu.my"
+            placeholder="staffname@um.edu.my"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -496,7 +496,7 @@ export function ForgotPasswordPage() {
               id="email"
               type="email"
               className="input"
-              placeholder="staffname@um.edu.my or @siswa.um.edu.my"
+              placeholder="staffname@um.edu.my"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
