@@ -1,6 +1,7 @@
 # Python
 __pycache__/
 *.pyc
+.pytest_cache/
 .venv/
 build/
 *.egg-info/
@@ -8,6 +9,7 @@ build/
 .env.*
 !.env.example
 !.env.eval.example
+
 # Node
 node_modules/
 dist/
@@ -23,3 +25,4 @@ Thumbs.db
 
 # Docs
 use_cases.md
+AGENTS.md
