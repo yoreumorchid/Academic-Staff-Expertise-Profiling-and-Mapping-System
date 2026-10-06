@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import re
 import secrets
+from hashlib import sha256
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict
 
@@ -91,3 +92,8 @@ def decode_access_token(token: str) -> Dict[str, Any]:
 def generate_reset_token() -> str:
     """Return a URL-safe 32-byte secret for password recovery."""
     return secrets.token_urlsafe(32)
+
+
+def hash_reset_token(token: str) -> str:
+    """Return the non-reversible lookup digest stored for a reset token."""
+    return sha256(token.encode("utf-8")).hexdigest()

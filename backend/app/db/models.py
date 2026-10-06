@@ -477,12 +477,14 @@ class BenchmarkWhiteSpace(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 class PasswordResetToken(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "password_reset_tokens"
-    __table_args__ = (UniqueConstraint("token", name="uq_password_reset_token"),)
+    __table_args__ = (
+        UniqueConstraint("token_hash", name="uq_password_reset_token_hash"),
+    )
 
     user_id: Mapped[UUID] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    token: Mapped[str] = mapped_column(String(128), nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     consumed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
 

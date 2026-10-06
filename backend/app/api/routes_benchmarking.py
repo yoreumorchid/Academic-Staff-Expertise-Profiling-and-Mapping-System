@@ -6,6 +6,7 @@ from typing import List
 from fastapi import APIRouter, Depends, File, UploadFile
 
 from app.api.dependencies import require_portfolio
+from app.core.config import get_settings
 from app.core.exceptions import ValidationFailure
 from app.db.models import BenchmarkRun, PortfolioType, User
 from app.db.session import get_session
@@ -17,6 +18,7 @@ from app.schemas import (
 )
 from app.services.benchmarking import BenchmarkingService
 from app.services.document_extract import extract_text_from_upload
+from app.services.upload_validation import read_upload_limited
 from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/benchmarking", tags=["benchmarking"])
@@ -57,9 +59,11 @@ async def run_peer_benchmark(
         raise ValidationFailure("Upload at least one peer curriculum document.")
     parsed: list[tuple[str, str]] = []
     for upload in files:
-        buffer = await upload.read()
+        buffer = await read_upload_limited(
+            upload, get_settings().max_document_upload_bytes
+        )
         text = await extract_text_from_upload(
-            upload.filename or "peer.pdf", buffer
+            upload.filename or "peer.pdf", buffer, upload.content_type
         )
         parsed.append((upload.filename or "peer.pdf", text))
     run = await BenchmarkingService(session).run_peer_benchmark(

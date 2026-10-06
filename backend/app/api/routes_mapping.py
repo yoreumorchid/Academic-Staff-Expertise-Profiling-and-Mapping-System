@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.api.dependencies import require_portfolio
+from app.core.config import get_settings
 from app.core.exceptions import NotFoundError, ValidationFailure
 from app.db.models import (
     CourseGrantSpec,
@@ -30,6 +31,7 @@ from app.schemas import (
 )
 from app.services.document_extract import extract_text_from_upload
 from app.services.mapping import MappingService
+from app.services.upload_validation import read_upload_limited
 
 router = APIRouter(prefix="/mapping", tags=["mapping"])
 
@@ -73,8 +75,10 @@ async def ingest_spec_upload(
 ) -> SpecIngestResponse:
     if not title.strip():
         raise ValidationFailure("Specification title is required.")
-    buffer = await file.read()
-    text = await extract_text_from_upload(file.filename or "upload", buffer)
+    buffer = await read_upload_limited(file, get_settings().max_document_upload_bytes)
+    text = await extract_text_from_upload(
+        file.filename or "upload", buffer, file.content_type
+    )
     spec = await MappingService(session).ingest_specification(
         created_by=actor.id,
         spec_type=spec_type,

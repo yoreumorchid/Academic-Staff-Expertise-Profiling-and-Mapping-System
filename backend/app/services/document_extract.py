@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import io
 import logging
+import zipfile
 from typing import Tuple
 
 from app.core.exceptions import ValidationFailure
@@ -51,8 +52,10 @@ def _extract_docx_sync(buffer: bytes) -> str:
     return "\n".join(paragraphs)
 
 
-async def extract_text_from_upload(filename: str, buffer: bytes) -> str:
-    """Dispatch to the correct parser based on the filename extension."""
+async def extract_text_from_upload(
+    filename: str, buffer: bytes, content_type: str | None = None
+) -> str:
+    """Validate content and dispatch to the parser selected by extension."""
     if not filename:
         raise ValidationFailure("Uploaded file is missing a filename.")
     lower = filename.lower()
@@ -64,9 +67,37 @@ async def extract_text_from_upload(filename: str, buffer: bytes) -> str:
     if not buffer:
         raise ValidationFailure("Uploaded file is empty.")
 
+    normalized_type = (content_type or "").split(";", 1)[0].strip().lower()
+    allowed_types = {
+        ".pdf": {"application/pdf", "application/octet-stream"},
+        ".docx": {
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/octet-stream",
+        },
+    }
+    if normalized_type and normalized_type not in allowed_types[ext]:
+        raise ValidationFailure(
+            f"The uploaded file type does not match the {ext} extension."
+        )
+
     if ext == ".pdf":
+        if not buffer.startswith(b"%PDF-"):
+            raise ValidationFailure(
+                "The uploaded file content does not match the .pdf extension."
+            )
         text = await asyncio.to_thread(_extract_pdf_sync, buffer)
     else:
+        try:
+            with zipfile.ZipFile(io.BytesIO(buffer)) as archive:
+                names = set(archive.namelist())
+        except (zipfile.BadZipFile, OSError) as exc:
+            raise ValidationFailure(
+                "The uploaded file content does not match the .docx extension."
+            ) from exc
+        if "[Content_Types].xml" not in names or "word/document.xml" not in names:
+            raise ValidationFailure(
+                "The uploaded file content does not match the .docx extension."
+            )
         text = await asyncio.to_thread(_extract_docx_sync, buffer)
 
     if not text or len(text.strip()) < 40:

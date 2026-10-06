@@ -14,7 +14,7 @@ from datetime import datetime, timedelta, timezone
 from typing import List
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -31,6 +31,7 @@ from app.core.security import (
     create_access_token,
     generate_reset_token,
     hash_password,
+    hash_reset_token,
     verify_password,
 )
 from app.db.models import (
@@ -212,12 +213,17 @@ class AuthService:
             raise NotFoundError("Email address not recognized.")
 
         token_value = generate_reset_token()
+        token_hash = hash_reset_token(token_value)
         expires_at = datetime.now(timezone.utc) + timedelta(
             minutes=self._settings.password_reset_ttl_minutes
         )
+        # A newly issued link supersedes every earlier link for this account.
+        await self._session.execute(
+            delete(PasswordResetToken).where(PasswordResetToken.user_id == user.id)
+        )
         self._session.add(
             PasswordResetToken(
-                user_id=user.id, token=token_value, expires_at=expires_at
+                user_id=user.id, token_hash=token_hash, expires_at=expires_at
             )
         )
         await self._session.commit()
@@ -225,7 +231,9 @@ class AuthService:
         await self._session.commit()
 
     async def consume_reset_token(self, token: str, new_password: str) -> None:
-        stmt = select(PasswordResetToken).where(PasswordResetToken.token == token)
+        stmt = select(PasswordResetToken).where(
+            PasswordResetToken.token_hash == hash_reset_token(token)
+        ).with_for_update()
         record = (await self._session.execute(stmt)).scalar_one_or_none()
         if record is None or record.consumed_at is not None:
             raise ValidationFailure("This reset link is no longer valid.")

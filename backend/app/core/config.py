@@ -31,10 +31,14 @@ class Settings(BaseSettings):
     app_cors_origins: str = "http://localhost:5173"
 
     # Security
-    jwt_secret: str = Field(min_length=16)
+    jwt_secret: str = Field(min_length=32)
     jwt_algorithm: str = "HS256"
-    jwt_access_ttl_minutes: int = 10080  # 7 days
-    password_reset_ttl_minutes: int = 30
+    # Eight hours covers a normal pilot workday without leaving a bearer token
+    # valid for the previous seven-day prototype window.
+    jwt_access_ttl_minutes: int = Field(default=480, gt=0)
+    password_reset_ttl_minutes: int = Field(default=30, gt=0)
+    max_document_upload_bytes: int = Field(default=10 * 1024 * 1024, gt=0)
+    max_csv_upload_bytes: int = Field(default=2 * 1024 * 1024, gt=0)
 
     # Database
     database_url: str

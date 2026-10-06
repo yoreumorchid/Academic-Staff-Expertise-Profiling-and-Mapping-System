@@ -24,6 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.api.dependencies import get_current_user
+from app.core.config import get_settings
 from app.core.exceptions import ForbiddenError, NotFoundError, ValidationFailure
 from app.db.models import (
     AcademicBackground,
@@ -54,6 +55,7 @@ from app.services.document_extract import extract_text_from_upload
 from app.services.embeddings import embed_text, embed_texts
 from app.services.harvest import HarvestService
 from app.services.sync_queue import ensure_user_sync_inactive
+from app.services.upload_validation import decode_csv_upload, read_upload_limited
 
 logger = logging.getLogger(__name__)
 
@@ -244,8 +246,10 @@ async def supplement_abstract_file(
     actor: User = Depends(get_current_user),
 ) -> None:
     await ensure_user_sync_inactive(session, actor.id)
-    buffer = await file.read()
-    text = await extract_text_from_upload(file.filename or "upload", buffer)
+    buffer = await read_upload_limited(file, get_settings().max_document_upload_bytes)
+    text = await extract_text_from_upload(
+        file.filename or "upload", buffer, file.content_type
+    )
     await _persist_supplemented_abstract(session, actor, publication_id, text)
 
 
@@ -372,21 +376,8 @@ async def upload_background_csv(
     actor: User = Depends(get_current_user),
 ) -> List[AcademicBackgroundOut]:
     """Parse, validate, and insert academic background records from CSV."""
-    if not file.filename or not file.filename.lower().endswith(".csv"):
-        raise ValidationFailure("Only CSV files are accepted.")
-
-    try:
-        raw = (await file.read()).decode("utf-8-sig").strip()
-    except UnicodeDecodeError:
-        raise ValidationFailure(
-            "The uploaded CSV file is not valid UTF-8.  "
-            "Please re-save the file with UTF-8 encoding: in Excel use "
-            "\"File → Save As → CSV UTF-8\", or in VS Code click the "
-            "encoding label in the status bar and choose "
-            "\"Save with Encoding → UTF-8\"."
-        ) from None
-    if not raw:
-        raise ValidationFailure("The uploaded CSV file is empty.")
+    buffer = await read_upload_limited(file, get_settings().max_csv_upload_bytes)
+    raw = decode_csv_upload(file.filename or "", file.content_type, buffer)
 
     reader = csv.DictReader(io.StringIO(raw))
     if reader.fieldnames is None:

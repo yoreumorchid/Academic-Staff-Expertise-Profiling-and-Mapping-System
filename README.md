@@ -117,19 +117,19 @@ Status meanings:
 | UC-1 Register account | Implemented | Staff/admin registration, ORCID and portfolio validation, pending account creation, and duplicate-email handling exist. |
 | UC-2 Authorize registration | Implemented | Faculty Manager can list, approve, or reject pending registrations; outcome email is sent/logged. Needs broader integration coverage. |
 | UC-3 Login | Implemented | JWT login, pending-account rejection, role-aware redirect data, dual-role data, and first-login sync enqueueing exist. First-login behavior has focused tests. |
-| UC-4 Reset/change password | Partial | Forgot/reset/change flows and email delivery exist. Reset tokens are still stored in plaintext and must be hashed before production use. |
+| UC-4 Reset/change password | Implemented | Forgot/reset/change flows and email delivery exist. Only SHA-256 digests of high-entropy reset tokens are stored; new requests revoke earlier links, and invalid/expired links have focused tests. |
 | UC-5 Notification email | Implemented | SMTP-backed registration and password-reset notifications plus notification logging exist. Delivery depends on valid SMTP configuration. |
 | UC-6 Role-based dashboard | Implemented | Portfolio-derived sidebars, staff/admin view selection, dual-role toggle, and backend portfolio checks exist. |
 | UC-7 Consult staff profiles | Partial | Directory, category search, department filter, grouping, and detail views exist. The API still loads the full result set and performs much of the search in Python; pagination and access scoping are pending. |
 | UC-8 Generate expertise profiles | Implemented | ORCID identity resolution, OpenAlex publication harvesting, abstract processing, SciBERT extraction, LLM normalization, tag embedding, and persistence exist. Quality still depends on evaluation and tuning. |
-| UC-9 Supplement abstract | Implemented | Staff can enter an abstract or upload PDF/DOCX text; embeddings/tags are refreshed. File-size controls remain pending. |
+| UC-9 Supplement abstract | Implemented | Staff can enter an abstract or upload validated, size-limited PDF/DOCX text; embeddings/tags are refreshed. |
 | UC-10 Academic background | Implemented | CRUD plus CSV template download and bulk import are available for education, appointment, award, and service records. |
 | UC-11 Refine expertise tags | Implemented | Staff can validate/remove generated tags and add custom tags with embeddings. Mutations are blocked while that user's sync is active. |
 | UC-12 Trigger expertise sync | Implemented | First-login, manual, administrator, and quarterly triggers share the Redis/Celery queue and persisted `SyncJob` model. Duplicate active jobs are constrained per user. |
-| UC-13 Input course/grant specs | Implemented | Text and PDF/DOCX ingestion, embedding, listing, and deletion exist. Upload-size validation remains pending. |
+| UC-13 Input course/grant specs | Implemented | Text and validated, size-limited PDF/DOCX ingestion, embedding, listing, and deletion exist. |
 | UC-14 Match expertise | Partial | Cosine plus one-hop spreading activation, ranked results, saved reports, optional LLM explanation, and PDF export exist. The scoring design still needs evaluation against a defensible labelled set. |
 | UC-15 Global benchmarking | Partial / redesign required | Current code queries eight fixed IEEE topics, embeds returned titles/abstracts, and measures distance to internal clusters. This is not a validated global trend detector and IEEE licensing/API access is unsuitable as the default. Planned replacement: independent OpenAlex topic/time-series data with deterministic trend and gap scores. |
-| UC-16 Peer benchmarking | Partial | PDF/DOCX curriculum upload, bounded document chunking, semantic comparison, persisted results, UMAP/PCA visualization, and UI exist. Scoring validity, upload limits, and representative peer test data are pending. |
+| UC-16 Peer benchmarking | Partial | Validated, size-limited PDF/DOCX curriculum upload, bounded document chunking, semantic comparison, persisted results, UMAP/PCA visualization, and UI exist. Scoring validity and representative peer test data are pending. |
 | UC-17 Gap analysis | Partial | The UI can run global/peer analysis and combine the latest runs into a narrative and ranked white spaces. Its validity depends on completing UC-15/16 methodology. |
 | UC-18 Export customized CV | Implemented prototype | Staff can select or default profile items and export a one-page PDF or DOCX expertise snapshot. This is a snapshot, not a full general-purpose CV builder. |
 
@@ -203,6 +203,32 @@ staff vectors. This prevents a widely reused vocabulary tag from being treated
 as if it were an independent member of staff and better matches the institutional
 capacity interpretation.
 
+## Prototype Security Baseline
+
+SEC-01 is implemented with controls proportionate to the current FYP pilot:
+
+- Password-reset links contain a 32-byte random bearer token, while PostgreSQL
+  stores only its SHA-256 digest. Issuing a new link revokes older links for the
+  account. The SEC-01 migration expires all pre-existing plaintext reset tokens.
+- PDF and DOCX uploads default to a 10 MiB per-file limit; CSV uploads default
+  to 2 MiB. Limits are configured through `MAX_DOCUMENT_UPLOAD_BYTES` and
+  `MAX_CSV_UPLOAD_BYTES`. Validation checks extensions, declared media types,
+  and PDF/DOCX/CSV content before parsing.
+- Access JWTs default to 480 minutes (eight hours), reduced from seven days. This
+  supports a normal pilot workday without adding a refresh-token subsystem,
+  while materially reducing the exposure window of a stolen bearer token.
+- Real `.env` files remain ignored. However, `backend/.env` was present in Git
+  history before it was untracked. The exposed `JWT_SECRET` was rotated after
+  the incident and requires no further action solely because of that commit;
+  the rotation invalidated tokens signed with the old secret. All other
+  sensitive credentials contained in that historical environment file,
+  including the SMTP app password, have also been rotated. Removing the current
+  file does not remove old values from history, so coordinate a history rewrite
+  separately if the repository has not already been distributed.
+
+This is a prototype baseline, not a claim of compliance, complete auditability,
+encryption at rest, or production readiness.
+
 ## Known Technical and Documentation Gaps
 
 - `backend/app/api/routes_profile.py` is large and contains multiple business
@@ -214,10 +240,6 @@ capacity interpretation.
 - Database pool sizing uses SQLAlchemy defaults. This is acceptable until a load
   test establishes an appropriate deployment-specific value.
 - There is no general response cache and no API rate limiter yet.
-- Password-reset bearer tokens are stored in plaintext.
-- Uploaded PDF, DOCX, and CSV bodies are read without a configured size limit.
-- JWT access tokens default to seven days, which is convenient for the prototype
-  but should be reconsidered for an actual faculty deployment.
 - Auditability is limited to selected records such as sync jobs and notification
   logs; there is no comprehensive administrator audit trail.
 - The key automated tests cover first-login sync, queue publication failure, and
@@ -333,7 +355,7 @@ static inspection.
 - Add only indexes supported by the final query shape.
 - Test authorization scope, category filtering, and page boundaries.
 
-#### [ ] SEC-01 - Apply the Prototype Security Baseline
+#### [x] SEC-01 - Apply the Prototype Security Baseline
 
 **Goal:** address high-value security gaps without building a compliance system.
 
@@ -347,6 +369,15 @@ static inspection.
   rotation if any historical secret was exposed.
 - Reassess JWT lifetime for pilot deployment and document the chosen trade-off.
 - Add focused tests for invalid/expired reset tokens and oversized uploads.
+
+**Completed 2026-10-06:** reset-token digests and old-token expiry are covered
+by migration `d4e8b6a1c203`; bounded content-validated uploads cover PDF, DOCX,
+and CSV entry points; the pilot JWT default is eight hours; and the historical
+environment-file exposure is documented, including the confirmed JWT-secret
+and other sensitive-credential rotations.
+When the FYP report is restored, update its Security Design / Authentication
+and Password Recovery section, File Upload Validation section, and Security
+Limitations section with these implemented controls and their prototype scope.
 
 #### [ ] SYNC-01 - Complete Queue Recovery and Operations Validation
 
@@ -630,12 +661,17 @@ Current focused automated tests:
 - `test_sync_queue.py`: Redis publication failure persists a failed job state.
 - `test_peer_benchmark_chunks.py`: long peer documents are split without losing
   their final content.
+- `test_security_baseline.py`: reset-token hashing and invalid/expired handling,
+  bounded upload reads, and disguised upload rejection.
 
 Verification completed on **2026-10-06**:
 
-- backend: **5 tests passed**;
-- Alembic: **no new upgrade operations detected**;
-- frontend: **TypeScript and Vite production build succeeded**.
+- backend: **12 tests passed**, including all SEC-01 regressions;
+- Alembic connected successfully but reported the local database is not yet at
+  head because migration `d4e8b6a1c203` has not been applied; run
+  `alembic upgrade head`, then `alembic check`;
+- frontend: not rerun for SEC-01 because no frontend contract or source changed
+  (the preceding TypeScript/Vite production build had succeeded).
 
 Re-run these commands rather than assuming the snapshot remains true after later
 changes.
