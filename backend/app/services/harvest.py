@@ -5,11 +5,8 @@ instructions.md §3.1:
 
     ORCID -> OpenAlex -> SciBERT -> LLM normalization -> PostgreSQL
 
-It is invoked from three places:
-
-1. ``routes_auth.login`` — UC-3 first-login automatic sync.
-2. ``routes_sync.trigger_sync`` — UC-12 manual sync.
-3. ``app.services.scheduler`` — UC-12 alt flow quarterly auto-sync.
+API routes and the quarterly scheduler create durable ``QUEUED`` rows;
+Celery workers invoke this service to execute the actual pipeline.
 
 All blocking model inference is dispatched through the per-service async
 helpers (``embed_texts``, ``extract_keywords``, ``normalize_keywords``).
@@ -24,12 +21,14 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.core.exceptions import ExternalServiceError, NotFoundError
+from app.core.exceptions import ConflictError, ExternalServiceError, NotFoundError
 from app.db.models import (
+    AccountStatus,
     ExpertiseTag,
     OrcidProfile,
     Publication,
@@ -76,97 +75,105 @@ def _normalize_doi(doi: str) -> str:
 class HarvestService:
     """Coordinates external data ingestion and tag generation."""
 
-    # A RUNNING job older than this threshold is considered stale
-    # (orphaned by a process crash / restart) and is auto-failed so
-    # the user is not permanently blocked.
-    _STALE_RUNNING_TIMEOUT = timedelta(minutes=30)
-
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
         self._orcid = OrcidClient()
         self._openalex = OpenAlexClient()
 
     # ------------------------------------------------------------------ UC-12
-    async def run_for_user(
-        self, user_id: UUID, *, trigger: SyncTrigger
-    ) -> SyncJob:
-        """Run the full UC-8 pipeline for a single user and return the job row."""
-        user = await self._load_user(user_id)
+    async def create_job(self, user_id: UUID, *, trigger: SyncTrigger) -> SyncJob:
+        """Create a durable queued job, rejecting duplicate active jobs."""
+        user = await self._load_sync_user(user_id)
         if user.orcid_profile is None:
             raise NotFoundError(
                 "This user does not have an ORCID identifier configured.",
                 details={"user_id": str(user_id)},
             )
 
-        # Guard against concurrent syncs for the same user.  A RUNNING job
-        # from a background first-login task can overlap with a manual trigger
-        # arriving seconds later, causing duplicate-publication IntegrityErrors.
-        #
-        # If the existing RUNNING job is older than _STALE_RUNNING_TIMEOUT
-        # (orphaned by a server restart that bypassed main.py's startup
-        # cleanup), auto-fail it so the user is not permanently blocked.
-        running_stmt = (
+        active_stmt = (
             select(SyncJob)
             .where(SyncJob.user_id == user_id)
-            .where(SyncJob.status == SyncJobStatus.RUNNING)
+            .where(
+                SyncJob.status.in_(
+                    (SyncJobStatus.QUEUED, SyncJobStatus.RUNNING)
+                )
+            )
+            .order_by(SyncJob.created_at.desc())
+            .limit(1)
         )
-        running_job: Optional[SyncJob] = (
-            await self._session.execute(running_stmt)
+        active_job: Optional[SyncJob] = (
+            await self._session.execute(active_stmt)
         ).scalar_one_or_none()
-        if running_job is not None:
-            if (
-                running_job.started_at is not None
-                and (datetime.now(timezone.utc) - running_job.started_at)
-                > self._STALE_RUNNING_TIMEOUT
-            ):
-                logger.warning(
-                    "Auto-failing stale RUNNING sync job %s (started %s)",
-                    running_job.id,
-                    running_job.started_at,
-                )
-                running_job.status = SyncJobStatus.FAILED
-                running_job.error_message = (
-                    "Auto-failed: stuck in RUNNING for >30 min (likely orphaned)"
-                )
-                running_job.finished_at = datetime.now(timezone.utc)
-                await self._session.flush()
-            else:
-                raise ExternalServiceError(
-                    "A sync is already running for this user. "
-                    "Please wait for it to complete."
-                )
+        if active_job is not None:
+            raise ConflictError(
+                "A sync is already queued or running for this user.",
+                details={"job_id": str(active_job.id)},
+            )
 
         job = SyncJob(
             user_id=user.id,
             trigger=trigger,
-            status=SyncJobStatus.RUNNING,
-            started_at=datetime.now(timezone.utc),
+            status=SyncJobStatus.QUEUED,
         )
         self._session.add(job)
-        await self._session.flush()
+        try:
+            await self._session.commit()
+        except IntegrityError as exc:
+            await self._session.rollback()
+            raise ConflictError(
+                "A sync is already queued or running for this user."
+            ) from exc
+        await self._session.refresh(job)
+        return job
+
+    async def run_job(self, job_id: UUID) -> SyncJob:
+        """Execute one queued job. The database row is the source of truth."""
+        job = await self._session.get(SyncJob, job_id)
+        if job is None:
+            raise NotFoundError("Sync job not found.")
+        if job.status in (SyncJobStatus.SUCCEEDED, SyncJobStatus.NO_NEW_DATA):
+            return job
+        if (
+            job.status == SyncJobStatus.RUNNING
+            and job.started_at is not None
+            and datetime.now(timezone.utc) - job.started_at < timedelta(hours=1)
+        ):
+            # Celery can redeliver a message before the original worker has
+            # acknowledged it. Do not execute the same user's pipeline twice.
+            return job
+
+        user = await self._load_user(job.user_id)
+        if user.orcid_profile is None:
+            await self._mark_failed(job_id, "User does not have an ORCID identifier.")
+            raise NotFoundError("This user does not have an ORCID identifier configured.")
+
+        job.status = SyncJobStatus.RUNNING
+        job.progress_stage = "resolving_profile"
+        job.started_at = datetime.now(timezone.utc)
+        job.finished_at = None
+        job.error_message = None
+        await self._session.commit()
 
         _user_id_str = str(user.id)  # capture before any possible session rollback
         try:
             publications_added, tags_added, no_new_data = await self._harvest(
-                user, user.orcid_profile
+                user, user.orcid_profile, job.id
             )
+            await self._set_progress(job.id, "finalizing")
             job.publications_added = publications_added
             job.tags_added = tags_added
             job.status = (
                 SyncJobStatus.NO_NEW_DATA if no_new_data else SyncJobStatus.SUCCEEDED
             )
+            job.progress_stage = "completed"
         except ExternalServiceError as exc:
-            job.status = SyncJobStatus.FAILED
-            job.error_message = exc.message
-            job.finished_at = datetime.now(timezone.utc)
-            await self._session.commit()
+            await self._session.rollback()
+            await self._mark_failed(job_id, exc.message)
             raise
         except Exception as exc:  # noqa: BLE001
-            job.status = SyncJobStatus.FAILED
-            job.error_message = str(exc)
+            await self._session.rollback()
+            await self._mark_failed(job_id, str(exc))
             logger.exception("Harvest pipeline failed for user %s", _user_id_str)
-            job.finished_at = datetime.now(timezone.utc)
-            await self._session.commit()
             raise
 
         job.finished_at = datetime.now(timezone.utc)
@@ -175,7 +182,47 @@ class HarvestService:
         await self._session.refresh(job)
         return job
 
+    async def run_for_user(
+        self, user_id: UUID, *, trigger: SyncTrigger
+    ) -> SyncJob:
+        """Compatibility helper used by scripts: create then execute a job."""
+        job = await self.create_job(user_id, trigger=trigger)
+        return await self.run_job(job.id)
+
+    async def _mark_failed(self, job_id: UUID, message: str) -> None:
+        job = await self._session.get(SyncJob, job_id)
+        if job is None:
+            return
+        job.status = SyncJobStatus.FAILED
+        job.progress_stage = "failed"
+        job.error_message = message[:4000]
+        job.finished_at = datetime.now(timezone.utc)
+        await self._session.commit()
+
     # ------------------------------------------------------------------ Helpers
+    async def _set_progress(self, job_id: UUID, stage: str) -> None:
+        """Publish progress without committing the pipeline transaction."""
+        from app.db.session import SessionLocal
+
+        async with SessionLocal() as progress_session:
+            await progress_session.execute(
+                update(SyncJob)
+                .where(SyncJob.id == job_id)
+                .values(progress_stage=stage)
+            )
+            await progress_session.commit()
+
+    async def _load_sync_user(self, user_id: UUID) -> User:
+        stmt = (
+            select(User)
+            .where(User.id == user_id)
+            .options(selectinload(User.orcid_profile))
+        )
+        user = (await self._session.execute(stmt)).scalar_one_or_none()
+        if user is None:
+            raise NotFoundError("User not found.")
+        return user
+
     async def _load_user(self, user_id: UUID) -> User:
         stmt = (
             select(User)
@@ -194,7 +241,7 @@ class HarvestService:
         return user
 
     async def _harvest(
-        self, user: User, orcid: OrcidProfile
+        self, user: User, orcid: OrcidProfile, job_id: UUID
     ) -> Tuple[int, int, bool]:
         """Execute the UC-8 pipeline; returns (pub_added, tag_added, no_new)."""
         # Step 1: Resolve OpenAlex author ID from ORCID (cached after first sync).
@@ -207,6 +254,7 @@ class HarvestService:
             author_id = orcid.openalex_author_id
 
         # Step 2: Fetch publication payloads.
+        await self._set_progress(job_id, "fetching_publications")
         # Primary path: OpenAlex author works (comprehensive — picks up papers
         # the author didn't register on ORCID themselves).
         # Fallback: ORCID DOI list → individual OpenAlex DOI lookups.
@@ -284,13 +332,16 @@ class HarvestService:
             # Jump straight to NLP — skip publication persistence loop.
             if len(abstract_corpus) > max_pubs:
                 abstract_corpus = abstract_corpus[:max_pubs]
+            await self._set_progress(job_id, "extracting_keywords")
             candidate_phrases = await self._extract_candidate_phrases(abstract_corpus)
             if not candidate_phrases:
                 return 0, 0, True
             combined_context = "\n\n".join(abstract_corpus[:5])
+            await self._set_progress(job_id, "normalizing_tags")
             normalized = await normalize_keywords(
                 candidate_phrases, abstract=combined_context
             )
+            await self._set_progress(job_id, "saving_results")
             tags_added = await self._persist_tags(user, normalized)
             return 0, tags_added, False
 
@@ -304,6 +355,7 @@ class HarvestService:
         # duplicate-key violations from payloads that share a DOI.
         _flushed_dois: set[str] = set()
 
+        await self._set_progress(job_id, "processing_abstracts")
         for doi_key, payload in new_items.items():
             if doi_key in _flushed_dois:
                 continue
@@ -363,15 +415,18 @@ class HarvestService:
             )
             abstract_corpus = abstract_corpus[:max_pubs]
 
+        await self._set_progress(job_id, "extracting_keywords")
         candidate_phrases = await self._extract_candidate_phrases(abstract_corpus)
         if not candidate_phrases:
             return publications_added, 0, False
 
         # Batch LLM normalization to avoid blowing up the prompt or hitting
         # provider response limits when the candidate set is large.
+        await self._set_progress(job_id, "normalizing_tags")
         normalized = await self._normalize_in_batches(
             candidate_phrases, abstract_corpus
         )
+        await self._set_progress(job_id, "saving_results")
         tags_added = await self._persist_tags(user, normalized)
         return publications_added, tags_added, False
 
@@ -523,6 +578,7 @@ async def list_users_for_quarterly_sync(session: AsyncSession) -> List[User]:
     stmt = (
         select(User)
         .join(OrcidProfile, OrcidProfile.user_id == User.id)
+        .where(User.status == AccountStatus.ACTIVE)
         .options(selectinload(User.orcid_profile))
     )
     return list((await session.execute(stmt)).scalars().all())

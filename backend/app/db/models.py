@@ -35,10 +35,12 @@ from sqlalchemy import (
     Enum,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -336,6 +338,14 @@ class AcademicBackground(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 class SyncJob(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "sync_jobs"
+    __table_args__ = (
+        Index(
+            "uq_sync_jobs_one_active_per_user",
+            "user_id",
+            unique=True,
+            postgresql_where=text("status IN ('QUEUED', 'RUNNING')"),
+        ),
+    )
 
     user_id: Mapped[UUID] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
@@ -347,6 +357,9 @@ class SyncJob(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         Enum(SyncJobStatus, name="sync_job_status"),
         nullable=False,
         default=SyncJobStatus.QUEUED,
+    )
+    progress_stage: Mapped[str] = mapped_column(
+        String(64), nullable=False, default="queued"
     )
     started_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))

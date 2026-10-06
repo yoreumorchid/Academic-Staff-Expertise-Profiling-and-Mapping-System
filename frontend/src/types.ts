@@ -33,6 +33,7 @@ export interface TokenResponse {
   access_token: string;
   token_type: string;
   user: CurrentUser;
+  sync_job_id: string | null;
 }
 
 export type ActiveView = "staff" | "admin";
@@ -117,14 +118,40 @@ export type SyncJobStatus =
   | "no_new_data"
   | "failed";
 
+export type SyncProgressStage =
+  | "queued"
+  | "resolving_profile"
+  | "fetching_publications"
+  | "processing_abstracts"
+  | "extracting_keywords"
+  | "normalizing_tags"
+  | "saving_results"
+  | "finalizing"
+  | "completed"
+  | "failed";
+
 export interface SyncJob {
   id: string;
   trigger: SyncTrigger;
   status: SyncJobStatus;
+  progress_stage: SyncProgressStage;
   publications_added: number;
   tags_added: number;
   started_at: string | null;
   finished_at: string | null;
+  error_message: string | null;
+}
+
+export interface SyncStatus {
+  active: boolean;
+  job_id: string | null;
+  status: SyncJobStatus | null;
+  progress_stage: SyncProgressStage | null;
+  trigger: SyncTrigger | null;
+  started_at: string | null;
+  finished_at: string | null;
+  publications_added: number;
+  tags_added: number;
   error_message: string | null;
 }
 

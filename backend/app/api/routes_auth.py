@@ -1,11 +1,12 @@
 """Authentication endpoints — UC-1, UC-3, UC-4."""
 from __future__ import annotations
 
+import logging
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user
-from app.db.models import User
+from app.db.models import SyncTrigger, User
 from app.db.session import get_session
 from app.schemas import (
     ChangePasswordRequest,
@@ -19,8 +20,10 @@ from app.schemas import (
     TokenResponse,
 )
 from app.services.auth import AuthService
+from app.services.sync_queue import enqueue_user_sync
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+logger = logging.getLogger(__name__)
 
 
 def _to_current_user_out(user: User) -> CurrentUserOut:
@@ -62,9 +65,24 @@ async def login(
     session: AsyncSession = Depends(get_session),
 ) -> TokenResponse:
     service = AuthService(session)
-    user, _first_login = await service.authenticate(payload.email, payload.password)
+    user, first_login = await service.authenticate(payload.email, payload.password)
     token = service.issue_token(user)
-    return TokenResponse(access_token=token, user=_to_current_user_out(user))
+
+    sync_job_id = None
+    if first_login and user.orcid_profile is not None:
+        try:
+            job = await enqueue_user_sync(
+                session, user.id, trigger=SyncTrigger.FIRST_LOGIN
+            )
+            sync_job_id = job.id
+        except Exception:
+            logger.exception("Could not queue first-login sync for user %s", user.id)
+
+    return TokenResponse(
+        access_token=token,
+        user=_to_current_user_out(user),
+        sync_job_id=sync_job_id,
+    )
 
 
 @router.post(

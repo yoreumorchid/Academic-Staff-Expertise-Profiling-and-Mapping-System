@@ -4,16 +4,16 @@ from __future__ import annotations
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user
-from app.core.exceptions import ForbiddenError
+from app.core.exceptions import ForbiddenError, NotFoundError
 from app.db.models import SyncJob, SyncJobStatus, SyncTrigger, User, UserRole
 from app.db.session import get_session
 from app.schemas import SyncJobOut, SyncStatusOut
-from app.services.harvest import HarvestService
+from app.services.sync_queue import enqueue_user_sync
 
 router = APIRouter(prefix="/sync", tags=["sync"])
 
@@ -21,14 +21,15 @@ router = APIRouter(prefix="/sync", tags=["sync"])
 @router.post(
     "/me",
     response_model=SyncJobOut,
+    status_code=status.HTTP_202_ACCEPTED,
     summary="UC-12 — Academic staff manually trigger a sync for themselves.",
 )
 async def trigger_self_sync(
     session: AsyncSession = Depends(get_session),
     actor: User = Depends(get_current_user),
 ) -> SyncJobOut:
-    job = await HarvestService(session).run_for_user(
-        actor.id, trigger=SyncTrigger.MANUAL
+    job = await enqueue_user_sync(
+        session, actor.id, trigger=SyncTrigger.MANUAL
     )
     return SyncJobOut.model_validate(job)
 
@@ -36,6 +37,7 @@ async def trigger_self_sync(
 @router.post(
     "/users/{target_user_id}",
     response_model=SyncJobOut,
+    status_code=status.HTTP_202_ACCEPTED,
     summary="UC-12 — Faculty Administrator triggers a sync for any staff member.",
 )
 async def trigger_admin_sync(
@@ -47,8 +49,8 @@ async def trigger_admin_sync(
         raise ForbiddenError(
             "Only Faculty Administrators may trigger syncs for other users."
         )
-    job = await HarvestService(session).run_for_user(
-        target_user_id, trigger=SyncTrigger.MANUAL
+    job = await enqueue_user_sync(
+        session, target_user_id, trigger=SyncTrigger.MANUAL
     )
     return SyncJobOut.model_validate(job)
 
@@ -74,32 +76,52 @@ async def list_sync_jobs(
 
 
 @router.get(
+    "/jobs/{job_id}",
+    response_model=SyncJobOut,
+    summary="UC-12 - Read one synchronization job for progress polling.",
+)
+async def get_sync_job(
+    job_id: UUID,
+    session: AsyncSession = Depends(get_session),
+    actor: User = Depends(get_current_user),
+) -> SyncJobOut:
+    job = await session.get(SyncJob, job_id)
+    if job is None:
+        raise NotFoundError("Sync job not found.")
+    if actor.role != UserRole.FACULTY_ADMINISTRATOR and job.user_id != actor.id:
+        raise ForbiddenError("You may only view your own synchronization jobs.")
+    return SyncJobOut.model_validate(job)
+
+
+@router.get(
     "/status",
     response_model=SyncStatusOut,
-    summary="UC-12 — Lightweight poller for whether the actor has a sync running.",
+    summary="UC-12 — Return the actor's latest synchronization status.",
 )
 async def get_sync_status(
     session: AsyncSession = Depends(get_session),
     actor: User = Depends(get_current_user),
 ) -> SyncStatusOut:
-    """Return whether the calling user currently has a RUNNING sync job.
-
-    Polled every few seconds by the frontend so a global “Sync in progress…”
-    modal can appear regardless of whether the sync was kicked off by
-    first-login, manual button, or a Faculty Administrator trigger.
-    """
+    """Return the latest job, including terminal state and result counts."""
     stmt = (
         select(SyncJob)
         .where(SyncJob.user_id == actor.id)
-        .where(SyncJob.status == SyncJobStatus.RUNNING)
         .order_by(SyncJob.created_at.desc())
         .limit(1)
     )
     job = (await session.execute(stmt)).scalar_one_or_none()
     if job is None:
-        return SyncStatusOut(running=False)
+        return SyncStatusOut(active=False)
+    active = job.status in (SyncJobStatus.QUEUED, SyncJobStatus.RUNNING)
     return SyncStatusOut(
-        running=True,
+        active=active,
+        job_id=job.id,
+        status=job.status,
+        progress_stage=job.progress_stage,
         trigger=job.trigger,
         started_at=job.started_at,
+        finished_at=job.finished_at,
+        publications_added=job.publications_added,
+        tags_added=job.tags_added,
+        error_message=job.error_message,
     )

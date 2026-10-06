@@ -53,6 +53,7 @@ from app.schemas import (
 from app.services.document_extract import extract_text_from_upload
 from app.services.embeddings import embed_text, embed_texts
 from app.services.harvest import HarvestService
+from app.services.sync_queue import ensure_user_sync_inactive
 
 logger = logging.getLogger(__name__)
 
@@ -225,6 +226,7 @@ async def supplement_abstract_text(
     session: AsyncSession = Depends(get_session),
     actor: User = Depends(get_current_user),
 ) -> None:
+    await ensure_user_sync_inactive(session, actor.id)
     await _persist_supplemented_abstract(
         session, actor, publication_id, payload.abstract_text
     )
@@ -241,6 +243,7 @@ async def supplement_abstract_file(
     session: AsyncSession = Depends(get_session),
     actor: User = Depends(get_current_user),
 ) -> None:
+    await ensure_user_sync_inactive(session, actor.id)
     buffer = await file.read()
     text = await extract_text_from_upload(file.filename or "upload", buffer)
     await _persist_supplemented_abstract(session, actor, publication_id, text)
@@ -526,6 +529,7 @@ async def refine_expertise(
     session: AsyncSession = Depends(get_session),
     actor: User = Depends(get_current_user),
 ) -> List[UserExpertiseTagOut]:
+    await ensure_user_sync_inactive(session, actor.id)
     # Remove unwanted tags first.
     if payload.remove_tag_ids:
         stmt = (

@@ -34,7 +34,7 @@ const PORTFOLIO_LABELS: Record<string, string> = {
 };
 
 export function ProfileOverviewPage() {
-  const { user, logout } = useAuthStore();
+  const { user, logout, activeSyncJobId, setActiveSyncJobId } = useAuthStore();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<StaffProfileDetail | null>(null);
   const [jobs, setJobs] = useState<SyncJob[]>([]);
@@ -56,19 +56,8 @@ export function ProfileOverviewPage() {
   const isAcademic =
     user?.role === "academic_staff" || user?.is_dual_role === true;
 
-  // Long-running sync state.  Once a sync is dispatched we set
-  // ``syncing=true`` so a blocking modal appears and beforeunload guards
-  // any close/refresh attempts.  The button click POSTs and AWAITS the
-  // backend, which is synchronous (returns only when the harvest finishes
-  // or fails) — there is no separate polling channel.
-  const [syncing, setSyncing] = useState(false);
-  // Show a sync-in-progress warning that persists for the entire duration.
-  useEffect(() => {
-    if (!syncing) return;
-    setInfo(
-      "Sync may take several minutes. Do NOT refresh, close the tab, or click the button again until it completes."
-    );
-  }, [syncing]);
+  // Active sync state is persisted globally by job id, so navigation and
+  // refreshes do not interrupt the worker.
 
 
   async function loadAll() {
@@ -95,38 +84,38 @@ export function ProfileOverviewPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
+  useEffect(() => {
+    const reload = (event: Event) => {
+      const job = (event as CustomEvent<SyncJob>).detail;
+      if (job?.status === "no_new_data") {
+        setInfo("Synchronization completed. Your expertise profile is already up to date.");
+      } else if (job?.status === "succeeded") {
+        setInfo(
+          `Synchronization completed: ${job.publications_added} publication(s) and ${job.tags_added} expertise tag(s) added.`,
+        );
+      }
+      void loadAll();
+    };
+    window.addEventListener("expertise-sync-completed", reload);
+    return () => window.removeEventListener("expertise-sync-completed", reload);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
   async function triggerSync() {
-    if (syncing) return;  // double-click guard
-    setSyncing(true);
+    if (activeSyncJobId) return;
     setBusy(true);
     setError(null);
     setInfo(null);
     try {
-      const { data } = await api.post<SyncJob>("/sync/me", null, {
-        timeout: 600000,  // 10 min — large harvests can take a while
-      });
-      setInfo(
-        `Sync ${data.status}. ${data.publications_added} new publication(s), ${data.tags_added} new tag(s).`,
-      );
-      await loadAll();
+      const { data } = await api.post<SyncJob>("/sync/me");
+      setActiveSyncJobId(data.id);
+      setInfo("Synchronization queued. You may safely navigate to another page.");
     } catch (err) {
       setError(extractApiError(err, "Manual sync failed."));
     } finally {
       setBusy(false);
-      setSyncing(false);
     }
   }
-
-  // Block tab close / refresh while a sync is running.
-  useEffect(() => {
-    if (!syncing) return;
-    function onBeforeUnload(e: BeforeUnloadEvent) {
-      e.preventDefault();
-      e.returnValue = "";  // browsers ignore custom text but require this assignment
-    }
-    window.addEventListener("beforeunload", onBeforeUnload);
-    return () => window.removeEventListener("beforeunload", onBeforeUnload);
-  }, [syncing]);
 
   async function changePassword(event: FormEvent) {
     event.preventDefault();
@@ -178,14 +167,14 @@ export function ProfileOverviewPage() {
             type="button"
             className="btn-primary"
             onClick={triggerSync}
-            disabled={busy || syncing || !user.orcid_id}
+            disabled={busy || Boolean(activeSyncJobId) || !user.orcid_id}
             title={
               user.orcid_id
                 ? "Run a manual ORCID + OpenAlex harvest now."
                 : "Link an ORCID ID in your profile to enable harvesting."
             }
           >
-            {syncing ? "Syncing…" : busy ? "Working…" : "Manual Sync"}
+            {activeSyncJobId ? "Sync in progress…" : busy ? "Queuing…" : "Manual Sync"}
           </button>
         )}
       </header>

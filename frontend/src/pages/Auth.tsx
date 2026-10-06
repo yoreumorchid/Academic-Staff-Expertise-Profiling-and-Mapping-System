@@ -100,7 +100,7 @@ export function LoginPage() {
         email,
         password,
       });
-      login(data.access_token, data.user);
+      login(data.access_token, data.user, data.sync_job_id);
       const next =
         params.get("next") ??
         (data.user.role === "faculty_administrator"

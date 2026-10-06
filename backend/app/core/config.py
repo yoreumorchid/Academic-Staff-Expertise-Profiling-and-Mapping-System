@@ -39,6 +39,9 @@ class Settings(BaseSettings):
     # Database
     database_url: str
 
+    # Task queue
+    redis_url: str = "redis://localhost:6379/0"
+
     # SMTP
     smtp_host: str
     smtp_port: int = 587

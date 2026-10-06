@@ -7,11 +7,13 @@ interface AuthState {
   token: string | null;
   user: CurrentUser | null;
   activeView: ActiveView;
+  activeSyncJobId: string | null;
   hydrate: () => void;
-  login: (token: string, user: CurrentUser) => void;
+  login: (token: string, user: CurrentUser, syncJobId?: string | null) => void;
   logout: () => void;
   refreshMe: () => Promise<void>;
   setActiveView: (view: ActiveView) => void;
+  setActiveSyncJobId: (jobId: string | null) => void;
 }
 
 /**
@@ -27,22 +29,23 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       user: null,
       activeView: "staff",
+      activeSyncJobId: null,
 
       hydrate: () => {
         const { token } = get();
         if (token) setAuthToken(token);
       },
 
-      login: (token, user) => {
+      login: (token, user, syncJobId = null) => {
         setAuthToken(token);
         const defaultView: ActiveView =
           user.role === "faculty_administrator" ? "admin" : "staff";
-        set({ token, user, activeView: defaultView });
+        set({ token, user, activeView: defaultView, activeSyncJobId: syncJobId });
       },
 
       logout: () => {
         setAuthToken(null);
-        set({ token: null, user: null, activeView: "staff" });
+        set({ token: null, user: null, activeView: "staff", activeSyncJobId: null });
       },
 
       refreshMe: async () => {
@@ -58,6 +61,8 @@ export const useAuthStore = create<AuthState>()(
         if (view === "staff" && user.role !== "academic_staff" && !user.is_dual_role) return;
         set({ activeView: view });
       },
+
+      setActiveSyncJobId: (jobId) => set({ activeSyncJobId: jobId }),
     }),
     {
       name: "expertise-insight-auth",
@@ -65,6 +70,7 @@ export const useAuthStore = create<AuthState>()(
         token: state.token,
         user: state.user,
         activeView: state.activeView,
+        activeSyncJobId: state.activeSyncJobId,
       }),
       // Restore the axios Authorization header immediately when the store
       // is rehydrated from localStorage on page load.  Without this the

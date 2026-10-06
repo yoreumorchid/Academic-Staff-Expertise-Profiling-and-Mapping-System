@@ -31,10 +31,13 @@ dependencies = [
     "python-docx>=1.1",
     "reportlab>=4.2",
     "numpy>=1.26",
-    "apscheduler>=3.10",
+    "celery[redis]>=5.6,<6",
     "rapidfuzz>=3.9",
     "python-dotenv>=1.0",
 ]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
 
 [build-system]
 requires = ["setuptools>=68"]

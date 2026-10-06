@@ -187,6 +187,7 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: "CurrentUserOut"
+    sync_job_id: Optional[UUID] = None
 
 
 
@@ -329,6 +330,7 @@ class SyncJobOut(_ORM):
     id: UUID
     trigger: SyncTrigger
     status: SyncJobStatus
+    progress_stage: str
     publications_added: int
     tags_added: int
     started_at: Optional[datetime]
@@ -337,11 +339,18 @@ class SyncJobOut(_ORM):
 
 
 class SyncStatusOut(BaseModel):
-    """Lightweight payload for the sync-progress poller (UC-12)."""
+    """Latest sync state; ``active`` distinguishes in-progress jobs."""
 
-    running: bool
+    active: bool
+    job_id: Optional[UUID] = None
+    status: Optional[SyncJobStatus] = None
+    progress_stage: Optional[str] = None
     trigger: Optional[SyncTrigger] = None
     started_at: Optional[datetime] = None
+    finished_at: Optional[datetime] = None
+    publications_added: int = 0
+    tags_added: int = 0
+    error_message: Optional[str] = None
 
 
 
