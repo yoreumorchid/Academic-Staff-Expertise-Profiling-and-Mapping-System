@@ -226,7 +226,8 @@ export function GlobalBenchmarkingPage() {
         </h2>
         <p className="mt-1 text-caption text-text-tertiary">
           Upload one or more PDF/DOCX curriculum documents from peer
-          institutions.
+          institutions. Long documents are analysed section by section so
+          content near the end is not omitted.
         </p>
         <div className="mt-3">
           <input

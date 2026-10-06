@@ -15,6 +15,7 @@ Combines:
 from __future__ import annotations
 
 import logging
+import re
 from typing import Dict, List, Optional, Sequence, Tuple
 from uuid import UUID
 
@@ -40,6 +41,8 @@ logger = logging.getLogger(__name__)
 # Tunables — kept conservative to make the pipeline runnable with a
 # small faculty (the spec doesn't pin specific values for these).
 DEFAULT_CLUSTER_COUNT = 6
+PEER_CHUNK_MAX_CHARS = 1800
+MAX_PEER_CHUNKS = 80
 GLOBAL_QUERIES: Tuple[str, ...] = (
     "artificial intelligence",
     "machine learning",
@@ -50,6 +53,40 @@ GLOBAL_QUERIES: Tuple[str, ...] = (
     "sustainable engineering",
     "data science",
 )
+
+
+def chunk_peer_documents(
+    documents: Sequence[Tuple[str, str]],
+    *,
+    max_chars: int = PEER_CHUNK_MAX_CHARS,
+    max_chunks: int = MAX_PEER_CHUNKS,
+) -> Tuple[List[str], List[str]]:
+    """Split long peer documents so the embedding model sees all sections."""
+    chunks: List[str] = []
+    labels: List[str] = []
+    for filename, raw_text in documents:
+        words = raw_text.split()
+        current: List[str] = []
+        current_length = 0
+        document_chunks: List[str] = []
+        for word in words:
+            added_length = len(word) + (1 if current else 0)
+            if current and current_length + added_length > max_chars:
+                document_chunks.append(" ".join(current))
+                current = []
+                current_length = 0
+            current.append(word)
+            current_length += len(word) + (1 if current_length else 0)
+        if current:
+            document_chunks.append(" ".join(current))
+
+        for index, chunk in enumerate(document_chunks, start=1):
+            if len(chunks) >= max_chunks:
+                return chunks, labels
+            preview = re.sub(r"\s+", " ", chunk).strip()[:70]
+            chunks.append(chunk)
+            labels.append(f"{filename} — section {index}: {preview}")
+    return chunks, labels
 
 
 class BenchmarkingService:
@@ -73,7 +110,11 @@ class BenchmarkingService:
             internal_centroids, internal_labels, global_vectors, global_labels
         )
         visualization = self._build_visualization_payload(
-            internal_centroids, internal_labels, global_vectors, global_labels
+            internal_centroids,
+            internal_labels,
+            global_vectors,
+            global_labels,
+            external_kind="global",
         )
 
         narrative = await synthesize_narrative(
@@ -106,21 +147,25 @@ class BenchmarkingService:
                 "Trigger an expertise sync first.",
             )
 
-        # Each document contributes one or more text blocks; we treat the
-        # full document as a single competency vector for simplicity.
-        peer_texts = [text for _, text in peer_documents if text.strip()]
+        # Chunking prevents long curriculum documents from being silently
+        # truncated by the sentence-transformer tokenizer.
+        peer_texts, peer_labels = chunk_peer_documents(peer_documents)
         if not peer_texts:
             raise ValidationFailure(
                 "Could not identify meaningful academic domains in the uploads."
             )
         peer_vectors = await embed_texts(peer_texts)
-        peer_labels = [name for name, _ in peer_documents][: len(peer_vectors)]
+        peer_labels = peer_labels[: len(peer_vectors)]
 
         white_spaces = self._compute_white_spaces(
             internal_centroids, internal_labels, peer_vectors, peer_labels
         )
         visualization = self._build_visualization_payload(
-            internal_centroids, internal_labels, peer_vectors, peer_labels
+            internal_centroids,
+            internal_labels,
+            peer_vectors,
+            peer_labels,
+            external_kind="peer",
         )
         narrative = await synthesize_narrative(
             self._narrative_prompt(white_spaces, scope="peer institutional curricula")
@@ -129,7 +174,10 @@ class BenchmarkingService:
         return await self._persist_run(
             triggered_by=triggered_by,
             benchmark_type=BenchmarkType.PEER,
-            source_payload={"documents": peer_labels},
+            source_payload={
+                "documents": [name for name, _ in peer_documents],
+                "chunk_count": len(peer_texts),
+            },
             visualization=visualization,
             narrative=narrative,
             white_spaces=white_spaces,
@@ -177,7 +225,8 @@ class BenchmarkingService:
         """Run K-Means on every persisted expertise tag embedding."""
         stmt = select(ExpertiseTag).where(ExpertiseTag.embedding.isnot(None))
         rows = list((await self._session.execute(stmt)).scalars().all())
-        embeddings = [row.embedding for row in rows if row.embedding]
+        embedded_rows = [row for row in rows if row.embedding]
+        embeddings = [row.embedding for row in embedded_rows]
         if len(embeddings) < 2:
             return [], []
 
@@ -193,7 +242,7 @@ class BenchmarkingService:
         labels: List[str] = []
         for idx, centroid in enumerate(km.cluster_centers_):
             cluster_members = [
-                rows[i] for i, a in enumerate(assignments) if a == idx
+                embedded_rows[i] for i, a in enumerate(assignments) if a == idx
             ]
             if not cluster_members:
                 labels.append(f"Cluster {idx + 1}")
@@ -266,6 +315,8 @@ class BenchmarkingService:
         internal_labels: Sequence[str],
         external_vectors: Sequence[Sequence[float]],
         external_labels: Sequence[str],
+        *,
+        external_kind: str,
     ) -> Dict:
         """Project all points into 2D via UMAP for the dashboard scatter plot."""
         combined = list(internal_centroids) + list(external_vectors)
@@ -301,7 +352,7 @@ class BenchmarkingService:
                     "x": float(x),
                     "y": float(y),
                     "label": label,
-                    "kind": "internal" if idx < cutoff else "external",
+                    "kind": "internal" if idx < cutoff else external_kind,
                 }
             )
         return {"points": points}
