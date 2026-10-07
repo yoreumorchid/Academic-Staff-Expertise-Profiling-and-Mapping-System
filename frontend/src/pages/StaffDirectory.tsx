@@ -18,6 +18,7 @@ import { useSearchParams } from "react-router-dom";
 import { api, extractApiError } from "../api/client";
 import type {
   StaffDirectoryEntry,
+  StaffDirectoryPage,
   StaffProfileDetail,
   StaffSearchCategory,
 } from "../types";
@@ -32,6 +33,7 @@ const FILTER_OPTIONS: { value: StaffSearchCategory; label: string }[] = [
 ];
 
 type ViewMode = "individual" | "department" | "expertise";
+const DIRECTORY_PAGE_SIZE = 24;
 
 const VIEW_MODES: { value: ViewMode; label: string }[] = [
   { value: "individual", label: "Individual Cards" },
@@ -48,18 +50,26 @@ export function StaffDirectoryPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("individual");
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
-  async function search() {
+  async function search(requestedPage = 1) {
     setBusy(true);
     setError(null);
     try {
       const keyword = q.trim();
-      const { data } = await api.get<StaffDirectoryEntry[]>("/profile/staff", {
-        params: keyword
-          ? { q: keyword, category: filter }
-          : {},
+      const { data } = await api.get<StaffDirectoryPage>("/profile/staff", {
+        params: {
+          ...(keyword ? { q: keyword, category: filter } : {}),
+          page: requestedPage,
+          page_size: DIRECTORY_PAGE_SIZE,
+        },
       });
-      setRows(data);
+      setRows(data.items);
+      setPage(data.page);
+      setTotal(data.total);
+      setTotalPages(data.total_pages);
     } catch (err) {
       setError(extractApiError(err, "Search failed."));
     } finally {
@@ -75,7 +85,7 @@ export function StaffDirectoryPage() {
   // Re-run search when the filter changes and a keyword exists, so the
   // search scope updates immediately.
   useEffect(() => {
-    if (q.trim()) void search();
+    if (q.trim()) void search(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter]);
 
@@ -166,7 +176,7 @@ export function StaffDirectoryPage() {
               value={q}
               onChange={(e) => setQ(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") void search();
+                if (e.key === "Enter") void search(1);
               }}
             />
           </div>
@@ -189,7 +199,7 @@ export function StaffDirectoryPage() {
           <button
             type="button"
             className="btn-primary"
-            onClick={search}
+            onClick={() => void search(1)}
             disabled={busy}
           >
             {busy ? "Searching…" : "Search"}
@@ -201,7 +211,9 @@ export function StaffDirectoryPage() {
       <section className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="text-caption text-text-tertiary">
-            {rows.length} result{rows.length === 1 ? "" : "s"}
+            {total === 0
+              ? "0 results"
+              : `${(page - 1) * DIRECTORY_PAGE_SIZE + 1}–${Math.min(page * DIRECTORY_PAGE_SIZE, total)} of ${total} results`}
           </div>
           <div
             role="tablist"
@@ -246,6 +258,33 @@ export function StaffDirectoryPage() {
             onOpen={openStaff}
             groupLabel="Cluster"
           />
+        )}
+
+        {totalPages > 1 && (
+          <nav
+            aria-label="Staff directory pagination"
+            className="flex items-center justify-center gap-3"
+          >
+            <button
+              type="button"
+              className="btn-ghost"
+              disabled={busy || page <= 1}
+              onClick={() => void search(page - 1)}
+            >
+              Previous
+            </button>
+            <span className="text-caption text-text-tertiary">
+              Page {page} of {totalPages}
+            </span>
+            <button
+              type="button"
+              className="btn-ghost"
+              disabled={busy || page >= totalPages}
+              onClick={() => void search(page + 1)}
+            >
+              Next
+            </button>
+          </nav>
         )}
       </section>
 

@@ -4,7 +4,7 @@ import { api, extractApiError } from "../api/client";
 import { useAuthStore } from "../store/auth";
 import { canToggleView, sidebarForActiveView } from "../navigation/sidebar";
 import { SyncStatusGuard } from "./SyncStatusGuard";
-import type { StaffDirectoryEntry } from "../types";
+import type { StaffDirectoryEntry, StaffDirectoryPage } from "../types";
 
 /**
  * Persistent application shell shared by both portals.
@@ -57,16 +57,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       // department only. We issue both requests in parallel and union
       // the result set, preserving each staff member's first hit.
       const [byName, byDept] = await Promise.all([
-        api.get<StaffDirectoryEntry[]>("/profile/staff", {
-          params: { q, category: "name" },
+        api.get<StaffDirectoryPage>("/profile/staff", {
+          params: { q, category: "name", page_size: 8 },
         }),
-        api.get<StaffDirectoryEntry[]>("/profile/staff", {
-          params: { q, category: "department" },
+        api.get<StaffDirectoryPage>("/profile/staff", {
+          params: { q, category: "department", page_size: 8 },
         }),
       ]);
       const seen = new Set<string>();
       const merged: StaffDirectoryEntry[] = [];
-      for (const row of [...byName.data, ...byDept.data]) {
+      for (const row of [...byName.data.items, ...byDept.data.items]) {
         if (!seen.has(row.id)) {
           seen.add(row.id);
           merged.push(row);

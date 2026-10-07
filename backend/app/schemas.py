@@ -436,6 +436,16 @@ class StaffDirectoryEntry(_ORM):
     tag_labels: List[str]
 
 
+class StaffDirectoryPage(BaseModel):
+    items: List[StaffDirectoryEntry]
+    total: int
+    department_count: int
+    tagged_count: int
+    page: int
+    page_size: int
+    total_pages: int
+
+
 class StaffProfileDetail(StaffDirectoryEntry):
     publications: List["PublicationOut"]
     expertise: List["UserExpertiseTagOut"]
@@ -450,6 +460,8 @@ class StaffSearchQuery(BaseModel):
         pattern="^(all|name|expertise|publication|department)$",
         description="UC-7 alt flow — global header search category. 'all' performs a full-text scan across name, department, expertise, and publication metadata.",
     )
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=24, ge=1, le=100)
 
 
 

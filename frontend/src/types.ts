@@ -167,6 +167,16 @@ export interface StaffDirectoryEntry {
   tag_labels: string[];
 }
 
+export interface StaffDirectoryPage {
+  items: StaffDirectoryEntry[];
+  total: number;
+  department_count: number;
+  tagged_count: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
 export interface StaffProfileDetail extends StaffDirectoryEntry {
   publications: Publication[];
   expertise: UserExpertiseTag[];

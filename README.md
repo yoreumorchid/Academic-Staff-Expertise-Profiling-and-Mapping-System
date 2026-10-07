@@ -11,7 +11,7 @@ The design should remain capable of evolving into a faculty deployment, but
 production infrastructure must be added only when a real requirement or
 measurement justifies it.
 
-> **Status date:** 2026-10-06
+> **Status date:** 2026-10-07
 >
 > **Current focus:** complete the benchmarking methodology and remaining
 > critical validation before performance tuning or publication-oriented model
@@ -236,7 +236,11 @@ encryption at rest, or production readiness.
   standalone architecture rewrite.
 - PDF report rendering is still inside `routes_mapping.py`; it can move to the
   existing export/service boundary when mapping is next changed.
-- Staff directory filtering is partially in Python and has no pagination.
+- Staff directory filtering, faculty-wide authorization scope, aggregate counts,
+  stable ordering, and pagination are implemented in PostgreSQL queries. The
+  current case-insensitive substring search intentionally has no speculative
+  text index; PERF-02 should measure it before considering PostgreSQL trigram
+  search.
 - Database pool sizing uses SQLAlchemy defaults. This is acceptable until a load
   test establishes an appropriate deployment-specific value.
 - There is no general response cache and no API rate limiter yet.
@@ -342,7 +346,7 @@ static inspection.
 
 ### P1 - Essential Engineering Before a Faculty Pilot
 
-#### [ ] PERF-01 - Move Staff Search to SQL and Add Pagination
+#### [x] PERF-01 - Move Staff Search to SQL and Add Pagination
 
 **Goal:** fix the clearest existing query/scalability issue without adding cache.
 
@@ -354,6 +358,24 @@ static inspection.
 - Return pagination metadata and update all frontend callers and types.
 - Add only indexes supported by the final query shape.
 - Test authorization scope, category filtering, and page boundaries.
+
+**Completed 2026-10-07:** the confirmed visibility rule is
+faculty-wide for every Faculty Administrator so cross-department expertise can
+be discovered; department remains a filter rather than an authorization
+boundary. Authorized scope, name/department/expertise/publication filters,
+aggregate counts, stable ordering, limit, and offset now run in SQL. The API
+returns page metadata, all frontend callers use the paginated contract, and the
+directory exposes Previous/Next controls. Focused regressions were added for
+scope, categories, and page boundaries, and the frontend production build
+passes. The focused PERF-01 tests, complete backend suite, and Alembic schema
+check pass. No migration or index was added: the final contains-search shape
+uses leading wildcards, which ordinary B-tree indexes do not accelerate at the
+expected faculty-scale workload.
+
+When the FYP report is restored, update its UC-7 / Staff Profile Search flow,
+API contract, and Performance/Scalability section with the faculty-wide scope,
+SQL filtering, deterministic pagination, and the decision to defer specialized
+substring indexes until PERF-02 provides measurements.
 
 #### [x] SEC-01 - Apply the Prototype Security Baseline
 
@@ -663,6 +685,8 @@ Current focused automated tests:
   their final content.
 - `test_security_baseline.py`: reset-token hashing and invalid/expired handling,
   bounded upload reads, and disguised upload rejection.
+- `test_staff_search.py`: faculty-wide administrator scope, SQL category
+  predicates, pagination bounds/metadata, and deterministic limit/offset.
 
 Verification completed on **2026-10-06**:
 
@@ -672,6 +696,14 @@ Verification completed on **2026-10-06**:
   `alembic upgrade head`, then `alembic check`;
 - frontend: not rerun for SEC-01 because no frontend contract or source changed
   (the preceding TypeScript/Vite production build had succeeded).
+
+PERF-01 verification completed on **2026-10-07**:
+
+- focused backend: **12 tests passed** in `test_staff_search.py`;
+- complete backend: **24 tests passed**;
+- Alembic: `alembic check` reported no new upgrade operations;
+- frontend: `npm run build` succeeded;
+- PERF-01 contains no schema change or migration.
 
 Re-run these commands rather than assuming the snapshot remains true after later
 changes.

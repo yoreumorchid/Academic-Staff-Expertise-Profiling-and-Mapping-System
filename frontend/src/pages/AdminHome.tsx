@@ -3,42 +3,35 @@
  * (UC-6) with quick links into the modules permitted by the actor's
  * portfolio.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, extractApiError } from "../api/client";
 import { sidebarForActiveView } from "../navigation/sidebar";
 import { useAuthStore } from "../store/auth";
-import type { StaffDirectoryEntry } from "../types";
+import type { StaffDirectoryPage } from "../types";
 import { Banner, EmptyState, Stat } from "./Profile";
 
 export function AdminHomePage() {
   const { user } = useAuthStore();
-  const [staff, setStaff] = useState<StaffDirectoryEntry[]>([]);
+  const [staffTotal, setStaffTotal] = useState(0);
+  const [departmentTotal, setDepartmentTotal] = useState(0);
+  const [taggedTotal, setTaggedTotal] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
       try {
-        const { data } = await api.get<StaffDirectoryEntry[]>("/profile/staff");
-        setStaff(data);
+        const { data } = await api.get<StaffDirectoryPage>("/profile/staff", {
+          params: { page_size: 1 },
+        });
+        setStaffTotal(data.total);
+        setDepartmentTotal(data.department_count);
+        setTaggedTotal(data.tagged_count);
       } catch (err) {
         setError(extractApiError(err, "Could not load staff directory."));
       }
     })();
   }, []);
-
-  const departments = useMemo(() => {
-    const set = new Set<string>();
-    staff.forEach((s) => {
-      if (s.department) set.add(s.department);
-    });
-    return set.size;
-  }, [staff]);
-
-  const taggedCount = useMemo(
-    () => staff.filter((s) => s.tag_labels.length > 0).length,
-    [staff],
-  );
 
   const links = user ? sidebarForActiveView(user, "admin") : [];
 
@@ -53,9 +46,9 @@ export function AdminHomePage() {
       {error && <Banner kind="error">{error}</Banner>}
 
       <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <Stat label="Academic staff" value={staff.length} />
-        <Stat label="Departments" value={departments} />
-        <Stat label="Profiles with tags" value={taggedCount} />
+        <Stat label="Academic staff" value={staffTotal} />
+        <Stat label="Departments" value={departmentTotal} />
+        <Stat label="Profiles with tags" value={taggedTotal} />
       </section>
 
       <section className="card">

@@ -13,6 +13,7 @@ import type {
   SpecIngestResponse,
   SpecificationType,
   StaffDirectoryEntry,
+  StaffDirectoryPage,
 } from "../types";
 import { Banner, EmptyState } from "./Profile";
 
@@ -50,9 +51,22 @@ function MappingWorkspace({
 
   async function loadStaffIndex() {
     try {
-      const { data } = await api.get<StaffDirectoryEntry[]>("/profile/staff");
+      const { data } = await api.get<StaffDirectoryPage>("/profile/staff", {
+        params: { page: 1, page_size: 100 },
+      });
+      const remainingPages = await Promise.all(
+        Array.from({ length: Math.max(0, data.total_pages - 1) }, (_, index) =>
+          api.get<StaffDirectoryPage>("/profile/staff", {
+            params: { page: index + 2, page_size: 100 },
+          }),
+        ),
+      );
       const idx: Record<string, StaffDirectoryEntry> = {};
-      data.forEach((row) => {
+      const rows = [
+        ...data.items,
+        ...remainingPages.flatMap((response) => response.data.items),
+      ];
+      rows.forEach((row) => {
         idx[row.id] = row;
       });
       setStaffIndex(idx);

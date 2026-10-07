@@ -19,7 +19,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Query, UploadFile, status
 from fastapi.responses import Response
-from sqlalchemy import or_, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -29,7 +29,6 @@ from app.core.exceptions import ForbiddenError, NotFoundError, ValidationFailure
 from app.db.models import (
     AcademicBackground,
     AcademicBackgroundCategory,
-    AccountStatus,
     ExpertiseTag,
     Publication,
     PublicationAbstract,
@@ -46,6 +45,7 @@ from app.schemas import (
     PublicationOut,
     RefineTagsRequest,
     StaffDirectoryEntry,
+    StaffDirectoryPage,
     StaffProfileDetail,
     StaffSearchQuery,
     SupplementAbstractRequest,
@@ -54,6 +54,7 @@ from app.schemas import (
 from app.services.document_extract import extract_text_from_upload
 from app.services.embeddings import embed_text, embed_texts
 from app.services.harvest import HarvestService
+from app.services.staff_search import search_staff as search_staff_service
 from app.services.sync_queue import ensure_user_sync_inactive
 from app.services.upload_validation import decode_csv_upload, read_upload_limited
 
@@ -69,95 +70,21 @@ router = APIRouter(prefix="/profile", tags=["profile"])
 
 @router.get(
     "/staff",
-    response_model=List[StaffDirectoryEntry],
+    response_model=StaffDirectoryPage,
     summary="UC-7 — Faculty Administrator browses or searches staff profiles.",
 )
 async def search_staff(
     query: StaffSearchQuery = Depends(),
     session: AsyncSession = Depends(get_session),
     actor: User = Depends(get_current_user),
-) -> List[StaffDirectoryEntry]:
+) -> StaffDirectoryPage:
     # UC-7 alt flow: a global header search providing the keyword without
     # a category is treated as a name search by default.
-    if actor.role != UserRole.FACULTY_ADMINISTRATOR and not actor.is_dual_role:
+    if actor.role != UserRole.FACULTY_ADMINISTRATOR:
         raise ForbiddenError("Only administrators may browse the staff directory.")
 
-    stmt = (
-        select(User)
-        # Include true academic staff AND dual-role faculty admins who
-        # also hold an academic-staff identity (FR-012). Without the
-        # ``is_dual_role`` branch a dual-role admin would never surface
-        # in the global header search.
-        .where(
-            or_(
-                User.role == UserRole.ACADEMIC_STAFF,
-                User.is_dual_role.is_(True),
-            )
-        )
-        .where(User.status == AccountStatus.ACTIVE)
-        .options(
-            selectinload(User.expertise_links).selectinload(UserExpertiseTag.tag),
-            selectinload(User.publications),
-        )
-    )
-    if query.department:
-        stmt = stmt.where(User.department.ilike(f"%{query.department}%"))
-
-    rows = list((await session.execute(stmt)).scalars().all())
-
-    if query.q:
-        keyword = query.q.strip().lower()
-        if not keyword:
-            raise ValidationFailure("Provide a search term to query staff profiles.")
-        category = query.category or "name"
-
-        def matches(user: User) -> bool:
-            if category == "name":
-                return keyword in user.full_name.lower()
-            if category == "department":
-                return bool(user.department and keyword in user.department.lower())
-            if category == "expertise":
-                return any(
-                    keyword in link.tag.canonical_label.lower()
-                    for link in user.expertise_links
-                )
-            if category == "publication":
-                return any(
-                    keyword in ((pub.title or "") + " " + (pub.venue or "") + " " + (pub.doi or "")).lower()
-                    for pub in user.publications
-                )
-            if category == "all":
-                # UC-7 — full-text deep search when no filter is active.
-                if keyword in user.full_name.lower():
-                    return True
-                if user.department and keyword in user.department.lower():
-                    return True
-                if any(
-                    keyword in link.tag.canonical_label.lower()
-                    for link in user.expertise_links
-                ):
-                    return True
-                if any(
-                    keyword in ((pub.title or "") + " " + (pub.venue or "") + " " + (pub.doi or "")).lower()
-                    for pub in user.publications
-                ):
-                    return True
-                return False
-            return False
-
-        rows = [u for u in rows if matches(u)]
-
-    if query.tag_label:
-        rows = [
-            u
-            for u in rows
-            if any(
-                query.tag_label.lower() in link.tag.canonical_label.lower()
-                for link in u.expertise_links
-            )
-        ]
-
-    return [
+    result = await search_staff_service(session, query)
+    items = [
         StaffDirectoryEntry(
             id=u.id,
             full_name=u.full_name,
@@ -165,8 +92,17 @@ async def search_staff(
             department=u.department,
             tag_labels=[link.tag.canonical_label for link in u.expertise_links],
         )
-        for u in rows
+        for u in result.users
     ]
+    return StaffDirectoryPage(
+        items=items,
+        total=result.total,
+        department_count=result.department_count,
+        tagged_count=result.tagged_count,
+        page=query.page,
+        page_size=query.page_size,
+        total_pages=(result.total + query.page_size - 1) // query.page_size,
+    )
 
 
 @router.get(
