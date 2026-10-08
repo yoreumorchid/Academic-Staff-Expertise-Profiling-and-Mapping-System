@@ -231,11 +231,10 @@ encryption at rest, or production readiness.
 
 ## Known Technical and Documentation Gaps
 
-- `backend/app/api/routes_profile.py` is large and contains multiple business
-  concerns. It should be split only while changing those concerns, not through a
-  standalone architecture rewrite.
-- PDF report rendering is still inside `routes_mapping.py`; it can move to the
-  existing export/service boundary when mapping is next changed.
+- Profile endpoints are split by the existing UC-7, UC-9, UC-10, and UC-11
+  concerns while retaining the `/api/v1/profile` contract. Mapping PDF rendering
+  is isolated in a narrow service helper, leaving the route responsible for the
+  HTTP response.
 - Staff directory filtering, faculty-wide authorization scope, aggregate counts,
   stable ordering, and pagination are implemented in PostgreSQL queries. The
   current case-insensitive substring search intentionally has no speculative
@@ -415,7 +414,7 @@ Limitations section with these implemented controls and their prototype scope.
 - Document worker/Beat restart and failure-diagnosis commands.
 - Do not add another queue, SSE, or WebSocket transport.
 
-#### [ ] ARCH-01 - Targeted Route/Service Cleanup
+#### [x] ARCH-01 - Targeted Route/Service Cleanup
 
 **Goal:** improve maintainability after core behavior is stable.
 
@@ -427,6 +426,17 @@ Limitations section with these implemented controls and their prototype scope.
 - Keep SQLAlchemy access in services where appropriate; do not introduce a
   repository framework or rewrite unrelated modules.
 - Existing focused tests and frontend contracts remain unchanged and pass.
+
+**Completed 2026-10-07:** `routes_profile.py` now owns only UC-7 staff
+directory/profile endpoints; UC-9 publications, UC-10 academic background, and
+UC-11 expertise refinement are registered from focused route modules without
+changing URLs or response schemas. Shared profile response mapping is kept in a
+small API helper. Mapping-report PDF rendering moved from `routes_mapping.py`
+to `services/mapping_export.py`, including the existing off-event-loop render
+behavior. Focused tests lock the profile/mapping URL and HTTP-method surface and
+verify that the extracted renderer still produces a PDF. No database, frontend,
+or use-case behavior changed, so no migration or FYP report content update is
+required for this internal maintainability refactor.
 
 #### [ ] DOC-01 - Reconcile Scalability Documentation and FYP Report
 
@@ -687,6 +697,8 @@ Current focused automated tests:
   bounded upload reads, and disguised upload rejection.
 - `test_staff_search.py`: faculty-wide administrator scope, SQL category
   predicates, pagination bounds/metadata, and deterministic limit/offset.
+- `test_architecture_cleanup.py`: unchanged profile/mapping route contracts and
+  mapping PDF service rendering.
 
 Verification completed on **2026-10-06**:
 
@@ -704,6 +716,16 @@ PERF-01 verification completed on **2026-10-07**:
 - Alembic: `alembic check` reported no new upgrade operations;
 - frontend: `npm run build` succeeded;
 - PERF-01 contains no schema change or migration.
+
+ARCH-01 verification completed on **2026-10-07**:
+
+- focused backend: **15 tests passed** across the architecture-contract and
+  staff-search suites;
+- complete backend: **27 tests passed**;
+- Alembic: `alembic check` reported no new upgrade operations;
+- frontend: `npm run build` succeeded; the profile/mapping URL and HTTP-method
+  surface is also covered by a backend regression test and matches the
+  pre-change snapshot.
 
 Re-run these commands rather than assuming the snapshot remains true after later
 changes.
