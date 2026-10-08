@@ -197,11 +197,90 @@ The old synchronous-request design is no longer current.
 
 Current UC-15/16 code clusters individual rows from the global `ExpertiseTag`
 table. The report previously described faculty expertise centroids, which is not
-the same calculation. The planned correction is to build a weighted vector for
-each staff member from that person's validated/confident tags, then cluster the
-staff vectors. This prevents a widely reused vocabulary tag from being treated
-as if it were an independent member of staff and better matches the institutional
-capacity interpretation.
+the same calculation. A vocabulary row is a concept, not a member of staff: the
+current calculation gives a tag used by one person the same single observation
+as a tag used by many people, ignores which tags coexist in one person's
+profile, and can include embedded tags that are not linked to an eligible
+profile. It therefore describes the shape of the tag vocabulary rather than
+institutional capacity.
+
+BENCH-01 replaces that representation with one vector per eligible staff
+profile. An eligible profile belongs to an active academic staff member or an
+active dual-role administrator and contains at least one usable tag link. For a
+staff member `u`, let `E_u` contain links whose tag has a finite, non-zero
+embedding and which are either staff-validated or have AI confidence at least
+`tau`. Let `e_i` be the L2-normalized embedding for tag `i`. The link weight is:
+
+```text
+w_ui = 1                         if the link is staff-validated
+       clamp(confidence_ui,0,1) otherwise
+```
+
+The staff profile vector is the normalized weighted mean:
+
+```text
+raw_profile_u = sum(i in E_u, w_ui * e_i) / sum(i in E_u, w_ui)
+profile_u     = raw_profile_u / ||raw_profile_u||_2
+```
+
+Validation therefore has full weight while a retained unvalidated AI tag can
+contribute only in proportion to its confidence. A user-added tag is already
+stored as validated with confidence `1.0`. Links below `tau`, missing or invalid
+embeddings, zero-weight links, and profiles left with no usable vector are
+excluded. The run must report insufficient internal data instead of inventing
+centroids when fewer than three usable staff profiles or fewer than two distinct
+profile vectors remain.
+
+K-Means is then fitted to the staff vectors, not the tag vectors. Inputs are
+sorted by stable user identifier, K-Means uses k-means++ initialization with an
+explicit random seed and multiple initializations, and centroids are normalized
+before cosine comparison with external vectors. Candidate `k` values range from
+`2` through `min(K_max, staff_count - 1, distinct_profile_count)`. The selected
+`k` maximizes mean cosine silhouette; an exact tie selects the smaller model.
+Each cluster is labelled with its highest aggregate-weight member tags, with
+alphabetical tie-breaking, instead of treating an arbitrary global tag as the
+cluster identity.
+
+`tau`, `K_max`, and the K-Means initialization count are small methodological
+parameters rather than hidden magic numbers. The selected defaults are
+`tau = 0.70`, `K_max = 6`, and `n_init = 10`. `evaluation/scripts/` contains a
+DB-independent BENCH-01 sensitivity script that evaluates candidate settings on
+a deterministic labelled fixture. It records adjusted Rand index (agreement
+with known fixture groups), cosine silhouette, staff coverage, and stability
+under repeated input permutations. This synthetic evaluation is a regression
+and parameter-sensitivity check, not evidence that the resulting real faculty
+clusters are externally valid; BENCH-03 must still validate interpretation on
+representative faculty and peer data.
+
+The 2026-10-08 sensitivity run evaluated 32 combinations across deterministic
+three-group and six-group fixtures. The selected setting achieved mean ARI
+`1.0000`, mean cosine silhouette `0.9921`, staff coverage `1.0000`, and
+permutation stability `1.0000`; increasing `n_init` from 10 to 20 did not change
+the result. The timestamped Markdown and JSON reports under
+`backend/evaluation/reports/internal_expertise_tuning_20261008_033148.*` retain
+all tested settings. These values justify stable prototype defaults only, not
+real-world cluster validity.
+
+Methodological basis:
+
+- A weighted mean preserves each staff member as the unit of analysis while
+  allowing confirmed and uncertain evidence to contribute transparently.
+- L2 normalization makes staff profiles comparable by direction and keeps the
+  later cosine-distance interpretation consistent with the normalized
+  sentence-transformer embeddings.
+- K-Means remains the existing KISS clustering method; k-means++ provides
+  deliberate centroid seeding and a fixed seed/repeated initialization makes
+  this implementation reproducible. See Arthur and Vassilvitskii,
+  [k-means++: The Advantages of Careful Seeding](https://theory.stanford.edu/~sergei/papers/kMeansPP-soda.pdf).
+- Mean silhouette measures within-cluster cohesion against nearest-cluster
+  separation and supplies a bounded, data-dependent choice of `k`. See
+  Rousseeuw, [Silhouettes: a graphical aid to the interpretation and validation
+  of cluster analysis](https://doi.org/10.1016/0377-0427(87)90125-7) and the
+  [scikit-learn silhouette definition](https://scikit-learn.org/stable/modules/generated/sklearn.metrics.silhouette_score.html).
+- Adjusted Rand index is used only where the evaluation fixture has reference
+  groups; it compares partitions while correcting for chance and is invariant
+  to cluster-label numbering. See the
+  [scikit-learn ARI definition](https://scikit-learn.org/stable/modules/generated/sklearn.metrics.adjusted_rand_score.html).
 
 ## Prototype Security Baseline
 
@@ -263,7 +342,7 @@ tasks merely because they are listed together.
 
 ### P0 - Finish the FYP Core
 
-#### [ ] BENCH-01 - Correct the Internal Expertise Representation
+#### [x] BENCH-01 - Correct the Internal Expertise Representation
 
 **Goal:** make the benchmark compare external concepts with actual institutional
 capacity rather than clustering standalone vocabulary rows.
@@ -275,6 +354,28 @@ capacity rather than clustering standalone vocabulary rows.
 - Cluster staff vectors with deterministic parameters and meaningful labels.
 - Add focused tests for weighting, empty data, and stable input/vector alignment.
 - Update UC-15/16 descriptions and list the affected FYP methodology section.
+
+**Completed 2026-10-08:** UC-15/16 now construct one L2-normalized weighted
+vector per active academic or dual-role staff profile from validated tags and
+unvalidated AI tags meeting the evaluated `0.70` confidence threshold. Validated
+links receive weight `1.0`; retained AI links use their confidence. Invalid or
+inconsistent embeddings and empty profiles are excluded. Deterministic K-Means
+selects `k` from 2 through at most 6 by cosine silhouette, uses k-means++ with
+seed 42 and 10 initializations, normalizes final centroids, and labels clusters
+with aggregate-weight representative member tags. A DB-independent sensitivity
+script recorded all 32 evaluated parameter combinations; the selected setting
+achieved mean ARI `1.0000`, silhouette `0.9921`, coverage `1.0000`, and input-
+permutation stability `1.0000` on the stated synthetic fixtures. Five focused
+BENCH-01 tests plus the affected UC-16 chunk regression pass. No schema, API
+response, or frontend contract changed, so no migration or frontend build was
+required.
+
+When the FYP report is restored, update its UC-15 / UC-16 flows and
+Benchmarking Methodology / Internal Expertise Representation section with the
+staff-vector formula, evidence eligibility and weighting, silhouette-based
+cluster-count selection, deterministic parameters, cluster labelling rule,
+sensitivity results, and the explicit limitation that synthetic tuning is not
+external validation of real faculty clusters.
 
 #### [ ] BENCH-02 - Replace the IEEE Fixed-Query Global Benchmark
 
@@ -699,6 +800,8 @@ Current focused automated tests:
   predicates, pagination bounds/metadata, and deterministic limit/offset.
 - `test_architecture_cleanup.py`: unchanged profile/mapping route contracts and
   mapping PDF service rendering.
+- `test_internal_expertise.py`: BENCH-01 weighting, evidence filtering, empty
+  data, per-staff observations, and deterministic input/vector alignment.
 
 Verification completed on **2026-10-06**:
 
@@ -726,6 +829,17 @@ ARCH-01 verification completed on **2026-10-07**:
 - frontend: `npm run build` succeeded; the profile/mapping URL and HTTP-method
   surface is also covered by a backend regression test and matches the
   pre-change snapshot.
+
+BENCH-01 verification completed on **2026-10-08**:
+
+- parameter evaluation: 32 settings recorded in
+  `internal_expertise_tuning_20261008_033148.json` and `.md`; selected
+  `tau=0.70`, `K_max=6`, and `n_init=10`;
+- focused backend: **6 tests passed** across the new internal-expertise suite
+  and the affected peer-document chunk regression;
+- Alembic: not run because no database model or schema changed;
+- frontend: not built because no frontend source or client-facing API contract
+  changed.
 
 Re-run these commands rather than assuming the snapshot remains true after later
 changes.

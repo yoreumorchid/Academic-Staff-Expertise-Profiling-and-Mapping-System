@@ -20,7 +20,7 @@ from typing import Dict, List, Optional, Sequence, Tuple
 from uuid import UUID
 
 import numpy as np
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -29,18 +29,24 @@ from app.db.models import (
     BenchmarkRun,
     BenchmarkType,
     BenchmarkWhiteSpace,
-    ExpertiseTag,
+    AccountStatus,
+    User,
     UserExpertiseTag,
+    UserRole,
 )
 from app.services.embeddings import embed_text, embed_texts
 from app.services.external_apis import IeeeXploreClient
+from app.services.internal_expertise import (
+    ExpertiseEvidence,
+    build_staff_profiles,
+    cluster_staff_profiles,
+)
 from app.services.llm_normalize import synthesize_narrative
 
 logger = logging.getLogger(__name__)
 
 # Tunables — kept conservative to make the pipeline runnable with a
 # small faculty (the spec doesn't pin specific values for these).
-DEFAULT_CLUSTER_COUNT = 6
 PEER_CHUNK_MAX_CHARS = 1800
 MAX_PEER_CHUNKS = 80
 GLOBAL_QUERIES: Tuple[str, ...] = (
@@ -222,39 +228,40 @@ class BenchmarkingService:
     async def _cluster_internal_expertise(
         self,
     ) -> Tuple[List[List[float]], List[str]]:
-        """Run K-Means on every persisted expertise tag embedding."""
-        stmt = select(ExpertiseTag).where(ExpertiseTag.embedding.isnot(None))
-        rows = list((await self._session.execute(stmt)).scalars().all())
-        embedded_rows = [row for row in rows if row.embedding]
-        embeddings = [row.embedding for row in embedded_rows]
-        if len(embeddings) < 2:
-            return [], []
-
-        from sklearn.cluster import KMeans
-
-        n_clusters = max(2, min(DEFAULT_CLUSTER_COUNT, len(embeddings)))
-        matrix = np.asarray(embeddings, dtype=float)
-        km = KMeans(n_clusters=n_clusters, n_init=10, random_state=42)
-        assignments = km.fit_predict(matrix)
-        centroids = km.cluster_centers_.tolist()
-
-        # Label each cluster with the canonical tag closest to its centroid.
-        labels: List[str] = []
-        for idx, centroid in enumerate(km.cluster_centers_):
-            cluster_members = [
-                embedded_rows[i] for i, a in enumerate(assignments) if a == idx
-            ]
-            if not cluster_members:
-                labels.append(f"Cluster {idx + 1}")
-                continue
-            best = min(
-                cluster_members,
-                key=lambda r: float(
-                    np.linalg.norm(np.asarray(r.embedding) - centroid)
-                ),
+        """Cluster weighted staff profiles representing institutional capacity."""
+        stmt = (
+            select(UserExpertiseTag)
+            .join(UserExpertiseTag.user)
+            .where(User.status == AccountStatus.ACTIVE)
+            .where(
+                or_(
+                    User.role == UserRole.ACADEMIC_STAFF,
+                    User.is_dual_role.is_(True),
+                )
             )
-            labels.append(best.canonical_label)
-        return centroids, labels
+            .options(
+                selectinload(UserExpertiseTag.user),
+                selectinload(UserExpertiseTag.tag),
+            )
+            .order_by(UserExpertiseTag.user_id, UserExpertiseTag.tag_id)
+        )
+        links = list((await self._session.execute(stmt)).scalars().all())
+        evidence = [
+            ExpertiseEvidence(
+                user_id=link.user_id,
+                user_label=link.user.full_name,
+                tag_label=link.tag.canonical_label,
+                embedding=link.tag.embedding,
+                confidence=link.confidence,
+                validated=link.validated,
+            )
+            for link in links
+        ]
+        result = cluster_staff_profiles(build_staff_profiles(evidence))
+        return (
+            [list(centroid) for centroid in result.centroids],
+            list(result.labels),
+        )
 
     async def _fetch_global_vectors(self) -> Tuple[List[List[float]], List[str]]:
         """Pull IEEE Xplore titles and embed them as the global frontier set."""

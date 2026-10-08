@@ -1,0 +1,1129 @@
+{
+  "generated_at": "2026-10-08T03:31:48.466585+00:00",
+  "fixture": "deterministic synthetic faculties with 3 and 6 reference groups",
+  "selection_formula": "0.45*ARI + 0.25*coverage + 0.20*((silhouette+1)/2) + 0.10*stability",
+  "selected": {
+    "confidence_threshold": 0.7,
+    "max_clusters": 6,
+    "n_init": 10,
+    "selection_score": 0.9992104641455261,
+    "mean_metrics": {
+      "coverage": 1.0,
+      "ari": 1.0,
+      "silhouette": 0.9921046414552609,
+      "permutation_stability": 1.0
+    },
+    "scenarios": [
+      {
+        "reference_groups": 3,
+        "staff_count": 18,
+        "included_staff": 18,
+        "coverage": 1.0,
+        "selected_k": 3,
+        "ari": 1.0,
+        "silhouette": 0.9939897215580922,
+        "permutation_stability": 1.0
+      },
+      {
+        "reference_groups": 6,
+        "staff_count": 36,
+        "included_staff": 36,
+        "coverage": 1.0,
+        "selected_k": 6,
+        "ari": 1.0,
+        "silhouette": 0.9902195613524296,
+        "permutation_stability": 1.0
+      }
+    ]
+  },
+  "results": [
+    {
+      "confidence_threshold": 0.7,
+      "max_clusters": 6,
+      "n_init": 10,
+      "selection_score": 0.9992104641455261,
+      "mean_metrics": {
+        "coverage": 1.0,
+        "ari": 1.0,
+        "silhouette": 0.9921046414552609,
+        "permutation_stability": 1.0
+      },
+      "scenarios": [
+        {
+          "reference_groups": 3,
+          "staff_count": 18,
+          "included_staff": 18,
+          "coverage": 1.0,
+          "selected_k": 3,
+          "ari": 1.0,
+          "silhouette": 0.9939897215580922,
+          "permutation_stability": 1.0
+        },
+        {
+          "reference_groups": 6,
+          "staff_count": 36,
+          "included_staff": 36,
+          "coverage": 1.0,
+          "selected_k": 6,
+          "ari": 1.0,
+          "silhouette": 0.9902195613524296,
+          "permutation_stability": 1.0
+        }
+      ]
+    },
+    {
+      "confidence_threshold": 0.7,
+      "max_clusters": 6,
+      "n_init": 20,
+      "selection_score": 0.9992104641455261,
+      "mean_metrics": {
+        "coverage": 1.0,
+        "ari": 1.0,
+        "silhouette": 0.9921046414552609,
+        "permutation_stability": 1.0
+      },
+      "scenarios": [
+        {
+          "reference_groups": 3,
+          "staff_count": 18,
+          "included_staff": 18,
+          "coverage": 1.0,
+          "selected_k": 3,
+          "ari": 1.0,
+          "silhouette": 0.9939897215580922,
+          "permutation_stability": 1.0
+        },
+        {
+          "reference_groups": 6,
+          "staff_count": 36,
+          "included_staff": 36,
+          "coverage": 1.0,
+          "selected_k": 6,
+          "ari": 1.0,
+          "silhouette": 0.9902195613524296,
+          "permutation_stability": 1.0
+        }
+      ]
+    },
+    {
+      "confidence_threshold": 0.8,
+      "max_clusters": 6,
+      "n_init": 10,
+      "selection_score": 0.9989928524051657,
+      "mean_metrics": {
+        "coverage": 1.0,
+        "ari": 1.0,
+        "silhouette": 0.9899285240516575,
+        "permutation_stability": 1.0
+      },
+      "scenarios": [
+        {
+          "reference_groups": 3,
+          "staff_count": 18,
+          "included_staff": 18,
+          "coverage": 1.0,
+          "selected_k": 3,
+          "ari": 1.0,
+          "silhouette": 0.9922496565366554,
+          "permutation_stability": 1.0
+        },
+        {
+          "reference_groups": 6,
+          "staff_count": 36,
+          "included_staff": 36,
+          "coverage": 1.0,
+          "selected_k": 6,
+          "ari": 1.0,
+          "silhouette": 0.9876073915666596,
+          "permutation_stability": 1.0
+        }
+      ]
+    },
+    {
+      "confidence_threshold": 0.8,
+      "max_clusters": 6,
+      "n_init": 20,
+      "selection_score": 0.9989928524051657,
+      "mean_metrics": {
+        "coverage": 1.0,
+        "ari": 1.0,
+        "silhouette": 0.9899285240516575,
+        "permutation_stability": 1.0
+      },
+      "scenarios": [
+        {
+          "reference_groups": 3,
+          "staff_count": 18,
+          "included_staff": 18,
+          "coverage": 1.0,
+          "selected_k": 3,
+          "ari": 1.0,
+          "silhouette": 0.9922496565366554,
+          "permutation_stability": 1.0
+        },
+        {
+          "reference_groups": 6,
+          "staff_count": 36,
+          "included_staff": 36,
+          "coverage": 1.0,
+          "selected_k": 6,
+          "ari": 1.0,
+          "silhouette": 0.9876073915666596,
+          "permutation_stability": 1.0
+        }
+      ]
+    },
+    {
+      "confidence_threshold": 0.5,
+      "max_clusters": 6,
+      "n_init": 10,
+      "selection_score": 0.9989203552220749,
+      "mean_metrics": {
+        "coverage": 1.0,
+        "ari": 1.0,
+        "silhouette": 0.9892035522207494,
+        "permutation_stability": 1.0
+      },
+      "scenarios": [
+        {
+          "reference_groups": 3,
+          "staff_count": 18,
+          "included_staff": 18,
+          "coverage": 1.0,
+          "selected_k": 3,
+          "ari": 1.0,
+          "silhouette": 0.9920924005800812,
+          "permutation_stability": 1.0
+        },
+        {
+          "reference_groups": 6,
+          "staff_count": 36,
+          "included_staff": 36,
+          "coverage": 1.0,
+          "selected_k": 6,
+          "ari": 1.0,
+          "silhouette": 0.9863147038614175,
+          "permutation_stability": 1.0
+        }
+      ]
+    },
+    {
+      "confidence_threshold": 0.5,
+      "max_clusters": 6,
+      "n_init": 20,
+      "selection_score": 0.9989203552220749,
+      "mean_metrics": {
+        "coverage": 1.0,
+        "ari": 1.0,
+        "silhouette": 0.9892035522207494,
+        "permutation_stability": 1.0
+      },
+      "scenarios": [
+        {
+          "reference_groups": 3,
+          "staff_count": 18,
+          "included_staff": 18,
+          "coverage": 1.0,
+          "selected_k": 3,
+          "ari": 1.0,
+          "silhouette": 0.9920924005800812,
+          "permutation_stability": 1.0
+        },
+        {
+          "reference_groups": 6,
+          "staff_count": 36,
+          "included_staff": 36,
+          "coverage": 1.0,
+          "selected_k": 6,
+          "ari": 1.0,
+          "silhouette": 0.9863147038614175,
+          "permutation_stability": 1.0
+        }
+      ]
+    },
+    {
+      "confidence_threshold": 0.6,
+      "max_clusters": 6,
+      "n_init": 10,
+      "selection_score": 0.9956846462469983,
+      "mean_metrics": {
+        "coverage": 1.0,
+        "ari": 1.0,
+        "silhouette": 0.9568464624699826,
+        "permutation_stability": 1.0
+      },
+      "scenarios": [
+        {
+          "reference_groups": 3,
+          "staff_count": 18,
+          "included_staff": 18,
+          "coverage": 1.0,
+          "selected_k": 3,
+          "ari": 1.0,
+          "silhouette": 0.9600283577003837,
+          "permutation_stability": 1.0
+        },
+        {
+          "reference_groups": 6,
+          "staff_count": 36,
+          "included_staff": 36,
+          "coverage": 1.0,
+          "selected_k": 6,
+          "ari": 1.0,
+          "silhouette": 0.9536645672395816,
+          "permutation_stability": 1.0
+        }
+      ]
+    },
+    {
+      "confidence_threshold": 0.6,
+      "max_clusters": 6,
+      "n_init": 20,
+      "selection_score": 0.9956846462469983,
+      "mean_metrics": {
+        "coverage": 1.0,
+        "ari": 1.0,
+        "silhouette": 0.9568464624699826,
+        "permutation_stability": 1.0
+      },
+      "scenarios": [
+        {
+          "reference_groups": 3,
+          "staff_count": 18,
+          "included_staff": 18,
+          "coverage": 1.0,
+          "selected_k": 3,
+          "ari": 1.0,
+          "silhouette": 0.9600283577003837,
+          "permutation_stability": 1.0
+        },
+        {
+          "reference_groups": 6,
+          "staff_count": 36,
+          "included_staff": 36,
+          "coverage": 1.0,
+          "selected_k": 6,
+          "ari": 1.0,
+          "silhouette": 0.9536645672395816,
+          "permutation_stability": 1.0
+        }
+      ]
+    },
+    {
+      "confidence_threshold": 0.5,
+      "max_clusters": 5,
+      "n_init": 10,
+      "selection_score": 0.9452353065890159,
+      "mean_metrics": {
+        "coverage": 1.0,
+        "ari": 0.9,
+        "silhouette": 0.9023530658901591,
+        "permutation_stability": 1.0
+      },
+      "scenarios": [
+        {
+          "reference_groups": 3,
+          "staff_count": 18,
+          "included_staff": 18,
+          "coverage": 1.0,
+          "selected_k": 3,
+          "ari": 1.0,
+          "silhouette": 0.9920924005800812,
+          "permutation_stability": 1.0
+        },
+        {
+          "reference_groups": 6,
+          "staff_count": 36,
+          "included_staff": 36,
+          "coverage": 1.0,
+          "selected_k": 5,
+          "ari": 0.8,
+          "silhouette": 0.812613731200237,
+          "permutation_stability": 1.0
+        }
+      ]
+    },
+    {
+      "confidence_threshold": 0.5,
+      "max_clusters": 5,
+      "n_init": 20,
+      "selection_score": 0.9452353065890159,
+      "mean_metrics": {
+        "coverage": 1.0,
+        "ari": 0.9,
+        "silhouette": 0.9023530658901591,
+        "permutation_stability": 1.0
+      },
+      "scenarios": [
+        {
+          "reference_groups": 3,
+          "staff_count": 18,
+          "included_staff": 18,
+          "coverage": 1.0,
+          "selected_k": 3,
+          "ari": 1.0,
+          "silhouette": 0.9920924005800812,
+          "permutation_stability": 1.0
+        },
+        {
+          "reference_groups": 6,
+          "staff_count": 36,
+          "included_staff": 36,
+          "coverage": 1.0,
+          "selected_k": 5,
+          "ari": 0.8,
+          "silhouette": 0.812613731200237,
+          "permutation_stability": 1.0
+        }
+      ]
+    },
+    {
+      "confidence_threshold": 0.7,
+      "max_clusters": 5,
+      "n_init": 10,
+      "selection_score": 0.9452150711762268,
+      "mean_metrics": {
+        "coverage": 1.0,
+        "ari": 0.9,
+        "silhouette": 0.9021507117622678,
+        "permutation_stability": 1.0
+      },
+      "scenarios": [
+        {
+          "reference_groups": 3,
+          "staff_count": 18,
+          "included_staff": 18,
+          "coverage": 1.0,
+          "selected_k": 3,
+          "ari": 1.0,
+          "silhouette": 0.9939897215580922,
+          "permutation_stability": 1.0
+        },
+        {
+          "reference_groups": 6,
+          "staff_count": 36,
+          "included_staff": 36,
+          "coverage": 1.0,
+          "selected_k": 5,
+          "ari": 0.8,
+          "silhouette": 0.8103117019664433,
+          "permutation_stability": 1.0
+        }
+      ]
+    },
+    {
+      "confidence_threshold": 0.7,
+      "max_clusters": 5,
+      "n_init": 20,
+      "selection_score": 0.9452150711762268,
+      "mean_metrics": {
+        "coverage": 1.0,
+        "ari": 0.9,
+        "silhouette": 0.9021507117622678,
+        "permutation_stability": 1.0
+      },
+      "scenarios": [
+        {
+          "reference_groups": 3,
+          "staff_count": 18,
+          "included_staff": 18,
+          "coverage": 1.0,
+          "selected_k": 3,
+          "ari": 1.0,
+          "silhouette": 0.9939897215580922,
+          "permutation_stability": 1.0
+        },
+        {
+          "reference_groups": 6,
+          "staff_count": 36,
+          "included_staff": 36,
+          "coverage": 1.0,
+          "selected_k": 5,
+          "ari": 0.8,
+          "silhouette": 0.8103117019664433,
+          "permutation_stability": 1.0
+        }
+      ]
+    },
+    {
+      "confidence_threshold": 0.8,
+      "max_clusters": 5,
+      "n_init": 10,
+      "selection_score": 0.945075150184405,
+      "mean_metrics": {
+        "coverage": 1.0,
+        "ari": 0.9,
+        "silhouette": 0.9007515018440497,
+        "permutation_stability": 1.0
+      },
+      "scenarios": [
+        {
+          "reference_groups": 3,
+          "staff_count": 18,
+          "included_staff": 18,
+          "coverage": 1.0,
+          "selected_k": 3,
+          "ari": 1.0,
+          "silhouette": 0.9922496565366554,
+          "permutation_stability": 1.0
+        },
+        {
+          "reference_groups": 6,
+          "staff_count": 36,
+          "included_staff": 36,
+          "coverage": 1.0,
+          "selected_k": 5,
+          "ari": 0.8,
+          "silhouette": 0.8092533471514439,
+          "permutation_stability": 1.0
+        }
+      ]
+    },
+    {
+      "confidence_threshold": 0.8,
+      "max_clusters": 5,
+      "n_init": 20,
+      "selection_score": 0.945075150184405,
+      "mean_metrics": {
+        "coverage": 1.0,
+        "ari": 0.9,
+        "silhouette": 0.9007515018440497,
+        "permutation_stability": 1.0
+      },
+      "scenarios": [
+        {
+          "reference_groups": 3,
+          "staff_count": 18,
+          "included_staff": 18,
+          "coverage": 1.0,
+          "selected_k": 3,
+          "ari": 1.0,
+          "silhouette": 0.9922496565366554,
+          "permutation_stability": 1.0
+        },
+        {
+          "reference_groups": 6,
+          "staff_count": 36,
+          "included_staff": 36,
+          "coverage": 1.0,
+          "selected_k": 5,
+          "ari": 0.8,
+          "silhouette": 0.8092533471514439,
+          "permutation_stability": 1.0
+        }
+      ]
+    },
+    {
+      "confidence_threshold": 0.6,
+      "max_clusters": 5,
+      "n_init": 10,
+      "selection_score": 0.9420717259986676,
+      "mean_metrics": {
+        "coverage": 1.0,
+        "ari": 0.9,
+        "silhouette": 0.8707172599866757,
+        "permutation_stability": 1.0
+      },
+      "scenarios": [
+        {
+          "reference_groups": 3,
+          "staff_count": 18,
+          "included_staff": 18,
+          "coverage": 1.0,
+          "selected_k": 3,
+          "ari": 1.0,
+          "silhouette": 0.9600283577003837,
+          "permutation_stability": 1.0
+        },
+        {
+          "reference_groups": 6,
+          "staff_count": 36,
+          "included_staff": 36,
+          "coverage": 1.0,
+          "selected_k": 5,
+          "ari": 0.8,
+          "silhouette": 0.7814061622729676,
+          "permutation_stability": 1.0
+        }
+      ]
+    },
+    {
+      "confidence_threshold": 0.6,
+      "max_clusters": 5,
+      "n_init": 20,
+      "selection_score": 0.9420717259986676,
+      "mean_metrics": {
+        "coverage": 1.0,
+        "ari": 0.9,
+        "silhouette": 0.8707172599866757,
+        "permutation_stability": 1.0
+      },
+      "scenarios": [
+        {
+          "reference_groups": 3,
+          "staff_count": 18,
+          "included_staff": 18,
+          "coverage": 1.0,
+          "selected_k": 3,
+          "ari": 1.0,
+          "silhouette": 0.9600283577003837,
+          "permutation_stability": 1.0
+        },
+        {
+          "reference_groups": 6,
+          "staff_count": 36,
+          "included_staff": 36,
+          "coverage": 1.0,
+          "selected_k": 5,
+          "ari": 0.8,
+          "silhouette": 0.7814061622729676,
+          "permutation_stability": 1.0
+        }
+      ]
+    },
+    {
+      "confidence_threshold": 0.5,
+      "max_clusters": 4,
+      "n_init": 10,
+      "selection_score": 0.904193018749115,
+      "mean_metrics": {
+        "coverage": 1.0,
+        "ari": 0.825,
+        "silhouette": 0.82943018749115,
+        "permutation_stability": 1.0
+      },
+      "scenarios": [
+        {
+          "reference_groups": 3,
+          "staff_count": 18,
+          "included_staff": 18,
+          "coverage": 1.0,
+          "selected_k": 3,
+          "ari": 1.0,
+          "silhouette": 0.9920924005800812,
+          "permutation_stability": 1.0
+        },
+        {
+          "reference_groups": 6,
+          "staff_count": 36,
+          "included_staff": 36,
+          "coverage": 1.0,
+          "selected_k": 4,
+          "ari": 0.65,
+          "silhouette": 0.666767974402219,
+          "permutation_stability": 1.0
+        }
+      ]
+    },
+    {
+      "confidence_threshold": 0.5,
+      "max_clusters": 4,
+      "n_init": 20,
+      "selection_score": 0.904193018749115,
+      "mean_metrics": {
+        "coverage": 1.0,
+        "ari": 0.825,
+        "silhouette": 0.82943018749115,
+        "permutation_stability": 1.0
+      },
+      "scenarios": [
+        {
+          "reference_groups": 3,
+          "staff_count": 18,
+          "included_staff": 18,
+          "coverage": 1.0,
+          "selected_k": 3,
+          "ari": 1.0,
+          "silhouette": 0.9920924005800812,
+          "permutation_stability": 1.0
+        },
+        {
+          "reference_groups": 6,
+          "staff_count": 36,
+          "included_staff": 36,
+          "coverage": 1.0,
+          "selected_k": 4,
+          "ari": 0.65,
+          "silhouette": 0.666767974402219,
+          "permutation_stability": 1.0
+        }
+      ]
+    },
+    {
+      "confidence_threshold": 0.7,
+      "max_clusters": 4,
+      "n_init": 20,
+      "selection_score": 0.9026101741206921,
+      "mean_metrics": {
+        "coverage": 1.0,
+        "ari": 0.825,
+        "silhouette": 0.813601741206921,
+        "permutation_stability": 1.0
+      },
+      "scenarios": [
+        {
+          "reference_groups": 3,
+          "staff_count": 18,
+          "included_staff": 18,
+          "coverage": 1.0,
+          "selected_k": 3,
+          "ari": 1.0,
+          "silhouette": 0.9939897215580922,
+          "permutation_stability": 1.0
+        },
+        {
+          "reference_groups": 6,
+          "staff_count": 36,
+          "included_staff": 36,
+          "coverage": 1.0,
+          "selected_k": 4,
+          "ari": 0.65,
+          "silhouette": 0.6332137608557497,
+          "permutation_stability": 1.0
+        }
+      ]
+    },
+    {
+      "confidence_threshold": 0.8,
+      "max_clusters": 4,
+      "n_init": 20,
+      "selection_score": 0.9024916504835169,
+      "mean_metrics": {
+        "coverage": 1.0,
+        "ari": 0.825,
+        "silhouette": 0.8124165048351688,
+        "permutation_stability": 1.0
+      },
+      "scenarios": [
+        {
+          "reference_groups": 3,
+          "staff_count": 18,
+          "included_staff": 18,
+          "coverage": 1.0,
+          "selected_k": 3,
+          "ari": 1.0,
+          "silhouette": 0.9922496565366554,
+          "permutation_stability": 1.0
+        },
+        {
+          "reference_groups": 6,
+          "staff_count": 36,
+          "included_staff": 36,
+          "coverage": 1.0,
+          "selected_k": 4,
+          "ari": 0.65,
+          "silhouette": 0.6325833531336821,
+          "permutation_stability": 1.0
+        }
+      ]
+    },
+    {
+      "confidence_threshold": 0.7,
+      "max_clusters": 4,
+      "n_init": 10,
+      "selection_score": 0.9023811552672869,
+      "mean_metrics": {
+        "coverage": 1.0,
+        "ari": 0.825,
+        "silhouette": 0.8113115526728693,
+        "permutation_stability": 1.0
+      },
+      "scenarios": [
+        {
+          "reference_groups": 3,
+          "staff_count": 18,
+          "included_staff": 18,
+          "coverage": 1.0,
+          "selected_k": 3,
+          "ari": 1.0,
+          "silhouette": 0.9939897215580922,
+          "permutation_stability": 1.0
+        },
+        {
+          "reference_groups": 6,
+          "staff_count": 36,
+          "included_staff": 36,
+          "coverage": 1.0,
+          "selected_k": 4,
+          "ari": 0.65,
+          "silhouette": 0.6286333837876463,
+          "permutation_stability": 1.0
+        }
+      ]
+    },
+    {
+      "confidence_threshold": 0.8,
+      "max_clusters": 4,
+      "n_init": 10,
+      "selection_score": 0.9020777420783754,
+      "mean_metrics": {
+        "coverage": 1.0,
+        "ari": 0.825,
+        "silhouette": 0.8082774207837551,
+        "permutation_stability": 1.0
+      },
+      "scenarios": [
+        {
+          "reference_groups": 3,
+          "staff_count": 18,
+          "included_staff": 18,
+          "coverage": 1.0,
+          "selected_k": 3,
+          "ari": 1.0,
+          "silhouette": 0.9922496565366554,
+          "permutation_stability": 1.0
+        },
+        {
+          "reference_groups": 6,
+          "staff_count": 36,
+          "included_staff": 36,
+          "coverage": 1.0,
+          "selected_k": 4,
+          "ari": 0.65,
+          "silhouette": 0.6243051850308547,
+          "permutation_stability": 1.0
+        }
+      ]
+    },
+    {
+      "confidence_threshold": 0.6,
+      "max_clusters": 4,
+      "n_init": 10,
+      "selection_score": 0.9001686802796867,
+      "mean_metrics": {
+        "coverage": 1.0,
+        "ari": 0.825,
+        "silhouette": 0.7891868027968671,
+        "permutation_stability": 1.0
+      },
+      "scenarios": [
+        {
+          "reference_groups": 3,
+          "staff_count": 18,
+          "included_staff": 18,
+          "coverage": 1.0,
+          "selected_k": 3,
+          "ari": 1.0,
+          "silhouette": 0.9600283577003837,
+          "permutation_stability": 1.0
+        },
+        {
+          "reference_groups": 6,
+          "staff_count": 36,
+          "included_staff": 36,
+          "coverage": 1.0,
+          "selected_k": 4,
+          "ari": 0.65,
+          "silhouette": 0.6183452478933504,
+          "permutation_stability": 1.0
+        }
+      ]
+    },
+    {
+      "confidence_threshold": 0.6,
+      "max_clusters": 4,
+      "n_init": 20,
+      "selection_score": 0.9001686802796867,
+      "mean_metrics": {
+        "coverage": 1.0,
+        "ari": 0.825,
+        "silhouette": 0.7891868027968671,
+        "permutation_stability": 1.0
+      },
+      "scenarios": [
+        {
+          "reference_groups": 3,
+          "staff_count": 18,
+          "included_staff": 18,
+          "coverage": 1.0,
+          "selected_k": 3,
+          "ari": 1.0,
+          "silhouette": 0.9600283577003837,
+          "permutation_stability": 1.0
+        },
+        {
+          "reference_groups": 6,
+          "staff_count": 36,
+          "included_staff": 36,
+          "coverage": 1.0,
+          "selected_k": 4,
+          "ari": 0.65,
+          "silhouette": 0.6183452478933504,
+          "permutation_stability": 1.0
+        }
+      ]
+    },
+    {
+      "confidence_threshold": 0.5,
+      "max_clusters": 3,
+      "n_init": 10,
+      "selection_score": 0.871612611043539,
+      "mean_metrics": {
+        "coverage": 1.0,
+        "ari": 0.7666666666666666,
+        "silhouette": 0.7661261104353915,
+        "permutation_stability": 1.0
+      },
+      "scenarios": [
+        {
+          "reference_groups": 3,
+          "staff_count": 18,
+          "included_staff": 18,
+          "coverage": 1.0,
+          "selected_k": 3,
+          "ari": 1.0,
+          "silhouette": 0.9920924005800812,
+          "permutation_stability": 1.0
+        },
+        {
+          "reference_groups": 6,
+          "staff_count": 36,
+          "included_staff": 36,
+          "coverage": 1.0,
+          "selected_k": 3,
+          "ari": 0.5333333333333333,
+          "silhouette": 0.5401598202907018,
+          "permutation_stability": 1.0
+        }
+      ]
+    },
+    {
+      "confidence_threshold": 0.5,
+      "max_clusters": 3,
+      "n_init": 20,
+      "selection_score": 0.871612611043539,
+      "mean_metrics": {
+        "coverage": 1.0,
+        "ari": 0.7666666666666666,
+        "silhouette": 0.7661261104353915,
+        "permutation_stability": 1.0
+      },
+      "scenarios": [
+        {
+          "reference_groups": 3,
+          "staff_count": 18,
+          "included_staff": 18,
+          "coverage": 1.0,
+          "selected_k": 3,
+          "ari": 1.0,
+          "silhouette": 0.9920924005800812,
+          "permutation_stability": 1.0
+        },
+        {
+          "reference_groups": 6,
+          "staff_count": 36,
+          "included_staff": 36,
+          "coverage": 1.0,
+          "selected_k": 3,
+          "ari": 0.5333333333333333,
+          "silhouette": 0.5401598202907018,
+          "permutation_stability": 1.0
+        }
+      ]
+    },
+    {
+      "confidence_threshold": 0.6,
+      "max_clusters": 3,
+      "n_init": 20,
+      "selection_score": 0.8657259697017328,
+      "mean_metrics": {
+        "coverage": 1.0,
+        "ari": 0.7666666666666666,
+        "silhouette": 0.7072596970173285,
+        "permutation_stability": 1.0
+      },
+      "scenarios": [
+        {
+          "reference_groups": 3,
+          "staff_count": 18,
+          "included_staff": 18,
+          "coverage": 1.0,
+          "selected_k": 3,
+          "ari": 1.0,
+          "silhouette": 0.9600283577003837,
+          "permutation_stability": 1.0
+        },
+        {
+          "reference_groups": 6,
+          "staff_count": 36,
+          "included_staff": 36,
+          "coverage": 1.0,
+          "selected_k": 3,
+          "ari": 0.5333333333333333,
+          "silhouette": 0.45449103633427324,
+          "permutation_stability": 1.0
+        }
+      ]
+    },
+    {
+      "confidence_threshold": 0.7,
+      "max_clusters": 3,
+      "n_init": 10,
+      "selection_score": 0.8470916031203611,
+      "mean_metrics": {
+        "coverage": 1.0,
+        "ari": 0.72,
+        "silhouette": 0.7309160312036109,
+        "permutation_stability": 1.0
+      },
+      "scenarios": [
+        {
+          "reference_groups": 3,
+          "staff_count": 18,
+          "included_staff": 18,
+          "coverage": 1.0,
+          "selected_k": 3,
+          "ari": 1.0,
+          "silhouette": 0.9939897215580922,
+          "permutation_stability": 1.0
+        },
+        {
+          "reference_groups": 6,
+          "staff_count": 36,
+          "included_staff": 36,
+          "coverage": 1.0,
+          "selected_k": 3,
+          "ari": 0.44,
+          "silhouette": 0.46784234084912973,
+          "permutation_stability": 1.0
+        }
+      ]
+    },
+    {
+      "confidence_threshold": 0.7,
+      "max_clusters": 3,
+      "n_init": 20,
+      "selection_score": 0.8470916031203611,
+      "mean_metrics": {
+        "coverage": 1.0,
+        "ari": 0.72,
+        "silhouette": 0.7309160312036109,
+        "permutation_stability": 1.0
+      },
+      "scenarios": [
+        {
+          "reference_groups": 3,
+          "staff_count": 18,
+          "included_staff": 18,
+          "coverage": 1.0,
+          "selected_k": 3,
+          "ari": 1.0,
+          "silhouette": 0.9939897215580922,
+          "permutation_stability": 1.0
+        },
+        {
+          "reference_groups": 6,
+          "staff_count": 36,
+          "included_staff": 36,
+          "coverage": 1.0,
+          "selected_k": 3,
+          "ari": 0.44,
+          "silhouette": 0.46784234084912973,
+          "permutation_stability": 1.0
+        }
+      ]
+    },
+    {
+      "confidence_threshold": 0.8,
+      "max_clusters": 3,
+      "n_init": 10,
+      "selection_score": 0.8470361127370192,
+      "mean_metrics": {
+        "coverage": 1.0,
+        "ari": 0.72,
+        "silhouette": 0.7303611273701915,
+        "permutation_stability": 1.0
+      },
+      "scenarios": [
+        {
+          "reference_groups": 3,
+          "staff_count": 18,
+          "included_staff": 18,
+          "coverage": 1.0,
+          "selected_k": 3,
+          "ari": 1.0,
+          "silhouette": 0.9922496565366554,
+          "permutation_stability": 1.0
+        },
+        {
+          "reference_groups": 6,
+          "staff_count": 36,
+          "included_staff": 36,
+          "coverage": 1.0,
+          "selected_k": 3,
+          "ari": 0.44,
+          "silhouette": 0.46847259820372766,
+          "permutation_stability": 1.0
+        }
+      ]
+    },
+    {
+      "confidence_threshold": 0.8,
+      "max_clusters": 3,
+      "n_init": 20,
+      "selection_score": 0.8470361127370192,
+      "mean_metrics": {
+        "coverage": 1.0,
+        "ari": 0.72,
+        "silhouette": 0.7303611273701915,
+        "permutation_stability": 1.0
+      },
+      "scenarios": [
+        {
+          "reference_groups": 3,
+          "staff_count": 18,
+          "included_staff": 18,
+          "coverage": 1.0,
+          "selected_k": 3,
+          "ari": 1.0,
+          "silhouette": 0.9922496565366554,
+          "permutation_stability": 1.0
+        },
+        {
+          "reference_groups": 6,
+          "staff_count": 36,
+          "included_staff": 36,
+          "coverage": 1.0,
+          "selected_k": 3,
+          "ari": 0.44,
+          "silhouette": 0.46847259820372766,
+          "permutation_stability": 1.0
+        }
+      ]
+    },
+    {
+      "confidence_threshold": 0.6,
+      "max_clusters": 3,
+      "n_init": 10,
+      "selection_score": 0.8449651026831566,
+      "mean_metrics": {
+        "coverage": 1.0,
+        "ari": 0.72,
+        "silhouette": 0.7096510268315654,
+        "permutation_stability": 1.0
+      },
+      "scenarios": [
+        {
+          "reference_groups": 3,
+          "staff_count": 18,
+          "included_staff": 18,
+          "coverage": 1.0,
+          "selected_k": 3,
+          "ari": 1.0,
+          "silhouette": 0.9600283577003837,
+          "permutation_stability": 1.0
+        },
+        {
+          "reference_groups": 6,
+          "staff_count": 36,
+          "included_staff": 36,
+          "coverage": 1.0,
+          "selected_k": 3,
+          "ari": 0.44,
+          "silhouette": 0.45927369596274725,
+          "permutation_stability": 1.0
+        }
+      ]
+    }
+  ]
+}

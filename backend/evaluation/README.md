@@ -67,6 +67,22 @@ python -m evaluation.scripts.eval_nlp --gold evaluation/datasets/gold_tags.jsonl
 
 ---
 
+## Internal Expertise Representation Sensitivity (BENCH-01)
+
+**`eval_internal_expertise.py`**
+
+| Aspect | Detail |
+|--------|--------|
+| **Purpose** | Tune and regression-check the staff-vector confidence threshold, cluster cap, and K-Means initialization count before applying the representation to UC-15/16 |
+| **Input** | Two deterministic, DB-independent synthetic faculties with three and six known expertise groups, plus uncertain, noisy, missing, zero, and wrong-dimension evidence |
+| **Metrics** | Adjusted Rand index against known groups, cosine silhouette, eligible-staff coverage, and ARI stability across five input permutations |
+| **Selection** | Fixed composite: `0.45*ARI + 0.25*coverage + 0.20*normalized silhouette + 0.10*stability`; ties prefer the less restrictive/lower-cost setting |
+| **Usage** | `python -m evaluation.scripts.eval_internal_expertise` |
+| **Output** | Timestamped Markdown and JSON under `reports/internal_expertise_tuning_*` with every tested setting and per-scenario metrics |
+| **Limitation** | Parameter sensitivity and regression evidence only; it is not external validation of real faculty clusters |
+
+---
+
 ## Supporting Tools
 
 ### `build_gold_set.py` — Sample publications for annotation
