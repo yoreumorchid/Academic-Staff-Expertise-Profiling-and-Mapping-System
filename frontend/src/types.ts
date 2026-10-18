@@ -260,12 +260,32 @@ export interface BenchmarkWhiteSpace {
   nearest_cluster_distance: number | null;
   coverage_classification: "covered" | "partially_covered" | "candidate_gap" | null;
   review_status: "pending_administrator_review" | null;
+  external_source_id: string | null;
+  external_subfield: string | null;
+  external_works_count: number | null;
+  external_updated_date: string | null;
+}
+
+export interface BenchmarkSourcePayload {
+  provider?: string;
+  retrieved_at?: string;
+  scope?: { id?: string; display_name?: string; updated_date?: string };
+  selection?: {
+    strategy?: string;
+    topics_per_subfield?: number;
+    time_series_used?: boolean;
+  };
+  embedding_model?: string;
+  distance_formula?: string;
+  interpretation?: string;
+  [key: string]: unknown;
 }
 
 export interface BenchmarkRun {
   id: string;
   benchmark_type: BenchmarkType;
   narrative: string | null;
+  source_payload: BenchmarkSourcePayload | null;
   visualization_payload: VisualizationPayload | null;
   white_spaces: BenchmarkWhiteSpace[];
 }

@@ -64,7 +64,7 @@ async def _extract_peer_uploads(
 @router.post(
     "/global",
     response_model=BenchmarkRunOut,
-    summary="UC-15 — Run a global benchmark against IEEE Xplore frontier metrics.",
+    summary="UC-15 — Review internal coverage of prominent OpenAlex CS topics.",
 )
 async def run_global_benchmark(
     session: AsyncSession = Depends(get_session),
@@ -161,6 +161,7 @@ def _to_run_out(run: BenchmarkRun) -> BenchmarkRunOut:
         id=run.id,
         benchmark_type=run.benchmark_type,
         narrative=run.narrative,
+        source_payload=run.source_payload,
         visualization_payload=run.visualization_payload,
         white_spaces=[
             BenchmarkWhiteSpaceOut.model_validate(ws) for ws in run.white_spaces

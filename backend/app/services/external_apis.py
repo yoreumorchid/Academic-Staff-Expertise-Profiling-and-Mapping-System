@@ -106,6 +106,14 @@ class OpenAlexClient:
     def __init__(self) -> None:
         self._settings = get_settings()
 
+    def _params(self, **values: str) -> Dict[str, str]:
+        params = dict(values)
+        if self._settings.openalex_mailto:
+            params["mailto"] = self._settings.openalex_mailto
+        if self._settings.openalex_api_key:
+            params["api_key"] = self._settings.openalex_api_key
+        return params
+
     @staticmethod
     def reconstruct_abstract(inverted_index: Optional[Dict[str, List[int]]]) -> Optional[str]:
         """Rebuild full abstract text from OpenAlex inverted index."""
@@ -122,9 +130,7 @@ class OpenAlexClient:
 
     async def fetch_work_by_doi(self, doi: str) -> Dict[str, Any]:
         url = f"{self._settings.openalex_api_base}/works/doi:{doi}"
-        params: Dict[str, str] = {}
-        if self._settings.openalex_mailto:
-            params["mailto"] = self._settings.openalex_mailto
+        params = self._params()
         async with httpx.AsyncClient(timeout=15.0) as client:
             response = await _request_with_retry(
                 client,
@@ -144,9 +150,7 @@ class OpenAlexClient:
         ORCID DOI-list path.
         """
         url = f"{self._settings.openalex_api_base}/authors"
-        params: Dict[str, str] = {"filter": f"orcid:{orcid_id}"}
-        if self._settings.openalex_mailto:
-            params["mailto"] = self._settings.openalex_mailto
+        params = self._params(filter=f"orcid:{orcid_id}")
         try:
             async with httpx.AsyncClient(timeout=15.0) as client:
                 response = await _request_with_retry(
@@ -175,13 +179,11 @@ class OpenAlexClient:
         all_works: List[Dict[str, Any]] = []
         cursor: Optional[str] = "*"
         while cursor and len(all_works) < max_works:
-            params: Dict[str, str] = {
+            params = self._params(**{
                 "filter": f"authorships.author.id:{openalex_author_id}",
                 "per_page": "200",
                 "cursor": cursor,
-            }
-            if self._settings.openalex_mailto:
-                params["mailto"] = self._settings.openalex_mailto
+            })
             async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await _request_with_retry(
                     client, "GET", url, service_label="OpenAlex",
@@ -192,36 +194,108 @@ class OpenAlexClient:
             cursor = (data.get("meta") or {}).get("next_cursor")
         return all_works
 
+    async def fetch_computer_science_benchmark_topics(
+        self, *, topics_per_subfield: int = 2
+    ) -> Dict[str, Any]:
+        """Return prominent research-output topics across every CS subfield.
 
-# ---------------------------------------------------------------------------
-# IEEE Xplore API (UC-15)
-# ---------------------------------------------------------------------------
-
-
-class IeeeXploreClient:
-    """Retrieve global research-frontier metadata for benchmarking."""
-
-    def __init__(self) -> None:
-        self._settings = get_settings()
-
-    async def search(self, query: str, *, max_records: int = 25) -> Dict[str, Any]:
-        if not self._settings.ieee_xplore_api_key:
-            raise ExternalServiceError(
-                "IEEE Xplore API key is not configured.",
-                details={"setting": "IEEE_XPLORE_API_KEY"},
-            )
-        params = {
-            "apikey": self._settings.ieee_xplore_api_key,
-            "querytext": query,
-            "max_records": str(max_records),
-            "format": "json",
-        }
-        async with httpx.AsyncClient(timeout=20.0) as client:
-            response = await _request_with_retry(
+        OpenAlex field 17 is Computer Science. For each of its official
+        subfields, the Works API groups research outputs by primary topic. The
+        grouped ``count`` is therefore the number of article, review, book, or
+        book-chapter records whose primary topic is that topic; it is not a
+        growth or trend score.
+        """
+        base = self._settings.openalex_api_base.rstrip("/")
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            field_response = await _request_with_retry(
                 client,
                 "GET",
-                self._settings.ieee_xplore_api_base,
-                service_label="IEEE Xplore",
-                params=params,
+                f"{base}/fields/17",
+                service_label="OpenAlex",
+                params=self._params(),
+                headers={"Accept": "application/json"},
             )
-        return response.json()
+            field = field_response.json()
+            if field.get("display_name") != "Computer Science":
+                raise ExternalServiceError(
+                    "OpenAlex field 17 did not resolve to Computer Science."
+                )
+
+            selected: List[Dict[str, Any]] = []
+            for subfield in field.get("subfields", []):
+                short_id = str(subfield.get("id", "")).rsplit("/", 1)[-1]
+                if not short_id:
+                    continue
+                source_filter = (
+                    f"primary_topic.subfield.id:{short_id},"
+                    "type:article|review|book|book-chapter"
+                )
+                response = await _request_with_retry(
+                    client,
+                    "GET",
+                    f"{base}/works",
+                    service_label="OpenAlex",
+                    params=self._params(
+                        filter=source_filter,
+                        group_by="primary_topic.id",
+                        per_page=str(topics_per_subfield),
+                    ),
+                    headers={"Accept": "application/json"},
+                )
+                for group in response.json().get("group_by", []):
+                    topic_id = str(group.get("key", "")).rsplit("/", 1)[-1]
+                    if not topic_id:
+                        continue
+                    selected.append({
+                        "id": topic_id,
+                        "display_name": group.get("key_display_name") or topic_id,
+                        "research_output_count": int(group.get("count") or 0),
+                        "subfield_id": short_id,
+                        "subfield_name": subfield.get("display_name") or short_id,
+                        "source_filter": source_filter,
+                    })
+
+            if not selected:
+                raise ExternalServiceError(
+                    "OpenAlex did not return Computer Science benchmark topics."
+                )
+
+            topic_ids = "|".join(item["id"] for item in selected)
+            details_response = await _request_with_retry(
+                client,
+                "GET",
+                f"{base}/topics",
+                service_label="OpenAlex",
+                params=self._params(
+                    filter=f"id:{topic_ids}",
+                    per_page=str(len(selected)),
+                    select=(
+                        "id,display_name,description,works_count,cited_by_count,"
+                        "subfield,field,updated_date"
+                    ),
+                ),
+                headers={"Accept": "application/json"},
+            )
+
+        details = {
+            str(item.get("id", "")).rsplit("/", 1)[-1]: item
+            for item in details_response.json().get("results", [])
+        }
+        topics: List[Dict[str, Any]] = []
+        for item in selected:
+            detail = details.get(item["id"], {})
+            topics.append({
+                **item,
+                "description": detail.get("description"),
+                "openalex_works_count": detail.get("works_count"),
+                "cited_by_count": detail.get("cited_by_count"),
+                "updated_date": detail.get("updated_date"),
+            })
+        return {
+            "field": {
+                "id": str(field.get("id", "")).rsplit("/", 1)[-1],
+                "display_name": field.get("display_name"),
+                "updated_date": field.get("updated_date"),
+            },
+            "topics": topics,
+        }

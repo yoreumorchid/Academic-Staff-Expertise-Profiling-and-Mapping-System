@@ -101,10 +101,10 @@ export function GapAnalyticsPage() {
             </div>
             <div>
               <h3 className="mb-2 text-heading-3 font-announce text-text-primary">
-                White spaces
+                Cross-source coverage evidence
               </h3>
               {report.white_spaces.length === 0 ? (
-                <EmptyState text="No white spaces flagged." />
+                <EmptyState text="No coverage evidence is available." />
               ) : (
                 <table className="min-w-full divide-y divide-border-secondary text-small">
                   <thead className="text-caption uppercase tracking-wide text-text-quaternary">
@@ -112,7 +112,7 @@ export function GapAnalyticsPage() {
                       <th className="px-2 py-2 text-left font-signature">Source</th>
                       <th className="px-2 py-2 text-left font-signature">Domain</th>
                       <th className="px-2 py-2 text-right font-signature">
-                        Displacement
+                        Coverage distance
                       </th>
                       <th className="px-2 py-2 text-left font-signature">Recommendation</th>
                     </tr>
@@ -233,11 +233,12 @@ export function GlobalBenchmarkingPage() {
 
       <section className="card">
         <h2 className="text-heading-3 font-announce text-text-primary">
-          Global frontier
+          Global topic coverage
         </h2>
         <p className="mt-1 text-caption text-text-tertiary">
-          Pulls eight benchmark queries from IEEE Xplore and clusters them
-          against the internal corpus.
+          Reviews current prominent OpenAlex Computer Science topics across
+          every official subfield against internal staff capability clusters.
+          This is a coverage review, not a short-term trend forecast.
         </p>
         <div className="mt-4 flex justify-end">
           <button
@@ -324,6 +325,19 @@ export function GlobalBenchmarkingPage() {
                 {run.narrative ?? "No narrative produced."}
               </p>
             </div>
+            {run.benchmark_type === "global" && run.source_payload && (
+              <div className="rounded-comfy bg-bg-deepest p-3 text-caption text-text-tertiary">
+                <p className="font-signature text-text-secondary">Method and provenance</p>
+                <p>
+                  {run.source_payload.provider ?? "OpenAlex"} · {run.source_payload.scope?.display_name ?? "Computer Science"}
+                  {run.source_payload.retrieved_at ? ` · retrieved ${new Date(run.source_payload.retrieved_at).toLocaleString()}` : ""}
+                </p>
+                <p className="mt-1">
+                  Two highest-output research topics per official subfield; article, review, book, and book-chapter records only. No time-series trend score.
+                </p>
+                {run.source_payload.embedding_model && <p className="mt-1">Embedding model: {run.source_payload.embedding_model}</p>}
+              </div>
+            )}
             {run.visualization_payload && (
               <div>
                 <h3 className="mb-2 text-heading-3 font-announce text-text-primary">
@@ -334,32 +348,14 @@ export function GlobalBenchmarkingPage() {
             )}
             <div>
               <h3 className="mb-2 text-heading-3 font-announce text-text-primary">
-                {run.benchmark_type === "peer" ? "Candidate coverage evidence" : "White spaces"}
+                {run.benchmark_type === "peer" ? "Candidate coverage evidence" : "Global topic coverage evidence"}
               </h3>
               {run.white_spaces.length === 0 ? (
-                <EmptyState text={run.benchmark_type === "peer" ? "No candidate coverage evidence was produced." : "No white spaces flagged."} />
+                <EmptyState text={run.benchmark_type === "peer" ? "No candidate coverage evidence was produced." : "No global topic coverage evidence was produced."} />
               ) : run.benchmark_type === "peer" ? (
                 <PeerEvidenceList items={run.white_spaces} />
               ) : (
-                <ul className="divide-y divide-border-secondary">
-                  {run.white_spaces.map((w, idx) => (
-                    <li key={idx} className="py-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-body text-text-primary">
-                          {w.domain_label}
-                        </span>
-                        <span className="text-caption text-text-tertiary">
-                          displacement {w.displacement_score.toFixed(3)}
-                        </span>
-                      </div>
-                      {w.recommendation && (
-                        <p className="mt-1 text-small text-text-secondary">
-                          {w.recommendation}
-                        </p>
-                      )}
-                    </li>
-                  ))}
-                </ul>
+                <GlobalEvidenceList items={run.white_spaces} />
               )}
             </div>
           </section>
@@ -367,6 +363,54 @@ export function GlobalBenchmarkingPage() {
       )}
     </div>
   );
+}
+
+function GlobalEvidenceList({ items }: { items: BenchmarkWhiteSpace[] }) {
+  const [sort, setSort] = useState<"weaker_first" | "stronger_first" | "subfield">("weaker_first");
+  const ordered = [...items].sort((a, b) => {
+    if (sort === "subfield") {
+      return `${a.external_subfield ?? ""}\0${a.domain_label}`.localeCompare(
+        `${b.external_subfield ?? ""}\0${b.domain_label}`,
+      );
+    }
+    return sort === "weaker_first"
+      ? b.displacement_score - a.displacement_score
+      : a.displacement_score - b.displacement_score;
+  });
+
+  return <div className="space-y-3">
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <p className="text-caption text-text-tertiary">
+        Higher distance means weaker semantic alignment, not an automatic staffing or curriculum gap. All results require administrator review.
+      </p>
+      <label className="text-caption text-text-secondary">
+        Sort{" "}
+        <select className="rounded border border-border-secondary bg-bg-deepest p-1" value={sort} onChange={(event) => setSort(event.target.value as typeof sort)}>
+          <option value="weaker_first">Weaker coverage first</option>
+          <option value="stronger_first">Stronger coverage first</option>
+          <option value="subfield">Computer Science subfield</option>
+        </select>
+      </label>
+    </div>
+    <ul className="divide-y divide-border-secondary">
+      {ordered.map((item, index) => <li key={`${item.external_source_id}-${index}`} className="py-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="text-body font-signature text-text-primary">{item.domain_label}</span>
+          <span className="text-caption text-text-tertiary">coverage distance {item.displacement_score.toFixed(3)}</span>
+        </div>
+        <p className="mt-1 text-caption text-text-tertiary">
+          {item.external_subfield ?? "Computer Science"} · OpenAlex {item.external_source_id ?? "topic"}
+          {item.external_works_count == null ? "" : ` · ${item.external_works_count.toLocaleString()} research outputs`}
+        </p>
+        {item.source_excerpt && <p className="mt-2 text-small text-text-secondary">{item.source_excerpt}</p>}
+        <dl className="mt-2 grid gap-1 text-caption text-text-tertiary sm:grid-cols-2">
+          <div><dt className="inline">Nearest internal cluster: </dt><dd className="inline text-text-secondary">{item.nearest_cluster_label ?? "Unavailable"}</dd></div>
+          <div><dt className="inline">OpenAlex topic updated: </dt><dd className="inline text-text-secondary">{item.external_updated_date ?? "Unavailable"}</dd></div>
+        </dl>
+        <p className="mt-2 text-caption text-status-amber">Pending administrator review</p>
+      </li>)}
+    </ul>
+  </div>;
 }
 
 function PeerEvidenceList({ items }: { items: BenchmarkWhiteSpace[] }) {
@@ -479,7 +523,7 @@ function UmapScatter({ payload }: { payload: VisualizationPayload }) {
       </svg>
       <div className="mt-2 flex items-center gap-4 text-caption text-text-tertiary">
         <Legend color="#7170ff" label="Internal" />
-        <Legend color="#27a644" label="Global frontier" />
+        <Legend color="#27a644" label="OpenAlex topic" />
         <Legend color="#828fff" label="Peer" />
         {hover && <span className="ml-auto text-text-secondary">{hover}</span>}
       </div>

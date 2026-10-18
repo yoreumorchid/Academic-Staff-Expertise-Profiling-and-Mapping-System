@@ -99,7 +99,7 @@ injection framework is not currently justified.
 | Embeddings/NLP | sentence-transformers, SciBERT, scikit-learn, UMAP |
 | Optional LLM | LangChain with a provider-neutral OpenAI-compatible client |
 | Document parsing | `pypdf` for PDF and `python-docx` for DOCX |
-| External data | ORCID and OpenAlex; existing IEEE code is pending replacement |
+| External data | ORCID and OpenAlex |
 | Export | ReportLab PDF and python-docx DOCX generation |
 
 ## Functional Progress
@@ -128,7 +128,7 @@ Status meanings:
 | UC-12 Trigger expertise sync | Implemented | First-login, manual, administrator, and quarterly triggers share the Redis/Celery queue and persisted `SyncJob` model. Duplicate active jobs are constrained per user. |
 | UC-13 Input course/grant specs | Implemented | Text and validated, size-limited PDF/DOCX ingestion, embedding, listing, and deletion exist. |
 | UC-14 Match expertise | Partial | Cosine plus one-hop spreading activation, ranked results, saved reports, optional LLM explanation, and PDF export exist. The scoring design still needs evaluation against a defensible labelled set. |
-| UC-15 Global benchmarking | Partial / redesign required | Current code queries eight fixed IEEE topics, embeds returned titles/abstracts, and measures distance to internal clusters. This is not a validated global trend detector and IEEE licensing/API access is unsuitable as the default. The next FYP-sized step is a free-tier OpenAlex computer-science topic coverage baseline; growth/acceleration time-series claims are deferred unless stakeholder or research requirements justify them. |
+| UC-15 Global benchmarking | Implemented baseline / administrator validation pending | The system uses the official OpenAlex Computer Science hierarchy, selects two high-output research topics per subfield, compares their name/description embeddings with internal capability clusters, and displays source counts, provenance, nearest clusters, and raw coverage distance. This is current topic coverage for administrator review, not trend prediction or an automatic staffing-gap conclusion. |
 | UC-16 Peer benchmarking | Implemented baseline / faculty validation pending | Validated PDF/DOCX upload, deterministic cleaning and token-bounded chunking, nearest-staff and nearest-cluster semantic evidence, persisted provenance, sortable three-way coverage display, UMAP/PCA visualization, and explicit pending-review status exist. Synthetic calibration is reproducible, but real faculty-labelled examples are still required before accuracy claims. |
 | UC-17 Gap analysis | Partial | The UI can combine the latest global/peer runs into a narrative and ranked candidate white spaces. UC-17 is cross-source synthesis and prioritization; it does not turn unvalidated UC-15/16 inputs into ground truth. |
 | UC-18 Export customized CV | Implemented prototype | Staff can select or default profile items and export a one-page PDF or DOCX expertise snapshot. This is a snapshot, not a full general-purpose CV builder. |
@@ -185,13 +185,13 @@ The old synchronous-request design is no longer current.
   LangChain is used for the LLM integration, not as the document parser.
 - The LLM may normalize tags and explain deterministic results. It must not
   generate both the external benchmark and the conclusion used to validate it.
-- OpenAlex is the planned primary external source for global topic IDs, annual
-  publication counts, and optional citation-derived signals. The FYP baseline
-  should first provide reproducible topic coverage using the free API allowance;
-  time-series growth or acceleration is a later extension, not a prerequisite
-  for demonstrating UC-15. Semantic Scholar may later corroborate a limited
-  sample. IEEE can be an optional licensed validation source only after official
-  usage terms are confirmed.
+- OpenAlex is the implemented primary external source for UC-15 topic IDs,
+  hierarchy metadata, and research-output counts. The baseline uses the official
+  `/fields/17`, `/works` grouping, and `/topics` contracts documented at
+  https://help.openalex.org/data/topics/ and
+  https://help.openalex.org/api/grouping/. It works without an API key; an
+  optional free key can provide a larger request allowance. IEEE is not part of
+  the active pipeline.
 - The FYP UC-15 baseline answers one deliberately limited question: **which
   computer-science topics are represented in the selected global scholarly
   classification, and how strongly does the faculty's current expertise
@@ -574,7 +574,7 @@ section with the review-before-analysis interaction, deterministic cleaning and
 fallback rules, token-bounded batched representation, retained provenance, and
 the explicit no-OCR/no-LLM-parser scope.
 
-#### [ ] BENCH-02 - Replace the IEEE Fixed-Query Global Benchmark
+#### [x] BENCH-02 - Replace the IEEE Fixed-Query Global Benchmark
 
 **Depends on:** BENCH-01.
 
@@ -601,6 +601,49 @@ unless stakeholders or the research question require it.
   tests, README, and the identified report sections together.
 - The module works without an IEEE key. IEEE code/config is removed or clearly
   isolated as an optional future licensed source.
+
+**Completed 2026-10-18:** UC-15 now implements a deliberately limited OpenAlex
+Computer Science topic-coverage baseline. The stakeholder decision is to use
+current prominence rather than time-series growth: academic frontiers take time
+to reach university teaching, and staff also need time to acquire and evidence
+new capability. The administrative question is therefore which established,
+globally active areas appear weakly aligned with current faculty capability and
+deserve human review for programme planning, staff development, collaboration,
+or recruitment discussion.
+
+The service resolves OpenAlex field `17` and its official subfields at runtime.
+For each subfield it groups works by `primary_topic.id` and retains the two
+largest groups after limiting the corpus to articles, reviews, books, and book
+chapters. This produces a small cross-subfield set without fixed search terms or
+arbitrary paper samples. It then embeds each topic name plus description and
+computes `1 - max cosine_similarity(topic, internal cluster centroid)`. Higher
+distance means weaker semantic coverage only; it is not a trend score, staffing
+recommendation, or proven institutional gap.
+
+Each persisted run records retrieval time, OpenAlex field and topic IDs, exact
+filters and selection rule, filtered research-output counts, OpenAlex raw counts
+and update dates, embedding model and input text, topic embeddings, internal
+centroids, and the distance formula. The UI exposes source IDs, subfields,
+counts, descriptions, nearest internal clusters, raw distances, and pending
+administrator-review status, with sorting by coverage or subfield. IEEE client
+code, settings, and credentials have been removed. OpenAlex basic access needs
+no key; `OPENALEX_API_KEY` remains optional.
+
+The October 2026 OpenAlex topic-classifier change affects assignments to topics,
+so retrieval and source update dates are retained and results from different
+dates must not be treated as a stable time series. Focused tests cover the
+official query shape, deterministic distance ordering/provenance, and API
+contract. When the FYP report is restored, update UC-15, External Data Sources,
+Benchmarking Methodology, Results Presentation, and Limitations with this
+current-topic coverage design, the administrator-review boundary, the no-time-
+series decision, and the OpenAlex classifier-version caveat.
+
+Verification completed with the three focused BENCH-02 tests and seven affected
+PEER-01 regressions passing. The frontend production build passes. Alembic
+migration `a61d72e5b904` was applied to the local development database and
+`alembic check` reports no new upgrade operations. Live read-only OpenAlex
+requests also confirmed the documented primary-topic grouping response and the
+batch topic-detail fields used by the implementation.
 
 #### [x] PEER-01 - Validate Peer Curriculum Benchmarking
 
@@ -1071,8 +1114,8 @@ Generated build copies are not source code and must remain ignored. Local
 - SMTP credentials for real email delivery.
 - Network access to ORCID/OpenAlex and an optional OpenAI-compatible LLM.
 
-IEEE credentials are not required for the intended replacement global benchmark.
-The current UC-15 implementation still references them until BENCH-02 is done.
+UC-15 works with OpenAlex basic access and does not require IEEE credentials.
+An OpenAlex API key is optional for a larger request allowance.
 
 ### 1. Configure PostgreSQL
 

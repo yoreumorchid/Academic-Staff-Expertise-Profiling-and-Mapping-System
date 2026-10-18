@@ -420,12 +420,17 @@ class BenchmarkWhiteSpaceOut(_ORM):
     nearest_cluster_distance: Optional[float] = None
     coverage_classification: Optional[str] = None
     review_status: Optional[str] = None
+    external_source_id: Optional[str] = None
+    external_subfield: Optional[str] = None
+    external_works_count: Optional[int] = None
+    external_updated_date: Optional[str] = None
 
 
 class BenchmarkRunOut(_ORM):
     id: UUID
     benchmark_type: BenchmarkType
     narrative: Optional[str]
+    source_payload: Optional[dict]
     visualization_payload: Optional[dict]
     white_spaces: List[BenchmarkWhiteSpaceOut]
 

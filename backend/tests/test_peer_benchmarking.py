@@ -82,6 +82,7 @@ def test_peer_api_contract_exposes_reviewable_evidence() -> None:
         id=uuid4(),
         benchmark_type=BenchmarkType.PEER,
         narrative=None,
+        source_payload={},
         visualization_payload={"points": []},
         white_spaces=[evidence],
     )

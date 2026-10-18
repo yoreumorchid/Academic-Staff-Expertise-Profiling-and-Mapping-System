@@ -58,10 +58,7 @@ class Settings(BaseSettings):
     orcid_api_base: str = "https://pub.orcid.org/v3.0"
     openalex_api_base: str = "https://api.openalex.org"
     openalex_mailto: str | None = None
-    ieee_xplore_api_base: str = (
-        "https://ieeexploreapi.ieee.org/api/v1/search/articles"
-    )
-    ieee_xplore_api_key: str | None = None
+    openalex_api_key: str | None = None
 
     # LLM (LangChain). ``llm_api_base`` is passed through to the
     # OpenAI-compatible client so the same code path can target official

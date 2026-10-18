@@ -53,7 +53,7 @@ class ValidationFailure(DomainError):
 
 
 class ExternalServiceError(DomainError):
-    """Used for ORCID / OpenAlex / IEEE Xplore connectivity failures.
+    """Used for ORCID / OpenAlex connectivity failures.
 
     Maps to HTTP 503 per instructions.md §4 rule 4.
     """

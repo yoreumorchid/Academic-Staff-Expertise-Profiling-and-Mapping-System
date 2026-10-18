@@ -4,6 +4,7 @@ from __future__ import annotations
 import logging
 import re
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Dict, List, Optional, Sequence, Tuple
 from uuid import UUID
 
@@ -13,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.config import get_settings
-from app.core.exceptions import ExternalServiceError, ValidationFailure
+from app.core.exceptions import ValidationFailure
 from app.db.models import (
     AccountStatus,
     BenchmarkRun,
@@ -25,7 +26,7 @@ from app.db.models import (
 )
 from app.services.document_representation import DocumentChunk, chunks_payload
 from app.services.embeddings import embed_texts
-from app.services.external_apis import IeeeXploreClient
+from app.services.external_apis import OpenAlexClient
 from app.services.internal_expertise import (
     ExpertiseEvidence,
     StaffExpertiseProfile,
@@ -36,16 +37,7 @@ from app.services.llm_normalize import synthesize_narrative
 
 logger = logging.getLogger(__name__)
 
-GLOBAL_QUERIES: Tuple[str, ...] = (
-    "artificial intelligence",
-    "machine learning",
-    "quantum computing",
-    "renewable energy systems",
-    "biotechnology",
-    "cybersecurity",
-    "sustainable engineering",
-    "data science",
-)
+GLOBAL_TOPICS_PER_SUBFIELD = 2
 
 # Initial synthetic-development-set calibration. Re-estimate these boundaries
 # with faculty-labelled examples before making accuracy claims on real data.
@@ -67,6 +59,10 @@ class BenchmarkEvidence:
     nearest_cluster_distance: Optional[float] = None
     coverage_classification: Optional[str] = None
     review_status: Optional[str] = None
+    external_source_id: Optional[str] = None
+    external_subfield: Optional[str] = None
+    external_works_count: Optional[int] = None
+    external_updated_date: Optional[str] = None
 
 
 class BenchmarkingService:
@@ -74,33 +70,66 @@ class BenchmarkingService:
 
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
-        self._ieee = IeeeXploreClient()
+        self._openalex = OpenAlexClient()
 
     async def run_global_benchmark(self, *, triggered_by: UUID) -> BenchmarkRun:
         internal_centroids, internal_labels = await self._cluster_internal_expertise()
         if not internal_centroids:
             raise ValidationFailure(
-                "Insufficient internal expertise data to compare against global trends. "
+                "Insufficient internal expertise data to compare against global topics. "
                 "Trigger an expertise sync first."
             )
-        global_vectors, global_labels = await self._fetch_global_vectors()
-        white_spaces = self._compute_white_spaces(
-            internal_centroids, internal_labels, global_vectors, global_labels
+        retrieved_at = datetime.now(timezone.utc).isoformat()
+        topic_payload, global_vectors, global_labels = await self._fetch_global_vectors()
+        topics = topic_payload["topics"]
+        coverage_evidence = self._compute_global_coverage(
+            internal_centroids, internal_labels, global_vectors, topics
         )
         visualization = self._build_visualization_payload(
             internal_centroids, internal_labels, global_vectors, global_labels,
             external_kind="global",
         )
         narrative = await synthesize_narrative(
-            self._narrative_prompt(white_spaces, scope="global research frontiers")
+            self._narrative_prompt(
+                coverage_evidence,
+                scope="current prominent OpenAlex Computer Science topics",
+                require_administrator_review=True,
+            )
         )
         return await self._persist_run(
             triggered_by=triggered_by,
             benchmark_type=BenchmarkType.GLOBAL,
-            source_payload={"queries": list(GLOBAL_QUERIES)},
+            source_payload={
+                "provider": "OpenAlex",
+                "retrieved_at": retrieved_at,
+                "scope": topic_payload["field"],
+                "source_endpoint": "/works",
+                "selection": {
+                    "strategy": "top_research_output_topics_per_computer_science_subfield",
+                    "topics_per_subfield": GLOBAL_TOPICS_PER_SUBFIELD,
+                    "group_by": "primary_topic.id",
+                    "work_types": ["article", "review", "book", "book-chapter"],
+                    "time_series_used": False,
+                },
+                "embedding_model": get_settings().embedding_model,
+                "embedding_input": "topic display_name + description",
+                "distance_formula": "1 - max cosine_similarity(topic, internal_cluster_centroid)",
+                "internal_clusters": [
+                    {"label": label, "centroid": centroid}
+                    for label, centroid in zip(internal_labels, internal_centroids)
+                ],
+                "topics": [
+                    {**topic, "embedding": vector}
+                    for topic, vector in zip(topics, global_vectors)
+                ],
+                "interpretation": (
+                    "Current cross-subfield topic coverage for administrator review; "
+                    "not an emerging-trend or automatic staffing-gap score."
+                ),
+            },
             visualization=visualization,
             narrative=narrative,
-            white_spaces=white_spaces,
+            white_spaces=coverage_evidence,
         )
 
     async def run_peer_benchmark(
@@ -213,49 +242,67 @@ class BenchmarkingService:
         result = cluster_staff_profiles(profiles)
         return profiles, [list(row) for row in result.centroids], list(result.labels)
 
-    async def _fetch_global_vectors(self) -> Tuple[List[List[float]], List[str]]:
-        snippets: List[str] = []
-        for query in GLOBAL_QUERIES:
-            try:
-                payload = await self._ieee.search(query, max_records=10)
-            except ExternalServiceError:
-                logger.warning("IEEE Xplore query failed for %s; skipping", query)
-                continue
-            for article in payload.get("articles", []) or []:
-                title = (article.get("title") or "").strip()
-                abstract = (article.get("abstract") or "").strip()
-                text = f"{title}. {abstract}".strip(". ")
-                if len(text) >= 30:
-                    snippets.append(text)
-        if not snippets:
-            raise ExternalServiceError("IEEE Xplore did not return benchmark records.")
-        vectors = await embed_texts(snippets)
-        return vectors, [text[:120] for text in snippets]
+    async def _fetch_global_vectors(
+        self,
+    ) -> Tuple[Dict[str, object], List[List[float]], List[str]]:
+        payload = await self._openalex.fetch_computer_science_benchmark_topics(
+            topics_per_subfield=GLOBAL_TOPICS_PER_SUBFIELD
+        )
+        topics = list(payload["topics"])
+        embedding_inputs = [
+            ". ".join(
+                part.strip()
+                for part in (topic.get("display_name"), topic.get("description"))
+                if isinstance(part, str) and part.strip()
+            )
+            for topic in topics
+        ]
+        vectors = await embed_texts(embedding_inputs)
+        aligned_topics = topics[:len(vectors)]
+        payload["topics"] = aligned_topics
+        return payload, vectors, [str(topic["display_name"]) for topic in aligned_topics]
 
     @staticmethod
-    def _compute_white_spaces(
+    def _compute_global_coverage(
         internal_centroids: Sequence[Sequence[float]],
         internal_labels: Sequence[str],
         external_vectors: Sequence[Sequence[float]],
-        external_labels: Sequence[str],
+        topics: Sequence[Dict[str, object]],
     ) -> List[BenchmarkEvidence]:
         if not internal_centroids or not external_vectors:
             return []
         internal = np.asarray(internal_centroids, dtype=float)
         results: List[BenchmarkEvidence] = []
-        for label, vector in zip(external_labels, external_vectors):
+        for topic, vector in zip(topics, external_vectors):
             similarities = BenchmarkingService._cosine_similarities(
                 internal, np.asarray(vector, dtype=float)
             )
             index = int(np.argmax(similarities))
             distance = float(1.0 - similarities[index])
             recommendation = (
-                f"Closest internal cluster: '{internal_labels[index]}'."
+                f"Closest internal capability cluster: '{internal_labels[index]}'. "
+                "Review alongside programme priorities and staff workload before action."
                 if internal_labels else None
             )
-            results.append(BenchmarkEvidence(label, distance, recommendation))
+            results.append(BenchmarkEvidence(
+                domain_label=str(topic.get("display_name") or topic.get("id")),
+                displacement_score=distance,
+                recommendation=recommendation,
+                source_excerpt=(
+                    str(topic["description"]) if topic.get("description") else None
+                ),
+                nearest_cluster_label=(internal_labels[index] if internal_labels else None),
+                nearest_cluster_distance=distance,
+                review_status="pending_administrator_review",
+                external_source_id=str(topic.get("id") or "") or None,
+                external_subfield=str(topic.get("subfield_name") or "") or None,
+                external_works_count=int(topic.get("research_output_count") or 0),
+                external_updated_date=(
+                    str(topic["updated_date"]) if topic.get("updated_date") else None
+                ),
+            ))
         results.sort(key=lambda item: item.displacement_score, reverse=True)
-        return results[:25]
+        return results
 
     @staticmethod
     def _peer_label(chunk: DocumentChunk) -> str:
@@ -386,6 +433,10 @@ class BenchmarkingService:
                 nearest_cluster_distance=item.nearest_cluster_distance,
                 coverage_classification=item.coverage_classification,
                 review_status=item.review_status,
+                external_source_id=item.external_source_id,
+                external_subfield=item.external_subfield,
+                external_works_count=item.external_works_count,
+                external_updated_date=item.external_updated_date,
             ))
         await self._session.commit()
         return await self._load_run(run.id)

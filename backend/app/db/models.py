@@ -28,6 +28,7 @@ from typing import List, Optional
 from uuid import UUID
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     CheckConstraint,
     Date,
@@ -478,6 +479,10 @@ class BenchmarkWhiteSpace(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     nearest_cluster_distance: Mapped[Optional[float]] = mapped_column(Float)
     coverage_classification: Mapped[Optional[str]] = mapped_column(String(32))
     review_status: Mapped[Optional[str]] = mapped_column(String(48))
+    external_source_id: Mapped[Optional[str]] = mapped_column(String(64))
+    external_subfield: Mapped[Optional[str]] = mapped_column(String(255))
+    external_works_count: Mapped[Optional[int]] = mapped_column(BigInteger)
+    external_updated_date: Mapped[Optional[str]] = mapped_column(String(64))
 
     run: Mapped[BenchmarkRun] = relationship(back_populates="white_spaces")
 
