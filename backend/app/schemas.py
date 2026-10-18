@@ -364,6 +364,27 @@ class SpecIngestRequest(BaseModel):
     raw_text: str = Field(min_length=80)
 
 
+class DocumentPreviewSection(BaseModel):
+    id: str
+    filename: str
+    section: str
+    excerpt: str
+    included_by_default: bool
+    token_count: int
+
+
+class DocumentPreviewOut(BaseModel):
+    sections: List[DocumentPreviewSection]
+    warnings: List[str]
+    appears_single_course: bool
+    embedding_model: str
+    chunk_max_tokens: int
+    overlap_tokens: int
+    max_source_tokens: int
+    max_chunks: int
+    warning_source_tokens: int
+
+
 class MappingReportEntryOut(_ORM):
     user_id: UUID
     rank: int

@@ -387,6 +387,7 @@ class CourseGrantSpec(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     raw_text: Mapped[str] = mapped_column(Text, nullable=False)
     source_filename: Mapped[Optional[str]] = mapped_column(String(255))
+    document_payload: Mapped[Optional[dict]] = mapped_column(JSONB)
     embedding: Mapped[Optional[List[float]]] = mapped_column(ARRAY(Float))
 
     reports: Mapped[List["MappingReport"]] = relationship(

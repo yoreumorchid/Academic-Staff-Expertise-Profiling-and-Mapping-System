@@ -39,6 +39,7 @@ def test_profile_and_mapping_route_contracts_are_unchanged() -> None:
         ("GET", "/api/v1/profile/expertise"),
         ("POST", "/api/v1/profile/expertise/refine"),
         ("POST", "/api/v1/mapping/specs"),
+        ("POST", "/api/v1/mapping/specs/preview"),
         ("POST", "/api/v1/mapping/specs/upload"),
         ("POST", "/api/v1/mapping/specs/{spec_id}/match"),
         ("GET", "/api/v1/mapping/specs"),

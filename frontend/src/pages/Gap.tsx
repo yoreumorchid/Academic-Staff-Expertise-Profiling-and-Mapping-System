@@ -10,10 +10,12 @@ import { useRef, useState } from "react";
 import { api, extractApiError } from "../api/client";
 import type {
   BenchmarkRun,
+  DocumentPreview,
   GapAnalysisReport,
   VisualizationPayload,
 } from "../types";
 import { Banner, EmptyState } from "./Profile";
+import { DocumentSectionPreview, getDocumentSelectionUsage } from "./DocumentSectionPreview";
 
 // ---------------------------------------------------------------------------
 // UC-17 — combined narrative + white-space list
@@ -145,6 +147,9 @@ export function GapAnalyticsPage() {
 export function GlobalBenchmarkingPage() {
   const [run, setRun] = useState<BenchmarkRun | null>(null);
   const [peerFiles, setPeerFiles] = useState<File[]>([]);
+  const [peerPreview, setPeerPreview] = useState<DocumentPreview | null>(null);
+  const [selectedSections, setSelectedSections] = useState<Set<string>>(new Set());
+  const [coverageConfirmed, setCoverageConfirmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -164,9 +169,21 @@ export function GlobalBenchmarkingPage() {
     }
   }
 
-  async function runPeer() {
+  async function previewPeer() {
     if (peerFiles.length === 0) {
       setError("Upload at least one peer curriculum document.");
+      return;
+    }
+    if (peerFiles.length > 8) {
+      setError("Upload at most 8 peer curriculum files per analysis.");
+      return;
+    }
+    if (peerFiles.some((file) => file.size > 10 * 1024 * 1024)) {
+      setError("Each peer curriculum file must not exceed 10 MiB.");
+      return;
+    }
+    if (peerFiles.reduce((total, file) => total + file.size, 0) > 25 * 1024 * 1024) {
+      setError("The combined peer upload must not exceed 25 MiB.");
       return;
     }
     setBusy(true);
@@ -175,11 +192,24 @@ export function GlobalBenchmarkingPage() {
     try {
       const fd = new FormData();
       peerFiles.forEach((f) => fd.append("files", f));
-      const { data } = await api.post<BenchmarkRun>(
-        "/benchmarking/peer",
-        fd,
-        { headers: { "Content-Type": "multipart/form-data" } },
-      );
+      const { data } = await api.post<DocumentPreview>("/benchmarking/peer/preview", fd);
+      setPeerPreview(data);
+      setSelectedSections(new Set(data.sections.filter((s) => s.included_by_default).map((s) => s.id)));
+      setInfo("Review the extracted programme sections before analysis.");
+    } catch (err) {
+      setError(extractApiError(err, "Peer document preview failed."));
+    } finally { setBusy(false); }
+  }
+
+  async function runPeer() {
+    if (!peerPreview || selectedSections.size === 0 || getDocumentSelectionUsage(peerPreview, selectedSections).exceeds) return;
+    setBusy(true); setError(null); setInfo(null);
+    try {
+      const fd = new FormData();
+      peerFiles.forEach((f) => fd.append("files", f));
+      selectedSections.forEach((id) => fd.append("included_section_ids", id));
+      fd.append("confirm_programme_coverage", String(coverageConfirmed));
+      const { data } = await api.post<BenchmarkRun>("/benchmarking/peer", fd);
       setRun(data);
       setInfo(`Peer run ${data.id.slice(0, 8)} completed.`);
     } catch (err) {
@@ -225,16 +255,17 @@ export function GlobalBenchmarkingPage() {
           Peer-institution upload
         </h2>
         <p className="mt-1 text-caption text-text-tertiary">
-          Upload one or more PDF/DOCX curriculum documents from peer
-          institutions. Long documents are analysed section by section so
-          content near the end is not omitted.
+          Upload a complete programme curriculum, or a multi-document collection
+          that covers the programme. A single course cannot support an
+          institution-level gap claim. Maximum 8 files, 10 MiB each and 25 MiB
+          combined. Review detected sections before analysis.
         </p>
         <div className="mt-3">
           <input
             type="file"
             accept=".pdf,.docx"
             multiple
-            onChange={(e) => setPeerFiles(Array.from(e.target.files ?? []))}
+            onChange={(e) => { setPeerFiles(Array.from(e.target.files ?? [])); setPeerPreview(null); setCoverageConfirmed(false); }}
             className="text-small text-text-secondary"
           />
         </div>
@@ -242,12 +273,19 @@ export function GlobalBenchmarkingPage() {
           <button
             type="button"
             className="btn-primary"
-            onClick={runPeer}
-            disabled={busy || peerFiles.length === 0}
+            onClick={peerPreview ? runPeer : previewPeer}
+            disabled={busy || peerFiles.length === 0 || !!(peerPreview && (selectedSections.size === 0 || getDocumentSelectionUsage(peerPreview, selectedSections).exceeds)) || !!(peerPreview?.appears_single_course && !coverageConfirmed)}
           >
-            {busy ? "Running…" : "Run peer benchmark"}
+            {busy ? "Processing…" : peerPreview ? "Run with selected sections" : "Preview programme sections"}
           </button>
         </div>
+        {peerPreview && <>
+          <DocumentSectionPreview preview={peerPreview} selected={selectedSections} onChange={setSelectedSections} />
+          {peerPreview.appears_single_course && <label className="mt-3 flex gap-2 text-small text-text-secondary">
+            <input type="checkbox" checked={coverageConfirmed} onChange={(e) => setCoverageConfirmed(e.target.checked)} />
+            I confirm these files adequately cover the programme. Results will remain candidate gaps, not an institution-level conclusion from one course.
+          </label>}
+        </>}
       </section>
 
       {run && (

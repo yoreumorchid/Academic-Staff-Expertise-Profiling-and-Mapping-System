@@ -195,6 +195,27 @@ export type StaffSearchCategory =
 
 export type SpecificationType = "course" | "grant";
 
+export interface DocumentPreviewSection {
+  id: string;
+  filename: string;
+  section: string;
+  excerpt: string;
+  included_by_default: boolean;
+  token_count: number;
+}
+
+export interface DocumentPreview {
+  sections: DocumentPreviewSection[];
+  warnings: string[];
+  appears_single_course: boolean;
+  embedding_model: string;
+  chunk_max_tokens: number;
+  overlap_tokens: number;
+  max_source_tokens: number;
+  max_chunks: number;
+  warning_source_tokens: number;
+}
+
 export interface SpecIngestResponse {
   id: string;
   spec_type: SpecificationType;

@@ -4,6 +4,7 @@ UC-14 — Semantic matching against the institutional expertise database.
 from __future__ import annotations
 
 from typing import List, Optional
+import asyncio
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
@@ -26,6 +27,7 @@ from app.db.session import get_session
 from app.schemas import (
     MappingReportEntryOut,
     MappingReportOut,
+    DocumentPreviewOut,
     SpecIngestRequest,
     SpecIngestResponse,
 )
@@ -33,6 +35,7 @@ from app.services.document_extract import extract_text_from_upload
 from app.services.mapping import MappingService
 from app.services.mapping_export import render_mapping_report_pdf
 from app.services.upload_validation import read_upload_limited
+from app.services.document_representation import build_chunks, preview_documents, select_sections
 
 router = APIRouter(prefix="/mapping", tags=["mapping"])
 
@@ -63,6 +66,28 @@ async def ingest_spec_text(
 
 
 @router.post(
+    "/specs/preview",
+    response_model=DocumentPreviewOut,
+    summary="DOCREP-01 — Preview cleaned specification sections.",
+)
+async def preview_spec_upload(
+    file: UploadFile = File(...),
+    actor: User = Depends(require_portfolio(*_AUTHORIZED_PORTFOLIOS)),
+) -> DocumentPreviewOut:
+    buffer = await read_upload_limited(file, get_settings().max_document_upload_bytes)
+    filename = file.filename or "upload"
+    text = await extract_text_from_upload(filename, buffer, file.content_type)
+    settings = get_settings()
+    preview = await asyncio.to_thread(
+        preview_documents,
+        [(filename, text)],
+        max_source_tokens=settings.mapping_document_max_source_tokens,
+        max_chunks=settings.mapping_document_max_chunks,
+    )
+    return DocumentPreviewOut(**preview.as_dict())
+
+
+@router.post(
     "/specs/upload",
     response_model=SpecIngestResponse,
     summary="UC-13 alt — Ingest a specification via PDF or Word upload.",
@@ -71,6 +96,7 @@ async def ingest_spec_upload(
     spec_type: SpecificationType = Form(...),
     title: str = Form(...),
     file: UploadFile = File(...),
+    included_section_ids: List[str] | None = Form(None),
     session: AsyncSession = Depends(get_session),
     actor: User = Depends(require_portfolio(*_AUTHORIZED_PORTFOLIOS)),
 ) -> SpecIngestResponse:
@@ -80,12 +106,30 @@ async def ingest_spec_upload(
     text = await extract_text_from_upload(
         file.filename or "upload", buffer, file.content_type
     )
+    settings = get_settings()
+    preview = await asyncio.to_thread(
+        preview_documents,
+        [(file.filename or "upload", text)],
+        max_source_tokens=settings.mapping_document_max_source_tokens,
+        max_chunks=settings.mapping_document_max_chunks,
+    )
+    sections = select_sections(preview, included_section_ids)
+    chunks, _ = await asyncio.to_thread(
+        build_chunks,
+        sections,
+        max_source_tokens=settings.mapping_document_max_source_tokens,
+        max_chunks=settings.mapping_document_max_chunks,
+    )
+    retained_text = "\n\n".join(
+        f"{section.section}\n{section.excerpt}" for section in sections
+    )
     spec = await MappingService(session).ingest_specification(
         created_by=actor.id,
         spec_type=spec_type,
         title=title,
-        raw_text=text,
+        raw_text=retained_text,
         source_filename=file.filename,
+        document_chunks=chunks,
     )
     return SpecIngestResponse.model_validate(spec)
 

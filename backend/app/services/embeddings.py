@@ -47,13 +47,24 @@ def _load_model():
 
 def _encode_sync(texts: Sequence[str]) -> List[List[float]]:
     model = _load_model()
+    settings = get_settings()
     vectors = model.encode(
         list(texts),
+        batch_size=settings.embedding_batch_size,
         convert_to_numpy=True,
         normalize_embeddings=True,
         show_progress_bar=False,
     )
     return [vec.astype(float).tolist() for vec in vectors]
+
+
+def get_embedding_tokenizer():
+    """Return the configured model tokenizer and its usable input-token limit."""
+    model = _load_model()
+    tokenizer = model.tokenizer
+    special_tokens = tokenizer.num_special_tokens_to_add(pair=False)
+    model_limit = int(model.max_seq_length)
+    return tokenizer, max(1, model_limit - special_tokens), model_limit
 
 
 async def embed_texts(texts: Iterable[str]) -> List[List[float]]:

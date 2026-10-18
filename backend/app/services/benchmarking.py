@@ -25,6 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.exceptions import ExternalServiceError, ValidationFailure
+from app.core.config import get_settings
 from app.db.models import (
     BenchmarkRun,
     BenchmarkType,
@@ -42,13 +43,12 @@ from app.services.internal_expertise import (
     cluster_staff_profiles,
 )
 from app.services.llm_normalize import synthesize_narrative
+from app.services.document_representation import DocumentChunk, chunks_payload
 
 logger = logging.getLogger(__name__)
 
 # Tunables — kept conservative to make the pipeline runnable with a
 # small faculty (the spec doesn't pin specific values for these).
-PEER_CHUNK_MAX_CHARS = 1800
-MAX_PEER_CHUNKS = 80
 GLOBAL_QUERIES: Tuple[str, ...] = (
     "artificial intelligence",
     "machine learning",
@@ -59,41 +59,6 @@ GLOBAL_QUERIES: Tuple[str, ...] = (
     "sustainable engineering",
     "data science",
 )
-
-
-def chunk_peer_documents(
-    documents: Sequence[Tuple[str, str]],
-    *,
-    max_chars: int = PEER_CHUNK_MAX_CHARS,
-    max_chunks: int = MAX_PEER_CHUNKS,
-) -> Tuple[List[str], List[str]]:
-    """Split long peer documents so the embedding model sees all sections."""
-    chunks: List[str] = []
-    labels: List[str] = []
-    for filename, raw_text in documents:
-        words = raw_text.split()
-        current: List[str] = []
-        current_length = 0
-        document_chunks: List[str] = []
-        for word in words:
-            added_length = len(word) + (1 if current else 0)
-            if current and current_length + added_length > max_chars:
-                document_chunks.append(" ".join(current))
-                current = []
-                current_length = 0
-            current.append(word)
-            current_length += len(word) + (1 if current_length else 0)
-        if current:
-            document_chunks.append(" ".join(current))
-
-        for index, chunk in enumerate(document_chunks, start=1):
-            if len(chunks) >= max_chunks:
-                return chunks, labels
-            preview = re.sub(r"\s+", " ", chunk).strip()[:70]
-            chunks.append(chunk)
-            labels.append(f"{filename} — section {index}: {preview}")
-    return chunks, labels
-
 
 class BenchmarkingService:
     """High-level orchestration for the gap analytics module."""
@@ -138,10 +103,9 @@ class BenchmarkingService:
 
     # ------------------------------------------------------------------ UC-16
     async def run_peer_benchmark(
-        self, *, triggered_by: UUID, peer_documents: List[Tuple[str, str]]
+        self, *, triggered_by: UUID, peer_chunks: Sequence[DocumentChunk]
     ) -> BenchmarkRun:
-        """``peer_documents`` is a list of ``(filename, extracted_text)``."""
-        if not peer_documents:
+        if not peer_chunks:
             raise ValidationFailure(
                 "Upload at least one peer curriculum document to benchmark against."
             )
@@ -153,12 +117,12 @@ class BenchmarkingService:
                 "Trigger an expertise sync first.",
             )
 
-        # Chunking prevents long curriculum documents from being silently
-        # truncated by the sentence-transformer tokenizer.
-        peer_texts, peer_labels = chunk_peer_documents(peer_documents)
-        if not peer_texts:
-            raise ValidationFailure(
-                "Could not identify meaningful academic domains in the uploads."
+        peer_texts = [chunk.excerpt for chunk in peer_chunks]
+        peer_labels = []
+        for chunk in peer_chunks:
+            excerpt_preview = re.sub(r"\s+", " ", chunk.excerpt)[:100]
+            peer_labels.append(
+                f"{chunk.filename} — {chunk.section}: {excerpt_preview}"[:255]
             )
         peer_vectors = await embed_texts(peer_texts)
         peer_labels = peer_labels[: len(peer_vectors)]
@@ -181,8 +145,10 @@ class BenchmarkingService:
             triggered_by=triggered_by,
             benchmark_type=BenchmarkType.PEER,
             source_payload={
-                "documents": [name for name, _ in peer_documents],
+                "documents": sorted({chunk.filename for chunk in peer_chunks}),
                 "chunk_count": len(peer_texts),
+                "chunks": chunks_payload(peer_chunks),
+                "embedding_model": get_settings().embedding_model,
             },
             visualization=visualization,
             narrative=narrative,

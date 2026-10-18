@@ -470,7 +470,7 @@ cluster-count selection, deterministic parameters, cluster labelling rule,
 sensitivity results, and the explicit limitation that synthetic tuning is not
 external validation of real faculty clusters.
 
-#### [ ] DOCREP-01 - Clean and Structure Uploaded Analytical Documents
+#### [x] DOCREP-01 - Clean and Structure Uploaded Analytical Documents
 
 **Goal:** give UC-14 and UC-16 the same small, deterministic document-
 representation pipeline before their text is embedded; do not add an LLM parser
@@ -501,6 +501,76 @@ or OCR infrastructure for the UAT baseline.
   course comparison as an institution-level gap.
 - Reuse one focused service from both mapping and peer benchmarking rather than
   implementing two divergent chunking/filtering pipelines.
+
+**Completed 2026-10-18:** UC-14 specification uploads and UC-16 peer-curriculum
+uploads now share one deterministic, non-LLM document-representation service.
+Both flows are two-stage: the API first returns a review preview, then the
+administrator includes or excludes detected sections before ingestion or
+analysis. The UI groups sections by file, keeps long previews in a scrollable
+collapsed list, provides per-file select/clear controls, and shows default-
+excluded administrative material so it can be restored rather than silently
+discarded. UC-16 describes the expected input as a complete programme
+curriculum or multi-document collection; a conservative single-course
+detection produces a warning and requires explicit programme-coverage
+confirmation.
+
+The representation is deliberately tolerant of differing document structures:
+
+- PDF parsing retains page boundaries long enough to remove short lines repeated
+  in page-header/footer positions. DOCX parsing preserves top-level paragraphs
+  and table rows in document order. Page numbers, repeated furniture, unusably
+  short fragments, and clearly administrative-only sections are excluded by
+  default.
+- Numbered headings, common analytical headings, and short all-caps headings are
+  detected with explicit rules. These labels are suggestions, not asserted
+  semantics. If no reliable heading exists, the service falls back to numbered
+  paragraph groups so unfamiliar templates remain reviewable. Extracted source
+  text is not summarized or rewritten by an LLM.
+- Selected sections are split at paragraph and sentence boundaries using the
+  configured embedding model's tokenizer. `DOCUMENT_CHUNK_MAX_TOKENS` defaults
+  to 220 but is capped below the model's actual input limit;
+  `DOCUMENT_CHUNK_OVERLAP_TOKENS` explicitly defaults to 25. Boundary content
+  and the final chunk are retained. UC-14 is limited to 4,500 selected source
+  tokens and 24 chunks; UC-16 is limited to 11,000 selected source tokens and
+  60 chunks. The preview shows selected tokens and estimated chunks, warns at
+  80% of either budget, and disables submission above the limit. Backend token
+  counting remains authoritative and over-limit content is rejected rather
+  than silently truncated.
+- These are conservative FYP/UAT baselines, not claimed universal industry
+  constants. Azure AI Search documents 512 tokens with 25% overlap as a common
+  starting point for larger embedding systems, while the configured
+  `all-MiniLM-L6-v2` model card states that inputs over 256 word pieces are
+  truncated and that its fine-tuning used 128-token sequences. The project's
+  220-token chunks therefore stay within the smaller model's actual limit; the
+  UC-specific total budgets deliberately constrain topic dilution and should be
+  revisited only with recorded UAT quality evidence.
+- UC-16 accepts at most 8 files per analysis, 10 MiB per file, and 25 MiB for
+  the combined request. The per-file and request limits bound parsing/memory
+  work; the token/chunk budgets are the accuracy-oriented limits.
+- Chunks are embedded in one batched call (`EMBEDDING_BATCH_SIZE`, default 32),
+  not one inference call per chunk. UC-14 stores an L2-normalized mean of its
+  chunk vectors for compatibility with the existing matching formula. The new
+  nullable `course_grant_specs.document_payload` JSONB column preserves each
+  retained chunk's filename, detected section, exact cleaned source excerpt,
+  token count, model, and aggregation rule. UC-16 stores the same provenance in
+  the existing benchmark `source_payload`.
+- Extraction-poor, scanned, or image-only files receive a request for a text-
+  based copy. OCR and LLM parsing remain intentionally deferred until UAT files
+  demonstrate a need.
+
+Focused DOCREP-01 tests cover repeated page furniture, administrative defaults,
+heading-free fallback, token bounds/overlap/final-content retention, source
+metadata, batched UC-14 embedding, and exact source-token budget enforcement.
+The focused tests and frontend production build pass. Alembic migration
+`c9a712e684f1` was applied to the local development database, and `alembic
+check` reports no new upgrade
+operations.
+
+When the FYP report is restored, update UC-13/14/16 flows, the Document
+Processing / NLP Methodology section, the database design, and the limitations
+section with the review-before-analysis interaction, deterministic cleaning and
+fallback rules, token-bounded batched representation, retained provenance, and
+the explicit no-OCR/no-LLM-parser scope.
 
 #### [ ] BENCH-02 - Replace the IEEE Fixed-Query Global Benchmark
 

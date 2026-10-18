@@ -14,6 +14,7 @@ Pipeline (instructions.md §3.2):
 from __future__ import annotations
 
 import logging
+import numpy as np
 from collections import defaultdict
 from typing import Dict, List, Sequence, Tuple
 from uuid import UUID
@@ -23,6 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.exceptions import NotFoundError, ValidationFailure
+from app.core.config import get_settings
 from app.db.models import (
     CourseGrantSpec,
     ExpertiseTag,
@@ -32,7 +34,8 @@ from app.db.models import (
     User,
     UserExpertiseTag,
 )
-from app.services.embeddings import cosine_similarity, embed_text
+from app.services.embeddings import cosine_similarity, embed_text, embed_texts
+from app.services.document_representation import DocumentChunk, chunks_payload
 from app.services.llm import get_chat_llm
 
 logger = logging.getLogger(__name__)
@@ -72,18 +75,33 @@ class MappingService:
         title: str,
         raw_text: str,
         source_filename: str | None = None,
+        document_chunks: Sequence[DocumentChunk] | None = None,
     ) -> CourseGrantSpec:
         if len(raw_text.strip()) < 80:
             raise ValidationFailure(
                 "Provide a more detailed specification (minimum 80 characters)."
             )
-        embedding = await embed_text(raw_text)
+        if document_chunks:
+            vectors = await embed_texts(chunk.excerpt for chunk in document_chunks)
+            matrix = np.asarray(vectors, dtype=float)
+            mean = matrix.mean(axis=0)
+            norm = float(np.linalg.norm(mean))
+            embedding = (mean / norm).tolist() if norm else []
+            document_payload = {
+                "chunks": chunks_payload(document_chunks),
+                "embedding_model": get_settings().embedding_model,
+                "aggregation": "l2_normalized_mean",
+            }
+        else:
+            embedding = await embed_text(raw_text)
+            document_payload = None
         spec = CourseGrantSpec(
             created_by=created_by,
             spec_type=spec_type,
             title=title.strip(),
             raw_text=raw_text.strip(),
             source_filename=source_filename,
+            document_payload=document_payload,
             embedding=embedding,
         )
         self._session.add(spec)

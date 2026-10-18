@@ -76,6 +76,15 @@ class Settings(BaseSettings):
     # NLP models
     scibert_model: str = "allenai/scibert_scivocab_uncased"
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
+    document_chunk_max_tokens: int = Field(default=220, ge=64)
+    document_chunk_overlap_tokens: int = Field(default=25, ge=0)
+    mapping_document_max_source_tokens: int = Field(default=4500, gt=0)
+    mapping_document_max_chunks: int = Field(default=24, gt=0)
+    peer_document_max_source_tokens: int = Field(default=11000, gt=0)
+    peer_document_max_chunks: int = Field(default=60, gt=0)
+    peer_document_max_files: int = Field(default=8, gt=0)
+    peer_document_max_total_bytes: int = Field(default=25 * 1024 * 1024, gt=0)
+    embedding_batch_size: int = Field(default=32, gt=0)
 
     # Harvest limits — cap publications processed per sync to keep the
     # NLP pipeline bounded and avoid LLM provider rate-limits.  Most

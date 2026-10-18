@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import io
 import logging
+import re
 import zipfile
 from typing import Tuple
 
@@ -36,11 +37,16 @@ def _extract_pdf_sync(buffer: bytes) -> str:
             chunks.append(page.extract_text() or "")
         except Exception:  # noqa: BLE001 — skip the page but keep going.
             continue
-    return "\n".join(chunk.strip() for chunk in chunks if chunk and chunk.strip())
+    # Form feeds preserve page boundaries for deterministic repeated
+    # header/footer removal in the analytical-document pipeline.
+    return "\n\f\n".join(
+        chunk.strip() for chunk in chunks if chunk and chunk.strip()
+    )
 
 
 def _extract_docx_sync(buffer: bytes) -> str:
     from docx import Document
+    from docx.table import Table
 
     try:
         document = Document(io.BytesIO(buffer))
@@ -48,8 +54,20 @@ def _extract_docx_sync(buffer: bytes) -> str:
         raise ValidationFailure(
             "Uploaded Word document is corrupt or unreadable."
         ) from exc
-    paragraphs = [p.text.strip() for p in document.paragraphs if p.text.strip()]
-    return "\n".join(paragraphs)
+    blocks: list[str] = []
+    for item in document.iter_inner_content():
+        if isinstance(item, Table):
+            for row in item.rows:
+                cells = [_normalise_cell(cell.text) for cell in row.cells]
+                if any(cells):
+                    blocks.append(" | ".join(cells))
+        elif item.text.strip():
+            blocks.append(item.text.strip())
+    return "\n".join(blocks)
+
+
+def _normalise_cell(value: str) -> str:
+    return " ".join(value.split())
 
 
 async def extract_text_from_upload(
@@ -100,9 +118,13 @@ async def extract_text_from_upload(
             )
         text = await asyncio.to_thread(_extract_docx_sync, buffer)
 
-    if not text or len(text.strip()) < 40:
+    extracted_words = re.findall(r"\b\w+\b", text or "")
+    readable_chars = sum(char.isalnum() or char.isspace() for char in (text or ""))
+    readable_ratio = readable_chars / max(1, len(text or ""))
+    if not text or len(text.strip()) < 40 or len(extracted_words) < 8 or readable_ratio < 0.6:
         raise ValidationFailure(
-            "Could not extract meaningful text from the uploaded document."
+            "Could not extract meaningful selectable text. Upload a text-based copy; "
+            "scanned or image-only PDFs require OCR and are not supported."
         )
     return text
 

@@ -10,12 +10,14 @@ import { FormEvent, useEffect, useState } from "react";
 import { api, extractApiError } from "../api/client";
 import type {
   MappingReport,
+  DocumentPreview,
   SpecIngestResponse,
   SpecificationType,
   StaffDirectoryEntry,
   StaffDirectoryPage,
 } from "../types";
 import { Banner, EmptyState } from "./Profile";
+import { DocumentSectionPreview, getDocumentSelectionUsage } from "./DocumentSectionPreview";
 
 function MappingWorkspace({
   specType,
@@ -29,6 +31,8 @@ function MappingWorkspace({
   const [draftTitle, setDraftTitle] = useState("");
   const [draftText, setDraftText] = useState("");
   const [draftFile, setDraftFile] = useState<File | null>(null);
+  const [filePreview, setFilePreview] = useState<DocumentPreview | null>(null);
+  const [selectedSections, setSelectedSections] = useState<Set<string>>(new Set());
   const [specs, setSpecs] = useState<SpecIngestResponse[]>([]);
   const [report, setReport] = useState<MappingReport | null>(null);
   const [staffIndex, setStaffIndex] = useState<Record<string, StaffDirectoryEntry>>({});
@@ -107,25 +111,43 @@ function MappingWorkspace({
     }
   }
 
-  async function submitFile() {
+  async function previewFile() {
     if (!draftFile || !draftTitle.trim()) {
       setError("Provide both a title and a file.");
+      return;
+    }
+    if (draftFile.size > 10 * 1024 * 1024) {
+      setError("The specification file must not exceed 10 MiB.");
       return;
     }
     setFileBusy(true);
     setError(null);
     try {
       const fd = new FormData();
-      fd.append("spec_type", specType);
-      fd.append("title", draftTitle);
       fd.append("file", draftFile);
-      const { data } = await api.post<SpecIngestResponse>(
-        "/mapping/specs/upload",
-        fd,
-      );
+      const { data } = await api.post<DocumentPreview>("/mapping/specs/preview", fd);
+      setFilePreview(data);
+      setSelectedSections(new Set(data.sections.filter((s) => s.included_by_default).map((s) => s.id)));
+      setInfo("Review the extracted sections, then ingest the selected content.");
+    } catch (err) {
+      setError(extractApiError(err, "Preview failed."));
+    } finally {
+      setFileBusy(false);
+    }
+  }
+
+  async function submitFile() {
+    if (!draftFile || !draftTitle.trim() || !filePreview || selectedSections.size === 0 || getDocumentSelectionUsage(filePreview, selectedSections).exceeds) return;
+    setFileBusy(true); setError(null);
+    try {
+      const fd = new FormData();
+      fd.append("spec_type", specType); fd.append("title", draftTitle); fd.append("file", draftFile);
+      selectedSections.forEach((id) => fd.append("included_section_ids", id));
+      const { data } = await api.post<SpecIngestResponse>("/mapping/specs/upload", fd);
       setInfo(`Document "${data.title}" parsed and ingested.`);
       setDraftTitle("");
       setDraftFile(null);
+      setFilePreview(null);
       await loadSpecs();
     } catch (err) {
       setError(extractApiError(err, "Upload failed."));
@@ -203,13 +225,14 @@ function MappingWorkspace({
 
         <div className="border-t border-border-secondary pt-3">
           <p className="text-caption text-text-tertiary">
-            Or upload a PDF / DOCX:
+            Or upload a PDF / DOCX (maximum 10 MiB). You will review extracted
+            sections and the analysis budget before ingestion:
           </p>
           <div className="mt-2">
             <input
               type="file"
               accept=".pdf,.docx"
-              onChange={(e) => setDraftFile(e.target.files?.[0] ?? null)}
+              onChange={(e) => { setDraftFile(e.target.files?.[0] ?? null); setFilePreview(null); }}
               className="text-small text-text-secondary"
             />
           </div>
@@ -222,12 +245,13 @@ function MappingWorkspace({
             <button
               type="button"
               className="btn-primary"
-              onClick={submitFile}
-              disabled={fileBusy || !draftFile || !draftTitle.trim()}
+              onClick={filePreview ? submitFile : previewFile}
+              disabled={fileBusy || !draftFile || !draftTitle.trim() || !!(filePreview && (selectedSections.size === 0 || getDocumentSelectionUsage(filePreview, selectedSections).exceeds))}
             >
-              {fileBusy ? "Uploading…" : "Upload"}
+              {fileBusy ? "Processing…" : filePreview ? "Ingest selected sections" : "Preview sections"}
             </button>
           </div>
+          {filePreview && <DocumentSectionPreview preview={filePreview} selected={selectedSections} onChange={setSelectedSections} />}
         </div>
       </form>
 
