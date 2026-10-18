@@ -99,39 +99,64 @@ export function GapAnalyticsPage() {
                 {report.narrative}
               </p>
             </div>
+            {report.warnings.map((warning) => (
+              <Banner key={warning} kind="info">{warning}</Banner>
+            ))}
+            <div className="rounded-comfy border border-border-secondary bg-bg-deepest p-3">
+              <h3 className="text-body font-signature text-text-primary">
+                Provisional priority method
+              </h3>
+              <p className="mt-1 text-caption text-text-secondary">
+                Global {(report.weighting.global_weight * 100).toFixed(0)}% · Peer{" "}
+                {(report.weighting.peer_weight * 100).toFixed(0)}%. Evidence is ranked
+                within its own source before the source weight is applied.
+              </p>
+              <p className="mt-1 text-caption text-status-amber">
+                Pending faculty UAT · {report.weighting.interpretation}
+              </p>
+            </div>
             <div>
               <h3 className="mb-2 text-heading-3 font-announce text-text-primary">
-                Cross-source coverage evidence
+                Aggregated review priority
               </h3>
               {report.white_spaces.length === 0 ? (
                 <EmptyState text="No coverage evidence is available." />
               ) : (
-                <table className="min-w-full divide-y divide-border-secondary text-small">
-                  <thead className="text-caption uppercase tracking-wide text-text-quaternary">
-                    <tr>
-                      <th className="px-2 py-2 text-left font-signature">Source</th>
-                      <th className="px-2 py-2 text-left font-signature">Domain</th>
-                      <th className="px-2 py-2 text-right font-signature">
-                        Coverage distance
-                      </th>
-                      <th className="px-2 py-2 text-left font-signature">Recommendation</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border-secondary">
-                    {report.white_spaces.map((w, idx) => (
-                      <tr key={`${w.source}-${idx}`}>
-                        <td className="px-2 py-2 text-text-secondary">{w.source}</td>
-                        <td className="px-2 py-2 text-text-primary">{w.domain_label}</td>
-                        <td className="px-2 py-2 text-right text-text-secondary">
-                          {w.displacement_score.toFixed(3)}
-                        </td>
-                        <td className="px-2 py-2 text-text-tertiary">
-                          {w.recommendation ?? "—"}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <ol className="divide-y divide-border-secondary">
+                  {report.white_spaces.map((item, idx) => (
+                    <li key={`${item.source}-${item.domain_label}-${idx}`} className="py-4 first:pt-0">
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div>
+                          <p className="text-caption uppercase tracking-wide text-text-quaternary">
+                            #{idx + 1} · {item.source} evidence
+                          </p>
+                          <p className="font-signature text-text-primary">{item.domain_label}</p>
+                        </div>
+                        <div className="text-right text-caption text-text-secondary">
+                          <p>weighted priority {item.weighted_priority_score.toFixed(3)}</p>
+                          <p>
+                            relative {item.source_relative_priority.toFixed(3)} × weight{" "}
+                            {item.source_weight.toFixed(2)}
+                          </p>
+                        </div>
+                      </div>
+                      <dl className="mt-2 grid gap-1 text-caption text-text-tertiary sm:grid-cols-2">
+                        <div><dt className="inline">Raw coverage distance: </dt><dd className="inline text-text-secondary">{item.displacement_score.toFixed(3)}</dd></div>
+                        <div><dt className="inline">Review status: </dt><dd className="inline text-status-amber">Pending administrator review</dd></div>
+                        <div><dt className="inline">Nearest internal cluster: </dt><dd className="inline text-text-secondary">{item.nearest_cluster_label ?? "Unavailable"}</dd></div>
+                        {item.nearest_staff_name && <div><dt className="inline">Nearest staff: </dt><dd className="inline text-text-secondary">{item.nearest_staff_name}</dd></div>}
+                        {item.external_source_id && <div><dt className="inline">OpenAlex source: </dt><dd className="inline text-text-secondary">{item.external_source_id}{item.external_subfield ? ` · ${item.external_subfield}` : ""}</dd></div>}
+                        {item.peer_filename && <div><dt className="inline">Peer source: </dt><dd className="inline text-text-secondary">{item.peer_filename}{item.detected_section ? ` · ${item.detected_section}` : ""}</dd></div>}
+                      </dl>
+                      {item.source_excerpt && (
+                        <p className="mt-2 whitespace-pre-line rounded-comfy bg-bg-deepest p-2 text-caption text-text-secondary">
+                          {item.source_excerpt}
+                        </p>
+                      )}
+                      {item.recommendation && <p className="mt-2 text-caption text-text-tertiary">{item.recommendation}</p>}
+                    </li>
+                  ))}
+                </ol>
               )}
             </div>
           </section>

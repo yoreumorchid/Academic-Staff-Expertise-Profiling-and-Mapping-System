@@ -536,7 +536,32 @@ class GapAnalysisItem(BaseModel):
     source: str
     domain_label: str
     displacement_score: float
+    source_relative_priority: float
+    source_weight: float
+    weighted_priority_score: float
     recommendation: Optional[str]
+    peer_filename: Optional[str] = None
+    detected_section: Optional[str] = None
+    source_excerpt: Optional[str] = None
+    nearest_staff_id: Optional[UUID] = None
+    nearest_staff_name: Optional[str] = None
+    nearest_cluster_label: Optional[str] = None
+    nearest_cluster_distance: Optional[float] = None
+    coverage_classification: Optional[str] = None
+    review_status: Optional[str] = None
+    external_source_id: Optional[str] = None
+    external_subfield: Optional[str] = None
+    external_works_count: Optional[int] = None
+    external_updated_date: Optional[str] = None
+
+
+class GapAnalysisWeighting(BaseModel):
+    status: str
+    global_weight: float
+    peer_weight: float
+    normalization: str
+    formula: str
+    interpretation: str
 
 
 class GapAnalysisReport(BaseModel):
@@ -544,6 +569,9 @@ class GapAnalysisReport(BaseModel):
     white_spaces: List[GapAnalysisItem]
     global_run_id: Optional[UUID] = None
     peer_run_id: Optional[UUID] = None
+    missing_sources: List[str]
+    warnings: List[str]
+    weighting: GapAnalysisWeighting
 
 
 # Resolve forward references.

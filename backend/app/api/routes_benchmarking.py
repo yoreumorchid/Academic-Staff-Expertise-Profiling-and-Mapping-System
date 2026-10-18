@@ -153,6 +153,9 @@ async def combined_report(
         white_spaces=[GapAnalysisItem(**item) for item in payload["white_spaces"]],
         global_run_id=payload["global_run_id"],
         peer_run_id=payload["peer_run_id"],
+        missing_sources=payload["missing_sources"],
+        warnings=payload["warnings"],
+        weighting=payload["weighting"],
     )
 
 

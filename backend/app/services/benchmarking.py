@@ -44,6 +44,14 @@ GLOBAL_TOPICS_PER_SUBFIELD = 2
 PEER_COVERED_MAX_DISTANCE = 0.40
 PEER_PARTIAL_MAX_DISTANCE = 0.68
 
+# Provisional BENCH-03 review weights. Faculty management must confirm or revise
+# these during UAT; they are deliberately visible in the API rather than hidden
+# as an implementation detail.
+COMBINED_SOURCE_WEIGHTS = {
+    BenchmarkType.GLOBAL: 0.50,
+    BenchmarkType.PEER: 0.50,
+}
+
 
 @dataclass(frozen=True)
 class BenchmarkEvidence:
@@ -190,24 +198,116 @@ class BenchmarkingService:
             raise ValidationFailure(
                 "No benchmark runs are available. Execute a global or peer benchmark first."
             )
-        combined_spaces: List[Dict] = []
-        for run in (latest_global, latest_peer):
-            if run is None:
-                continue
-            for space in run.white_spaces:
-                combined_spaces.append({
-                    "source": run.benchmark_type.value,
-                    "domain_label": space.domain_label,
-                    "displacement_score": space.displacement_score,
-                    "recommendation": space.recommendation,
-                })
-        narrative = await synthesize_narrative(self._combined_prompt(combined_spaces))
+        combined_spaces = self._combine_evidence(latest_global, latest_peer)
+        missing_sources = [
+            kind.value
+            for kind, run in (
+                (BenchmarkType.GLOBAL, latest_global),
+                (BenchmarkType.PEER, latest_peer),
+            )
+            if run is None
+        ]
+        warnings = [
+            f"No {source} benchmark run is available. Run that benchmark before "
+            "using this report as cross-source evidence. The available source "
+            "keeps its 50% provisional weight and is not silently reweighted."
+            for source in missing_sources
+        ]
+        narrative = await synthesize_narrative(
+            self._combined_prompt(combined_spaces, missing_sources=missing_sources)
+        )
         return {
             "narrative": narrative,
             "white_spaces": combined_spaces,
             "global_run_id": str(latest_global.id) if latest_global else None,
             "peer_run_id": str(latest_peer.id) if latest_peer else None,
+            "missing_sources": missing_sources,
+            "warnings": warnings,
+            "weighting": {
+                "status": "provisional_pending_faculty_uat",
+                "global_weight": COMBINED_SOURCE_WEIGHTS[BenchmarkType.GLOBAL],
+                "peer_weight": COMBINED_SOURCE_WEIGHTS[BenchmarkType.PEER],
+                "normalization": "within_source_dense_rank_percentile",
+                "formula": (
+                    "weighted_priority_score = source_weight * "
+                    "source_relative_priority"
+                ),
+                "interpretation": (
+                    "A review-order score, not a probability, accuracy measure, or "
+                    "proven institutional-gap severity."
+                ),
+            },
         }
+
+    @classmethod
+    def _combine_evidence(
+        cls,
+        latest_global: Optional[BenchmarkRun],
+        latest_peer: Optional[BenchmarkRun],
+    ) -> List[Dict]:
+        """Build a source-balanced review queue without inventing topic pairing.
+
+        Global evidence is measured against cluster centroids while peer evidence
+        is measured against staff profiles. Their raw distances are therefore
+        preserved but ranked only within their own source before the provisional
+        source weight is applied.
+        """
+        combined: List[Dict] = []
+        for run in (latest_global, latest_peer):
+            if run is None:
+                continue
+            relative_scores = cls._relative_priority_scores(run.white_spaces)
+            source_weight = COMBINED_SOURCE_WEIGHTS[run.benchmark_type]
+            for space, relative_score in zip(run.white_spaces, relative_scores):
+                combined.append({
+                    "source": run.benchmark_type.value,
+                    "domain_label": space.domain_label,
+                    "displacement_score": space.displacement_score,
+                    "source_relative_priority": relative_score,
+                    "source_weight": source_weight,
+                    "weighted_priority_score": source_weight * relative_score,
+                    "recommendation": space.recommendation,
+                    "peer_filename": space.peer_filename,
+                    "detected_section": space.detected_section,
+                    "source_excerpt": space.source_excerpt,
+                    "nearest_staff_id": space.nearest_staff_id,
+                    "nearest_staff_name": space.nearest_staff_name,
+                    "nearest_cluster_label": space.nearest_cluster_label,
+                    "nearest_cluster_distance": space.nearest_cluster_distance,
+                    "coverage_classification": space.coverage_classification,
+                    "review_status": space.review_status,
+                    "external_source_id": space.external_source_id,
+                    "external_subfield": space.external_subfield,
+                    "external_works_count": space.external_works_count,
+                    "external_updated_date": space.external_updated_date,
+                })
+        return sorted(
+            combined,
+            key=lambda item: (
+                -item["weighted_priority_score"],
+                -item["displacement_score"],
+                item["source"],
+                item["domain_label"].casefold(),
+            ),
+        )
+
+    @staticmethod
+    def _relative_priority_scores(
+        spaces: Sequence[BenchmarkWhiteSpace],
+    ) -> List[float]:
+        """Return dense-rank percentiles where 1 is weakest internal coverage."""
+        if not spaces:
+            return []
+        distinct = sorted(
+            {float(space.displacement_score) for space in spaces}, reverse=True
+        )
+        if len(distinct) == 1:
+            return [1.0 for _ in spaces]
+        score_by_distance = {
+            distance: 1.0 - (rank / (len(distinct) - 1))
+            for rank, distance in enumerate(distinct)
+        }
+        return [score_by_distance[float(space.displacement_score)] for space in spaces]
 
     async def _cluster_internal_expertise(
         self,
@@ -478,14 +578,28 @@ class BenchmarkingService:
         )
 
     @staticmethod
-    def _combined_prompt(items: Sequence[Dict]) -> str:
+    def _combined_prompt(
+        items: Sequence[Dict], *, missing_sources: Sequence[str] = (),
+    ) -> str:
         rendered = "\n".join(
             f"- [{item['source']}] {item['domain_label']} "
-            f"(displacement={item['displacement_score']:.2f})" for item in items[:15]
+            f"(raw_distance={item['displacement_score']:.2f}, "
+            f"relative_priority={item['source_relative_priority']:.2f}, "
+            f"weighted_priority={item['weighted_priority_score']:.2f})"
+            for item in items[:15]
+        )
+        availability = (
+            f" Missing sources: {', '.join(missing_sources)}. State clearly that the "
+            "report is incomplete."
+            if missing_sources else " Both configured evidence sources are present."
         )
         return (
             "Synthesize global and peer candidate coverage evidence. Do not call any "
             "item a proven institutional gap; administrator review is required. "
+            "The weighted priority is a provisional review-order score using 50% "
+            "global and 50% peer influence after within-source ranking; it is not a "
+            "probability or gap-severity measurement."
+            f"{availability} "
             "Limit the response to roughly 300 words.\n\n"
             f"Aggregated evidence:\n{rendered}"
         )

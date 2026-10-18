@@ -130,7 +130,7 @@ Status meanings:
 | UC-14 Match expertise | Partial | Cosine plus one-hop spreading activation, ranked results, saved reports, optional LLM explanation, and PDF export exist. The scoring design still needs evaluation against a defensible labelled set. |
 | UC-15 Global benchmarking | Implemented baseline / administrator validation pending | The system uses the official OpenAlex Computer Science hierarchy, selects two high-output research topics per subfield, compares their name/description embeddings with internal capability clusters, and displays source counts, provenance, nearest clusters, and raw coverage distance. This is current topic coverage for administrator review, not trend prediction or an automatic staffing-gap conclusion. |
 | UC-16 Peer benchmarking | Implemented baseline / faculty validation pending | Validated PDF/DOCX upload, deterministic cleaning and token-bounded chunking, nearest-staff and nearest-cluster semantic evidence, persisted provenance, sortable three-way coverage display, UMAP/PCA visualization, and explicit pending-review status exist. Synthetic calibration is reproducible, but real faculty-labelled examples are still required before accuracy claims. |
-| UC-17 Gap analysis | Partial | The UI can combine the latest global/peer runs into a narrative and ranked candidate white spaces. UC-17 is cross-source synthesis and prioritization; it does not turn unvalidated UC-15/16 inputs into ground truth. |
+| UC-17 Gap analysis | Implemented baseline / faculty UAT pending | The UI combines the latest global/peer runs into one source-balanced review queue, retains the underlying evidence, and exposes the provisional 50/50 formula and missing-source warnings. UC-17 is cross-source synthesis and prioritization; it does not turn unvalidated UC-15/16 inputs into ground truth. Faculty management must confirm or revise the weighting during UAT. |
 | UC-18 Export customized CV | Implemented prototype | Staff can select or default profile items and export a one-page PDF or DOCX expertise snapshot. This is a snapshot, not a full general-purpose CV builder. |
 
 ## Synchronization and Concurrency: Implemented Decisions
@@ -300,6 +300,21 @@ Methodological basis:
   benchmark runs and may use an LLM to explain the deterministic evidence. It is
   not the first point at which comparison happens, and it cannot make weak
   UC-15/16 evidence valid merely by combining it.
+- UC-17 currently uses a provisional 50% global / 50% peer review-priority
+  rule requested before faculty UAT. Because global evidence measures distance
+  to an internal cluster while peer evidence measures distance to an individual
+  staff profile, raw distances are not directly averaged. Evidence is ranked by
+  distinct raw distance within its own source, with the weakest coverage assigned
+  relative priority `1` and the strongest `0` (a single or fully tied source is
+  assigned `1`). The displayed score is
+  `source_weight * source_relative_priority`. It determines review order only;
+  it is not a probability, accuracy measure, or gap-severity scale. No unvalidated
+  semantic topic-pairing is invented between OpenAlex topics and curriculum
+  chunks.
+- When either source is absent, UC-17 names the missing source and retains the
+  available source's 50% weight rather than silently treating it as 100% of the
+  evidence. The individual UC-15 and UC-16 views remain available for detailed
+  source-specific inspection.
 - Embedding comparison avoids generative hallucination in numeric scoring, but
   it is still a machine-learned semantic judgement and can misunderstand
   specialist vocabulary, long text, or mismatched writing styles. Describe it
@@ -790,6 +805,25 @@ consistently, explainably, and demonstrably.
 - UMAP failure still yields the existing PCA/table fallback.
 - Add focused formula and API tests and document limitations honestly.
 
+**Implementation status (2026-10-18):** the technical baseline is implemented.
+UC-17 returns a unified source-balanced review queue with full provenance,
+component values, provisional 50/50 weights, missing-source warnings, and an LLM
+prompt that preserves the interpretation boundary. The frontend exposes the
+formula and supporting evidence rather than relying on the narrative. Focused
+formula, missing-source, and contract regressions are in
+`test_combined_gap_analysis.py`. The task remains unchecked until faculty UAT
+confirms whether the 50/50 rule reflects decision-making practice or supplies a
+replacement rule; no stakeholder decision has been fabricated.
+
+Technical verification completed on **2026-10-18**: the four focused BENCH-03
+tests passed and the TypeScript/Vite production build succeeded. No Alembic
+check was run because this change does not alter database models or schema.
+
+**FYP report update required when the report is available:** revise the UC-17
+method/formula, combined-report UI and limitation/UAT subsections to describe
+the provisional source-balanced ranking, missing-source behavior, and the fact
+that the score is review order rather than validated gap severity.
+
 #### [ ] MAP-01 - Evaluate Course/Grant Matching
 
 **Depends on:** DOCREP-01.
@@ -1229,6 +1263,9 @@ Current focused automated tests:
   mapping PDF service rendering.
 - `test_internal_expertise.py`: BENCH-01 weighting, evidence filtering, empty
   data, per-staff observations, and deterministic input/vector alignment.
+- `test_combined_gap_analysis.py`: BENCH-03 within-source ranking, provisional
+  source weighting, provenance retention, missing-source messaging, and
+  interpretation-boundary regressions.
 
 Verification completed on **2026-10-06**:
 

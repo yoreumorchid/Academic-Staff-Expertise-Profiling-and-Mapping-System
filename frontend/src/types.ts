@@ -306,7 +306,32 @@ export interface GapAnalysisItem {
   source: string;
   domain_label: string;
   displacement_score: number;
+  source_relative_priority: number;
+  source_weight: number;
+  weighted_priority_score: number;
   recommendation: string | null;
+  peer_filename: string | null;
+  detected_section: string | null;
+  source_excerpt: string | null;
+  nearest_staff_id: string | null;
+  nearest_staff_name: string | null;
+  nearest_cluster_label: string | null;
+  nearest_cluster_distance: number | null;
+  coverage_classification: "covered" | "partially_covered" | "candidate_gap" | null;
+  review_status: "pending_administrator_review" | null;
+  external_source_id: string | null;
+  external_subfield: string | null;
+  external_works_count: number | null;
+  external_updated_date: string | null;
+}
+
+export interface GapAnalysisWeighting {
+  status: "provisional_pending_faculty_uat";
+  global_weight: number;
+  peer_weight: number;
+  normalization: "within_source_dense_rank_percentile";
+  formula: string;
+  interpretation: string;
 }
 
 export interface GapAnalysisReport {
@@ -314,6 +339,9 @@ export interface GapAnalysisReport {
   white_spaces: GapAnalysisItem[];
   global_run_id: string | null;
   peer_run_id: string | null;
+  missing_sources: BenchmarkType[];
+  warnings: string[];
+  weighting: GapAnalysisWeighting;
 }
 
 // ---------------------------------------------------------------------------
