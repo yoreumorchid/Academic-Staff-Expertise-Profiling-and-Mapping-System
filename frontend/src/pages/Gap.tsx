@@ -10,6 +10,7 @@ import { useRef, useState } from "react";
 import { api, extractApiError } from "../api/client";
 import type {
   BenchmarkRun,
+  BenchmarkWhiteSpace,
   DocumentPreview,
   GapAnalysisReport,
   VisualizationPayload,
@@ -333,10 +334,12 @@ export function GlobalBenchmarkingPage() {
             )}
             <div>
               <h3 className="mb-2 text-heading-3 font-announce text-text-primary">
-                White spaces
+                {run.benchmark_type === "peer" ? "Candidate coverage evidence" : "White spaces"}
               </h3>
               {run.white_spaces.length === 0 ? (
-                <EmptyState text="No white spaces flagged." />
+                <EmptyState text={run.benchmark_type === "peer" ? "No candidate coverage evidence was produced." : "No white spaces flagged."} />
+              ) : run.benchmark_type === "peer" ? (
+                <PeerEvidenceList items={run.white_spaces} />
               ) : (
                 <ul className="divide-y divide-border-secondary">
                   {run.white_spaces.map((w, idx) => (
@@ -364,6 +367,59 @@ export function GlobalBenchmarkingPage() {
       )}
     </div>
   );
+}
+
+function PeerEvidenceList({ items }: { items: BenchmarkWhiteSpace[] }) {
+  const [sort, setSort] = useState<"gap_first" | "covered_first" | "file">("gap_first");
+  const ordered = [...items].sort((a, b) => {
+    if (sort === "file") {
+      return `${a.peer_filename ?? ""}\0${a.detected_section ?? ""}`.localeCompare(
+        `${b.peer_filename ?? ""}\0${b.detected_section ?? ""}`,
+      );
+    }
+    return sort === "gap_first"
+      ? b.displacement_score - a.displacement_score
+      : a.displacement_score - b.displacement_score;
+  });
+  const label = (value: BenchmarkWhiteSpace["coverage_classification"]) =>
+    value === "candidate_gap" ? "Candidate gap"
+      : value === "partially_covered" ? "Partially covered"
+      : value === "covered" ? "Covered" : "Unclassified";
+
+  return <div className="space-y-3">
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <p className="text-caption text-text-tertiary">
+        All {items.length} retained segments are shown with equal weight. Classifications use a synthetic-development calibration and require administrator review.
+      </p>
+      <label className="text-caption text-text-secondary">
+        Sort{" "}
+        <select className="rounded border border-border-secondary bg-bg-deepest p-1" value={sort} onChange={(event) => setSort(event.target.value as typeof sort)}>
+          <option value="gap_first">Candidate gaps first</option>
+          <option value="covered_first">Covered first</option>
+          <option value="file">Filename and section</option>
+        </select>
+      </label>
+    </div>
+    <ul className="divide-y divide-border-secondary">
+      {ordered.map((item, index) => <li key={`${item.peer_filename}-${item.detected_section}-${index}`} className="py-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="text-body font-signature text-text-primary">{label(item.coverage_classification)}</span>
+          <span className="text-caption text-text-tertiary">raw distance {item.displacement_score.toFixed(3)}</span>
+        </div>
+        <p className="mt-1 text-small text-text-secondary">
+          {item.peer_filename} · {item.detected_section}
+        </p>
+        <p className="mt-2 whitespace-pre-line rounded-comfy bg-bg-deepest p-2 text-caption text-text-secondary">
+          {item.source_excerpt}
+        </p>
+        <dl className="mt-2 grid gap-1 text-caption text-text-tertiary sm:grid-cols-2">
+          <div><dt className="inline">Nearest staff: </dt><dd className="inline text-text-secondary">{item.nearest_staff_name ?? "Unavailable"}</dd></div>
+          <div><dt className="inline">Nearest cluster: </dt><dd className="inline text-text-secondary">{item.nearest_cluster_label ?? "Unavailable"}{item.nearest_cluster_distance == null ? "" : ` (${item.nearest_cluster_distance.toFixed(3)})`}</dd></div>
+        </dl>
+        <p className="mt-2 text-caption text-status-amber">Pending administrator review</p>
+      </li>)}
+    </ul>
+  </div>;
 }
 
 // ---------------------------------------------------------------------------

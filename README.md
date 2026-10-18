@@ -129,7 +129,7 @@ Status meanings:
 | UC-13 Input course/grant specs | Implemented | Text and validated, size-limited PDF/DOCX ingestion, embedding, listing, and deletion exist. |
 | UC-14 Match expertise | Partial | Cosine plus one-hop spreading activation, ranked results, saved reports, optional LLM explanation, and PDF export exist. The scoring design still needs evaluation against a defensible labelled set. |
 | UC-15 Global benchmarking | Partial / redesign required | Current code queries eight fixed IEEE topics, embeds returned titles/abstracts, and measures distance to internal clusters. This is not a validated global trend detector and IEEE licensing/API access is unsuitable as the default. The next FYP-sized step is a free-tier OpenAlex computer-science topic coverage baseline; growth/acceleration time-series claims are deferred unless stakeholder or research requirements justify them. |
-| UC-16 Peer benchmarking | Partial | Validated, size-limited PDF/DOCX curriculum upload, bounded document chunking, deterministic semantic comparison, persisted results, UMAP/PCA visualization, and UI exist. Results are candidate coverage gaps for administrator review, not automatically proven institutional gaps. Input-noise, chunking, ranking, and representative peer test data remain to be validated. |
+| UC-16 Peer benchmarking | Implemented baseline / faculty validation pending | Validated PDF/DOCX upload, deterministic cleaning and token-bounded chunking, nearest-staff and nearest-cluster semantic evidence, persisted provenance, sortable three-way coverage display, UMAP/PCA visualization, and explicit pending-review status exist. Synthetic calibration is reproducible, but real faculty-labelled examples are still required before accuracy claims. |
 | UC-17 Gap analysis | Partial | The UI can combine the latest global/peer runs into a narrative and ranked candidate white spaces. UC-17 is cross-source synthesis and prioritization; it does not turn unvalidated UC-15/16 inputs into ground truth. |
 | UC-18 Export customized CV | Implemented prototype | Staff can select or default profile items and export a one-page PDF or DOCX expertise snapshot. This is a snapshot, not a full general-purpose CV builder. |
 
@@ -311,10 +311,11 @@ Methodological basis:
   states that inputs longer than 256 word pieces are truncated. PEER-01 therefore
   improves document representation before EMBED-01 asks whether this model is
   sufficiently accurate for this FYP.
-- The current 1,800-character whitespace chunking and top-25 output cap are
-  prototype choices, not validated methodology. Do not change their values or
-  add LLM parsing until PEER-01 measures representative documents and records
-  stakeholder decisions.
+- UC-16 uses heading/sentence-aware chunks capped at 220 model tokens with a
+  25-token overlap. It returns every retained chunk within the existing
+  60-chunk request limit and lets administrators sort the evidence; it no
+  longer applies the previous top-25 result truncation. These remain FYP/UAT
+  choices rather than universally validated curriculum-analysis constants.
 - Until stakeholders confirm weighting rules, every retained peer segment has
   equal importance; the system does not claim that compulsory modules, credit
   weight, programme frequency, accreditation requirements, and one-off mentions
@@ -409,7 +410,8 @@ tasks merely because they are listed together.
 Recommended dependency-aware implementation order as of 2026-10-18:
 
 1. `DOCREP-01` - prepare clean, reviewable text for the next UC-14/16 UAT.
-2. `PEER-01` - complete the UC-16 evidence display and supervisor UAT slice.
+2. `PEER-01` - implemented synthetic baseline; repeat calibration with the
+   supplied institutional syllabus and supervisor/faculty labels when available.
 3. `BENCH-02` - replace IEEE with the limited OpenAlex UC-15 topic-coverage
    baseline.
 4. `BENCH-03` - complete the UC-17 separate-source/combined presentation and
@@ -600,7 +602,7 @@ unless stakeholders or the research question require it.
 - The module works without an IEEE key. IEEE code/config is removed or clearly
   isolated as an optional future licensed source.
 
-#### [ ] PEER-01 - Validate Peer Curriculum Benchmarking
+#### [x] PEER-01 - Validate Peer Curriculum Benchmarking
 
 **Depends on:** BENCH-01 and DOCREP-01.
 
@@ -648,6 +650,52 @@ reviewable candidate gaps without requiring an LLM to parse or score documents.
   the FYP report only after that decision.
 - Add focused extraction, chunk-completeness, formula, ordering, and API tests;
   document the representative files without committing copyrighted curricula.
+
+**Completed baseline 2026-10-18:** UC-16 now treats every selected curriculum
+chunk as reviewable evidence rather than an automatically proven institutional
+gap. The raw score is cosine distance to the nearest eligible staff profile,
+which exposes niche expertise that a cluster mean can hide. The response also
+stores and displays the nearest staff member, nearest internal cluster and its
+distance, peer filename, detected section, exact source excerpt, provisional
+coverage class, and `pending_administrator_review` status. All retained chunks
+within the existing 60-chunk input bound are returned and can be sorted by gap,
+coverage, or source; the unvalidated top-25 truncation was removed for UC-16.
+
+The confirmed UAT decisions are to keep retained chunks equally weighted, not
+infer compulsory/elective, credit, recurrence, accreditation, or single-mention
+importance from unreliable input, and use **candidate coverage gap requiring
+administrator review** wording. The optional LLM narrative receives only the
+deterministic evidence and is instructed not to claim proven institutional
+gaps; it does not parse, score, or classify curriculum text.
+
+`evaluation/datasets/peer_benchmark_synthetic.json` is an explicitly synthetic
+development set informed only by the public structure of Stanford and Oxford
+Computer Science curriculum pages. No third-party curriculum file is committed.
+The documented generated-file matrix covers a normal text PDF, a DOCX table, a
+long multi-year programme, administration-heavy content, repeated page
+furniture, and an extraction-poor PDF. The repeatable calibration with
+`all-MiniLM-L6-v2` selected `covered <= 0.40`, `partially covered <= 0.68`, and
+otherwise `candidate gap`, with macro F1 `0.719` on 14 synthetic examples. The
+JSON/Markdown report records per-example distances, predictions, the formula,
+model, provenance, and confusion matrix.
+
+This is an **implemented synthetic baseline**, not real-faculty validation.
+Before reporting UC-16 accuracy, rerun the supplied evaluation workflow with
+the institution's permitted UC-14 syllabus/peer examples and faculty or
+supervisor labels. `backend/evaluation/PEER_BENCHMARK.md` records that UAT
+handoff and the public reference links.
+
+Focused verification passed: 13 PEER-01/DOCREP/upload tests, followed by 7
+PEER-01 tests after adding the API-contract and narrative-boundary assertions;
+the frontend production build succeeded. Migration `f3a1c9d84e62` was applied
+to the local database and
+`alembic check` reports no new upgrade operations.
+
+When the FYP report is restored, update the UC-16 use-case flow, benchmarking
+methodology, database design, evaluation results, limitations, and UI evidence
+figures with the nearest-staff formula, separate cluster summary, synthetic
+threshold provenance, equal-weight decision, pending-review wording, and the
+requirement for later faculty-labelled calibration.
 
 #### [ ] EMBED-01 - Confirm the Shared Embedding Model Is Good Enough
 

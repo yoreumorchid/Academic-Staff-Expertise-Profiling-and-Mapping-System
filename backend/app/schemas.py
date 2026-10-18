@@ -411,6 +411,15 @@ class BenchmarkWhiteSpaceOut(_ORM):
     domain_label: str
     displacement_score: float
     recommendation: Optional[str]
+    peer_filename: Optional[str] = None
+    detected_section: Optional[str] = None
+    source_excerpt: Optional[str] = None
+    nearest_staff_id: Optional[UUID] = None
+    nearest_staff_name: Optional[str] = None
+    nearest_cluster_label: Optional[str] = None
+    nearest_cluster_distance: Optional[float] = None
+    coverage_classification: Optional[str] = None
+    review_status: Optional[str] = None
 
 
 class BenchmarkRunOut(_ORM):

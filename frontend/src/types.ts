@@ -251,6 +251,15 @@ export interface BenchmarkWhiteSpace {
   domain_label: string;
   displacement_score: number;
   recommendation: string | null;
+  peer_filename: string | null;
+  detected_section: string | null;
+  source_excerpt: string | null;
+  nearest_staff_id: string | null;
+  nearest_staff_name: string | null;
+  nearest_cluster_label: string | null;
+  nearest_cluster_distance: number | null;
+  coverage_classification: "covered" | "partially_covered" | "candidate_gap" | null;
+  review_status: "pending_administrator_review" | null;
 }
 
 export interface BenchmarkRun {

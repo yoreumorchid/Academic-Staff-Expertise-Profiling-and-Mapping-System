@@ -83,6 +83,25 @@ python -m evaluation.scripts.eval_nlp --gold evaluation/datasets/gold_tags.jsonl
 
 ---
 
+## Peer Curriculum Coverage Calibration (PEER-01)
+
+**`eval_peer_benchmark.py`**
+
+| Aspect | Detail |
+|--------|--------|
+| **Purpose** | Select provisional covered / partially covered / candidate-gap distance boundaries for the review UI |
+| **Input** | `datasets/peer_benchmark_synthetic.json`, containing independently written synthetic staff capabilities, curriculum segments, labels, and public structure-reference URLs |
+| **Formula** | `1 - cosine_similarity(peer segment, nearest staff capability)`; nearest cluster remains a separate institutional summary |
+| **Metrics** | Three-class macro F1, per-class precision/recall/F1, confusion matrix, per-example distance and nearest synthetic staff |
+| **Usage** | `python -m evaluation.scripts.eval_peer_benchmark` |
+| **Output** | Timestamped Markdown and JSON under `reports/peer_benchmark_calibration_*` |
+| **Limitation** | Synthetic development baseline only; rerun with faculty/supervisor-labelled institutional examples before accuracy claims |
+
+Representative generated PDF/DOCX and extraction-failure coverage is documented
+in `PEER_BENCHMARK.md`; copyrighted third-party curricula are not committed.
+
+---
+
 ## Supporting Tools
 
 ### `build_gold_set.py` — Sample publications for annotation

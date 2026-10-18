@@ -467,6 +467,17 @@ class BenchmarkWhiteSpace(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     domain_label: Mapped[str] = mapped_column(String(255), nullable=False)
     displacement_score: Mapped[float] = mapped_column(Float, nullable=False)
     recommendation: Mapped[Optional[str]] = mapped_column(Text)
+    peer_filename: Mapped[Optional[str]] = mapped_column(String(255))
+    detected_section: Mapped[Optional[str]] = mapped_column(String(255))
+    source_excerpt: Mapped[Optional[str]] = mapped_column(Text)
+    nearest_staff_id: Mapped[Optional[UUID]] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    nearest_staff_name: Mapped[Optional[str]] = mapped_column(String(255))
+    nearest_cluster_label: Mapped[Optional[str]] = mapped_column(String(255))
+    nearest_cluster_distance: Mapped[Optional[float]] = mapped_column(Float)
+    coverage_classification: Mapped[Optional[str]] = mapped_column(String(32))
+    review_status: Mapped[Optional[str]] = mapped_column(String(48))
 
     run: Mapped[BenchmarkRun] = relationship(back_populates="white_spaces")
 

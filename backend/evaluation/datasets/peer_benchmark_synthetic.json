@@ -1,0 +1,42 @@
+{
+  "dataset_id": "peer-benchmark-synthetic-v1",
+  "created_date": "2026-10-18",
+  "provenance": {
+    "kind": "synthetic",
+    "notice": "All staff descriptions and curriculum segments were written for testing. They do not represent any named university or real person.",
+    "structure_references": [
+      "https://www.cs.stanford.edu/academics-overview/academics-bachelors-program",
+      "https://www.ox.ac.uk/admissions/undergraduate/courses/course-listing/computer-science"
+    ]
+  },
+  "staff_capabilities": [
+    {"id": "staff-cloud", "text": "Distributed systems, cloud computing, container orchestration, fault tolerance, observability, and resilient network services."},
+    {"id": "staff-ai", "text": "Machine learning, natural language processing, statistical modelling, responsible artificial intelligence, and data science."},
+    {"id": "staff-data", "text": "Relational databases, data engineering, distributed storage, query optimisation, and large-scale information systems."},
+    {"id": "staff-software", "text": "Software engineering, requirements analysis, human-computer interaction, accessible web applications, and mobile development."},
+    {"id": "staff-security", "text": "Computer networks, cybersecurity, intrusion detection, secure protocols, digital forensics, and privacy engineering."},
+    {"id": "staff-theory", "text": "Algorithms, computational complexity, compilers, programming languages, formal methods, and software verification."}
+  ],
+  "peer_segments": [
+    {"id": "covered-cloud", "label": "covered", "text": "Students design fault-tolerant distributed services using containers, cloud orchestration, monitoring, and reliability testing."},
+    {"id": "covered-nlp", "label": "covered", "text": "The module applies machine learning to language understanding, text classification, sequence modelling, and responsible NLP evaluation."},
+    {"id": "covered-database", "label": "covered", "text": "Topics include relational data modelling, SQL query optimisation, transactions, distributed databases, and scalable data pipelines."},
+    {"id": "covered-security", "label": "covered", "text": "Learners analyse secure network protocols, intrusion detection, digital investigations, and privacy-preserving system design."},
+    {"id": "covered-software", "label": "covered", "text": "Teams practise requirements engineering, accessible interface design, software testing, and iterative web application development."},
+    {"id": "partial-robotics", "label": "partially_covered", "text": "Autonomous robots combine perception, planning, sensor fusion, embedded control, and machine learning in physical environments."},
+    {"id": "partial-vision", "label": "partially_covered", "text": "Computer vision laboratories cover image features, convolutional models, visual recognition, and evaluation on medical images."},
+    {"id": "partial-governance", "label": "partially_covered", "text": "Students evaluate data governance, algorithmic accountability, technology policy, privacy law, and organisational risk."},
+    {"id": "partial-iot", "label": "partially_covered", "text": "An Internet of Things studio integrates sensors, edge devices, wireless communication, cloud ingestion, and prototype security."},
+    {"id": "gap-quantum", "label": "candidate_gap", "text": "Quantum information covers qubits, entanglement, quantum circuits, error correction, and quantum algorithm implementation."},
+    {"id": "gap-biology", "label": "candidate_gap", "text": "Computational biology examines genome assembly, protein structure prediction, sequence alignment, and biological network analysis."},
+    {"id": "gap-graphics", "label": "candidate_gap", "text": "Advanced visual computing studies physically based rendering, geometric modelling, animation, shaders, and virtual production."},
+    {"id": "gap-neuroscience", "label": "candidate_gap", "text": "Computational neuroscience models neural coding, synaptic plasticity, brain connectivity, and cognitive neural dynamics."},
+    {"id": "gap-hardware", "label": "candidate_gap", "text": "Integrated circuit design explores semiconductor devices, VLSI layout, timing analysis, chip fabrication, and hardware verification."}
+  ],
+  "noise_labels": [
+    {"section": "Document Control", "text": "Version history approved by the faculty office and last updated in June.", "label": "noise"},
+    {"section": "Contact Us", "text": "Telephone numbers, office hours, postal address, and general enquiries.", "label": "noise"},
+    {"section": "Learning Outcomes", "text": "Students evaluate algorithms and design secure distributed software systems.", "label": "curriculum_relevant"},
+    {"section": "Year 3 Electives", "text": "Machine learning, computer security, databases, visual computing, and formal verification.", "label": "curriculum_relevant"}
+  ]
+}

@@ -1,0 +1,174 @@
+{
+  "dataset_id": "peer-benchmark-synthetic-v1",
+  "provenance": {
+    "kind": "synthetic",
+    "notice": "All staff descriptions and curriculum segments were written for testing. They do not represent any named university or real person.",
+    "structure_references": [
+      "https://www.cs.stanford.edu/academics-overview/academics-bachelors-program",
+      "https://www.ox.ac.uk/admissions/undergraduate/courses/course-listing/computer-science"
+    ]
+  },
+  "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+  "formula": "1 - cosine_similarity(peer_segment, nearest_staff_capability)",
+  "selected_thresholds": {
+    "covered_max": 0.4,
+    "partially_covered_max": 0.68
+  },
+  "macro_f1": 0.7185185185185184,
+  "classification_report": {
+    "covered": {
+      "precision": 1.0,
+      "recall": 0.8,
+      "f1-score": 0.8888888888888888,
+      "support": 5.0
+    },
+    "partially_covered": {
+      "precision": 0.5,
+      "recall": 0.75,
+      "f1-score": 0.6,
+      "support": 4.0
+    },
+    "candidate_gap": {
+      "precision": 0.75,
+      "recall": 0.6,
+      "f1-score": 0.6666666666666666,
+      "support": 5.0
+    },
+    "accuracy": 0.7142857142857143,
+    "macro avg": {
+      "precision": 0.75,
+      "recall": 0.7166666666666667,
+      "f1-score": 0.7185185185185184,
+      "support": 14.0
+    },
+    "weighted avg": {
+      "precision": 0.7678571428571429,
+      "recall": 0.7142857142857143,
+      "f1-score": 0.726984126984127,
+      "support": 14.0
+    }
+  },
+  "confusion_matrix_labels": [
+    "covered",
+    "partially_covered",
+    "candidate_gap"
+  ],
+  "confusion_matrix": [
+    [
+      4,
+      1,
+      0
+    ],
+    [
+      0,
+      3,
+      1
+    ],
+    [
+      0,
+      2,
+      3
+    ]
+  ],
+  "rows": [
+    {
+      "id": "covered-cloud",
+      "expected": "covered",
+      "predicted": "covered",
+      "distance": 0.2843852290050235,
+      "nearest_staff": "staff-cloud"
+    },
+    {
+      "id": "covered-nlp",
+      "expected": "covered",
+      "predicted": "partially_covered",
+      "distance": 0.5503177081490239,
+      "nearest_staff": "staff-ai"
+    },
+    {
+      "id": "covered-database",
+      "expected": "covered",
+      "predicted": "covered",
+      "distance": 0.2665651936356854,
+      "nearest_staff": "staff-data"
+    },
+    {
+      "id": "covered-security",
+      "expected": "covered",
+      "predicted": "covered",
+      "distance": 0.3913613633115718,
+      "nearest_staff": "staff-security"
+    },
+    {
+      "id": "covered-software",
+      "expected": "covered",
+      "predicted": "covered",
+      "distance": 0.346852703706954,
+      "nearest_staff": "staff-software"
+    },
+    {
+      "id": "partial-robotics",
+      "expected": "partially_covered",
+      "predicted": "partially_covered",
+      "distance": 0.663168349163133,
+      "nearest_staff": "staff-ai"
+    },
+    {
+      "id": "partial-vision",
+      "expected": "partially_covered",
+      "predicted": "candidate_gap",
+      "distance": 0.7440280308881009,
+      "nearest_staff": "staff-ai"
+    },
+    {
+      "id": "partial-governance",
+      "expected": "partially_covered",
+      "predicted": "partially_covered",
+      "distance": 0.5557339598304862,
+      "nearest_staff": "staff-security"
+    },
+    {
+      "id": "partial-iot",
+      "expected": "partially_covered",
+      "predicted": "partially_covered",
+      "distance": 0.6741958526848295,
+      "nearest_staff": "staff-security"
+    },
+    {
+      "id": "gap-quantum",
+      "expected": "candidate_gap",
+      "predicted": "candidate_gap",
+      "distance": 0.7142052654895741,
+      "nearest_staff": "staff-security"
+    },
+    {
+      "id": "gap-biology",
+      "expected": "candidate_gap",
+      "predicted": "partially_covered",
+      "distance": 0.6310012445779396,
+      "nearest_staff": "staff-theory"
+    },
+    {
+      "id": "gap-graphics",
+      "expected": "candidate_gap",
+      "predicted": "candidate_gap",
+      "distance": 0.7059759338575093,
+      "nearest_staff": "staff-theory"
+    },
+    {
+      "id": "gap-neuroscience",
+      "expected": "candidate_gap",
+      "predicted": "partially_covered",
+      "distance": 0.6691945966050827,
+      "nearest_staff": "staff-ai"
+    },
+    {
+      "id": "gap-hardware",
+      "expected": "candidate_gap",
+      "predicted": "candidate_gap",
+      "distance": 0.7178713324630461,
+      "nearest_staff": "staff-theory"
+    }
+  ],
+  "limitation": "Synthetic development calibration; faculty-labelled real examples are required before accuracy claims."
+}
