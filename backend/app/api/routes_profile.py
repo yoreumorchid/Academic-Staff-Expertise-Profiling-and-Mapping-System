@@ -24,6 +24,18 @@ from app.services.staff_search import search_staff as search_staff_service
 router = APIRouter(prefix="/profile", tags=["profile"])
 
 
+def _ordered_expertise_links(user: User) -> list[UserExpertiseTag]:
+    """Put validated, high-confidence expertise first across every profile view."""
+    return sorted(
+        user.expertise_links,
+        key=lambda link: (
+            not link.validated,
+            -link.confidence,
+            link.tag.canonical_label.lower(),
+        ),
+    )
+
+
 @router.get(
     "/staff",
     response_model=StaffDirectoryPage,
@@ -38,22 +50,24 @@ async def search_staff(
         raise ForbiddenError("Only administrators may browse the staff directory.")
 
     result = await search_staff_service(session, query)
-    items = [
-        StaffDirectoryEntry(
-            id=user.id,
-            full_name=user.full_name,
-            email=user.email,
-            department=user.department,
-            phone_number=user.phone_number,
-            tag_labels=[
-                link.tag.canonical_label for link in user.expertise_links
-            ],
-            has_exportable_data=bool(
-                user.expertise_links or user.publications or user.academic_background
-            ),
+    items = []
+    for user in result.users:
+        ordered_links = _ordered_expertise_links(user)
+        items.append(
+            StaffDirectoryEntry(
+                id=user.id,
+                full_name=user.full_name,
+                email=user.email,
+                department=user.department,
+                phone_number=user.phone_number,
+                tag_labels=[link.tag.canonical_label for link in ordered_links],
+                has_exportable_data=bool(
+                    user.expertise_links
+                    or user.publications
+                    or user.academic_background
+                ),
+            )
         )
-        for user in result.users
-    ]
     return StaffDirectoryPage(
         items=items,
         total=result.total,
@@ -78,19 +92,16 @@ async def get_staff_profile(
     if actor.role != UserRole.FACULTY_ADMINISTRATOR and actor.id != user_id:
         raise ForbiddenError("You may only view your own profile.")
     user = await _load_full_profile(session, user_id)
+    ordered_links = _ordered_expertise_links(user)
     return StaffProfileDetail(
         id=user.id,
         full_name=user.full_name,
         email=user.email,
         department=user.department,
         phone_number=user.phone_number,
-        tag_labels=[
-            link.tag.canonical_label for link in user.expertise_links
-        ],
+        tag_labels=[link.tag.canonical_label for link in ordered_links],
         publications=[publication_to_out(item) for item in user.publications],
-        expertise=[
-            expertise_link_to_out(link) for link in user.expertise_links
-        ],
+        expertise=[expertise_link_to_out(link) for link in ordered_links],
         has_exportable_data=bool(
             user.expertise_links or user.publications or user.academic_background
         ),

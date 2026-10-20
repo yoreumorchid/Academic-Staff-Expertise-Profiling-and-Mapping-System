@@ -262,7 +262,7 @@ export function GlobalBenchmarkingPage() {
 
       <section className="card">
         <h2 className="text-heading-3 font-announce text-text-primary">
-          Global Topic <C></C>overage
+          Global Topic Coverage
         </h2>
         <p className="mt-1 text-caption text-text-tertiary">
           Reviews current prominent OpenAlex Computer Science topics across

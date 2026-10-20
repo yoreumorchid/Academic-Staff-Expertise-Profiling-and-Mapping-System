@@ -22,8 +22,9 @@ import type {
   StaffDirectoryPage,
   StaffProfileDetail,
   StaffSearchCategory,
+  UserExpertiseTag,
 } from "../types";
-import { Banner, EmptyState, TagPill } from "./Profile";
+import { Banner, EmptyState } from "./Profile";
 
 const FILTER_OPTIONS: { value: StaffSearchCategory; label: string }[] = [
   { value: "all", label: "All fields" },
@@ -118,6 +119,15 @@ export function StaffDirectoryPage() {
 
   async function generateCv(row: StaffDirectoryEntry) {
     if (!row.has_exportable_data || cvBusy) return;
+    const previewTab = window.open("", "_blank");
+    if (!previewTab) {
+      setError("Allow pop-ups for this site to preview the one-page CV.");
+      return;
+    }
+    previewTab.opener = null;
+    previewTab.document.title = `Preparing ${row.full_name}'s CV`;
+    previewTab.document.body.innerHTML =
+      '<p style="font: 16px system-ui; color: #334155; padding: 32px;">Preparing one-page CV...</p>';
     setCvBusy(row.id);
     setError(null);
     try {
@@ -135,12 +145,10 @@ export function StaffDirectoryPage() {
       const url = URL.createObjectURL(
         new Blob([response.data], { type: "application/pdf" }),
       );
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `${row.full_name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-one-page-cv.pdf`;
-      link.click();
-      URL.revokeObjectURL(url);
+      previewTab.location.href = url;
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } catch (err) {
+      previewTab.close();
       setError(extractApiError(err, "Could not generate the one-page CV."));
     } finally {
       setCvBusy(null);
@@ -448,20 +456,7 @@ export function StaffDirectoryPage() {
               </div>
             </section>
 
-            <div>
-              <div className="mb-2 text-caption uppercase tracking-wide text-text-quaternary">
-                Expertise
-              </div>
-              {openProfile.expertise.length === 0 ? (
-                <EmptyState text="No tags." />
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {openProfile.expertise.map((t) => (
-                    <TagPill key={t.id} tag={t} />
-                  ))}
-                </div>
-              )}
-            </div>
+            <ExpertiseOverview expertise={openProfile.expertise} />
 
             <div>
               <div className="mb-2 text-caption uppercase tracking-wide text-text-quaternary">
@@ -560,6 +555,84 @@ function ContactLine({
   );
 }
 
+function ExpertiseOverview({ expertise }: { expertise: UserExpertiseTag[] }) {
+  if (expertise.length === 0) {
+    return (
+      <section>
+        <h3 className="text-heading-3 font-announce text-text-primary">
+          Expertise profile
+        </h3>
+        <div className="mt-3">
+          <EmptyState text="No expertise areas are available yet." />
+        </div>
+      </section>
+    );
+  }
+
+  const primary = expertise.slice(0, 5);
+  const additional = expertise.slice(5);
+
+  return (
+    <section>
+      <div>
+        <h3 className="text-heading-3 font-announce text-text-primary">
+          Expertise profile
+        </h3>
+        <p className="mt-1 text-caption text-text-tertiary">
+          Validated and higher-confidence areas are prioritized for strategic review.
+        </p>
+      </div>
+      <ol className="mt-4 space-y-2">
+        {primary.map((item, index) => (
+          <li
+            key={item.id}
+            className="flex items-center gap-3 rounded-comfy border border-border-secondary bg-bg-surface p-3"
+          >
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-bg-secondary text-label font-signature text-brand-green">
+              {index + 1}
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="text-body font-signature text-text-primary">
+                {item.tag.canonical_label}
+              </div>
+              <div className="mt-0.5 text-label text-text-quaternary">
+                {(item.confidence * 100).toFixed(0)}% profile confidence
+              </div>
+            </div>
+            {item.validated && (
+              <span className="rounded-full border border-status-green/30 bg-white px-2 py-1 text-label font-signature text-status-emerald">
+                Validated
+              </span>
+            )}
+          </li>
+        ))}
+      </ol>
+      {additional.length > 0 && (
+        <details className="mt-3 rounded-comfy border border-border-secondary bg-white p-3">
+          <summary className="cursor-pointer text-small font-signature text-brand-green">
+            Show {additional.length} additional expertise area{additional.length === 1 ? "" : "s"}
+          </summary>
+          <ul className="mt-3 divide-y divide-border-secondary border-t border-border-secondary">
+            {additional.map((item) => (
+              <li
+                key={item.id}
+                className="flex items-center justify-between gap-4 py-2.5 text-small text-text-secondary"
+              >
+                <span>{item.tag.canonical_label}</span>
+                {item.validated && (
+                  <span className="shrink-0 text-label font-signature text-status-emerald">
+                    Validated
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </section>
+  );
+}
+
 function StaffCard({
   row,
   onOpen,
@@ -579,9 +652,6 @@ function StaffCard({
         <div className="text-heading-3 font-announce text-text-primary">
           {row.full_name}
         </div>
-        <div className="mt-1 text-label uppercase tracking-wide text-brand-green">
-          Academic staff
-        </div>
       </div>
       <div className="space-y-3">
         <ContactLine
@@ -598,21 +668,34 @@ function StaffCard({
       </div>
       {row.tag_labels.length > 0 && (
         <div className="border-t border-border-secondary pt-3">
-          <div className="mb-2 text-label uppercase tracking-wide text-text-quaternary">
-            Expertise highlights
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <div className="text-label uppercase tracking-wide text-text-quaternary">
+              Core expertise
+            </div>
+            <div className="text-label text-text-quaternary">
+              Top {Math.min(3, row.tag_labels.length)} of {row.tag_labels.length}
+            </div>
           </div>
-          <div className="flex flex-wrap gap-1.5">
-            {row.tag_labels.slice(0, 6).map((t) => (
-              <span key={t} className="pill">
+          <div className="space-y-1.5">
+            {row.tag_labels.slice(0, 3).map((t, index) => (
+              <span
+                key={t}
+                className={[
+                  "block rounded-comfy border px-3 py-2 text-small",
+                  index === 0
+                    ? "border-brand-green/40 bg-bg-secondary font-signature text-text-primary"
+                    : "border-border-secondary bg-bg-surface text-text-secondary",
+                ].join(" ")}
+              >
                 {t}
               </span>
             ))}
-            {row.tag_labels.length > 6 && (
-              <span className="text-caption text-text-quaternary">
-                +{row.tag_labels.length - 6}
-              </span>
-            )}
           </div>
+          {row.tag_labels.length > 3 && (
+            <div className="mt-2 text-caption text-text-quaternary">
+              +{row.tag_labels.length - 3} additional areas in profile
+            </div>
+          )}
         </div>
       )}
       <div className="mt-auto flex flex-wrap justify-end gap-2 pt-1">
@@ -623,7 +706,7 @@ function StaffCard({
           disabled={!row.has_exportable_data || cvBusy !== null}
           title={
             row.has_exportable_data
-              ? "Generate this staff member's one-page CV as a PDF."
+              ? "Open this staff member's one-page CV in a new tab."
               : "This profile has no expertise, publications, or academic background to export yet."
           }
         >

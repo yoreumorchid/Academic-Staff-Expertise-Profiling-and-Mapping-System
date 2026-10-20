@@ -170,3 +170,33 @@ def test_non_administrator_cannot_search_staff(is_dual_role: bool) -> None:
 def test_invalid_page_boundaries_are_rejected(values: dict[str, int]) -> None:
     with pytest.raises(ValidationError):
         StaffSearchQuery(**values)
+
+
+def test_profile_expertise_is_ordered_for_strategic_review() -> None:
+    links = [
+        SimpleNamespace(
+            validated=False,
+            confidence=0.99,
+            tag=SimpleNamespace(canonical_label="Unvalidated high score"),
+        ),
+        SimpleNamespace(
+            validated=True,
+            confidence=0.70,
+            tag=SimpleNamespace(canonical_label="Validated lower score"),
+        ),
+        SimpleNamespace(
+            validated=True,
+            confidence=0.90,
+            tag=SimpleNamespace(canonical_label="Validated primary"),
+        ),
+    ]
+
+    ordered = routes_profile._ordered_expertise_links(
+        SimpleNamespace(expertise_links=links)  # type: ignore[arg-type]
+    )
+
+    assert [link.tag.canonical_label for link in ordered] == [
+        "Validated primary",
+        "Validated lower score",
+        "Unvalidated high score",
+    ]

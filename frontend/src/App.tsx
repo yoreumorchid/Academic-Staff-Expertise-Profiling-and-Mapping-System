@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { AppShell } from "./layouts/AppShell";
 import { RequireAuth } from "./layouts/RequireAuth";
 import { SessionExpiredModal } from "./layouts/SessionExpiredModal";
@@ -33,12 +33,45 @@ function Protected({ children }: { children: React.ReactNode }) {
   );
 }
 
+const PAGE_TITLES: Record<string, string> = {
+  "/login": "Log In",
+  "/register": "Create Account",
+  "/forgot-password": "Reset Password",
+  "/reset-password": "Choose New Password",
+  "/staff/profile": "Profile Overview",
+  "/staff/tags": "Expertise Tag Refinement",
+  "/staff/background": "Academic Background",
+  "/staff/publications": "Publications & Abstracts",
+  "/staff/export": "Export Portfolio Snapshot",
+  "/admin": "Dashboard",
+  "/admin/registrations": "Pending Registrations",
+  "/admin/staff": "Staff Profiles",
+  "/admin/mapping/course": "Course Mapping",
+  "/admin/mapping/grant": "Research Grant Mapping",
+  "/admin/gap": "Gap Analytics Overview",
+  "/admin/benchmarking/global": "Global Benchmarking",
+};
+
+function DocumentTitle() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    const pageTitle = PAGE_TITLES[pathname];
+    document.title = pageTitle
+      ? `${pageTitle} | Expertise Insight`
+      : "Expertise Insight";
+  }, [pathname]);
+
+  return null;
+}
+
 export function App() {
   const hydrate = useAuthStore((s) => s.hydrate);
   useEffect(() => hydrate(), [hydrate]);
 
   return (
     <>
+      <DocumentTitle />
       <SessionExpiredModal />
       <Routes>
         {/* Public auth flows (UC-1, UC-3, UC-4) */}
