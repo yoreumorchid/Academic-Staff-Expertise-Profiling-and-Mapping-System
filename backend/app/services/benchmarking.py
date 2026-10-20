@@ -2,25 +2,25 @@
 from __future__ import annotations
 
 import logging
-import re
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, time, timedelta, timezone
 from typing import Dict, List, Optional, Sequence, Tuple
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 import numpy as np
-from sqlalchemy import select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.config import get_settings
-from app.core.exceptions import ValidationFailure
+from app.core.exceptions import ConflictError, NotFoundError, RateLimitError, ValidationFailure
 from app.db.models import (
     BenchmarkRun,
     BenchmarkType,
     BenchmarkWhiteSpace,
 )
-from app.services.document_representation import DocumentChunk, chunks_payload
+from app.services.document_representation import SourceSection, sections_payload
 from app.services.embeddings import embed_texts
 from app.services.external_apis import OpenAlexClient
 from app.services.internal_expertise import StaffExpertiseProfile, load_internal_expertise
@@ -29,25 +29,21 @@ from app.services.llm_normalize import synthesize_narrative
 logger = logging.getLogger(__name__)
 
 GLOBAL_TOPICS_PER_SUBFIELD = 2
+BENCHMARK_HISTORY_LIMIT = 5
+_BENCHMARK_RUN_LOCK_KEY = "expertise-insight-benchmark-run"
 
-# Initial synthetic-development-set calibration. Re-estimate these boundaries
-# with faculty-labelled examples before making accuracy claims on real data.
-PEER_COVERED_MAX_DISTANCE = 0.40
-PEER_PARTIAL_MAX_DISTANCE = 0.68
-
-# Provisional BENCH-03 review weights. Faculty management must confirm or revise
-# these during UAT; they are deliberately visible in the API rather than hidden
-# as an implementation detail.
+# Peer uploads are descriptive overviews until a faculty-validated comparison
+# method exists. Only Global evidence currently contributes to Gap Analytics.
 COMBINED_SOURCE_WEIGHTS = {
-    BenchmarkType.GLOBAL: 0.50,
-    BenchmarkType.PEER: 0.50,
+    BenchmarkType.GLOBAL: 1.0,
+    BenchmarkType.PEER: 0.0,
 }
 
 
 @dataclass(frozen=True)
 class BenchmarkEvidence:
     domain_label: str
-    displacement_score: float
+    displacement_score: Optional[float]
     recommendation: Optional[str] = None
     peer_filename: Optional[str] = None
     detected_section: Optional[str] = None
@@ -72,6 +68,8 @@ class BenchmarkingService:
         self._openalex = OpenAlexClient()
 
     async def run_global_benchmark(self, *, triggered_by: UUID) -> BenchmarkRun:
+        await self._acquire_run_lock()
+        await self._enforce_global_daily_limit()
         internal_centroids, internal_labels = await self._cluster_internal_expertise()
         if not internal_centroids:
             raise ValidationFailure(
@@ -87,13 +85,6 @@ class BenchmarkingService:
         visualization = self._build_visualization_payload(
             internal_centroids, internal_labels, global_vectors, global_labels,
             external_kind="global",
-        )
-        narrative = await synthesize_narrative(
-            self._narrative_prompt(
-                coverage_evidence,
-                scope="current prominent OpenAlex Computer Science topics",
-                require_administrator_review=True,
-            )
         )
         return await self._persist_run(
             triggered_by=triggered_by,
@@ -127,105 +118,84 @@ class BenchmarkingService:
                 ),
             },
             visualization=visualization,
-            narrative=narrative,
+            narrative=None,
             white_spaces=coverage_evidence,
         )
 
-    async def run_peer_benchmark(
-        self, *, triggered_by: UUID, peer_chunks: Sequence[DocumentChunk]
+    async def run_peer_overview(
+        self, *, triggered_by: UUID, peer_sections: Sequence[SourceSection]
     ) -> BenchmarkRun:
-        if not peer_chunks:
+        if not peer_sections:
             raise ValidationFailure(
-                "Upload at least one peer curriculum document to benchmark against."
+                "Include at least one curriculum section in the peer overview."
             )
-        profiles, centroids, cluster_labels = await self._load_internal_expertise()
-        if not centroids:
-            raise ValidationFailure(
-                "Insufficient internal expertise data to compare against peers. "
-                "Trigger an expertise sync first."
+        await self._acquire_run_lock()
+        overview_items = [
+            BenchmarkEvidence(
+                domain_label=f"{section.filename} — {section.section}"[:255],
+                displacement_score=None,
+                peer_filename=section.filename,
+                detected_section=section.section,
+                source_excerpt=section.excerpt,
+                review_status="source_overview",
             )
-        peer_texts = [chunk.excerpt for chunk in peer_chunks]
-        peer_vectors = await embed_texts(peer_texts)
-        aligned_chunks = list(peer_chunks[:len(peer_vectors)])
-        peer_labels = [self._peer_label(chunk) for chunk in aligned_chunks]
-        white_spaces = self._compute_peer_evidence(
-            profiles, centroids, cluster_labels, peer_vectors, aligned_chunks
-        )
-        visualization = self._build_visualization_payload(
-            centroids, cluster_labels, peer_vectors, peer_labels, external_kind="peer"
-        )
-        narrative = await synthesize_narrative(
-            self._narrative_prompt(
-                white_spaces,
-                scope="peer institutional curricula",
-                require_administrator_review=True,
-            )
-        )
+            for section in peer_sections
+        ]
         return await self._persist_run(
             triggered_by=triggered_by,
             benchmark_type=BenchmarkType.PEER,
             source_payload={
-                "documents": sorted({chunk.filename for chunk in peer_chunks}),
-                "chunk_count": len(peer_texts),
-                "chunks": chunks_payload(peer_chunks),
-                "embedding_model": get_settings().embedding_model,
-                "distance_formula": "1 - cosine_similarity(peer_chunk, nearest_staff_profile)",
-                "coverage_thresholds": {
-                    "covered_max": PEER_COVERED_MAX_DISTANCE,
-                    "partially_covered_max": PEER_PARTIAL_MAX_DISTANCE,
-                    "calibration": "synthetic_development_set_pending_faculty_validation",
-                },
-                "weighting": "equal_per_retained_chunk",
+                "documents": sorted({section.filename for section in peer_sections}),
+                "section_count": len(peer_sections),
+                "sections": sections_payload(peer_sections),
+                "mode": "descriptive_curriculum_overview",
+                "staff_comparison_used": False,
+                "gap_classification_used": False,
+                "interpretation": (
+                    "Descriptive overview of selected academic curriculum content. "
+                    "It is not evidence of an institutional expertise gap."
+                ),
             },
-            visualization=visualization,
-            narrative=narrative,
-            white_spaces=white_spaces,
+            visualization=None,
+            narrative=None,
+            white_spaces=overview_items,
         )
 
     async def generate_combined_report(self, *, triggered_by: UUID) -> Dict:
         latest_global = await self._latest_run(BenchmarkType.GLOBAL)
-        latest_peer = await self._latest_run(BenchmarkType.PEER)
-        if latest_global is None and latest_peer is None:
+        if latest_global is None:
             raise ValidationFailure(
-                "No benchmark runs are available. Execute a global or peer benchmark first."
+                "No Global benchmark report is available. Run Global Topic Coverage first."
             )
-        combined_spaces = self._combine_evidence(latest_global, latest_peer)
-        missing_sources = [
-            kind.value
-            for kind, run in (
-                (BenchmarkType.GLOBAL, latest_global),
-                (BenchmarkType.PEER, latest_peer),
-            )
-            if run is None
-        ]
+        combined_spaces = self._combine_evidence(latest_global, None)
+        missing_sources: List[str] = []
         warnings = [
-            f"No {source} benchmark run is available. Run that benchmark before "
-            "using this report as cross-source evidence. The available source "
-            "keeps its 50% provisional weight and is not silently reweighted."
-            for source in missing_sources
+            "Peer curriculum reports are descriptive overviews and are intentionally "
+            "excluded from Gap Analytics until a faculty-validated comparison method exists."
         ]
         narrative = await synthesize_narrative(
-            self._combined_prompt(combined_spaces, missing_sources=missing_sources)
+            self._combined_prompt(combined_spaces)
         )
         return {
             "narrative": narrative,
             "white_spaces": combined_spaces,
             "global_run_id": str(latest_global.id) if latest_global else None,
-            "peer_run_id": str(latest_peer.id) if latest_peer else None,
+            "peer_run_id": None,
+            "global_run_created_at": latest_global.created_at if latest_global else None,
+            "peer_run_created_at": None,
             "missing_sources": missing_sources,
             "warnings": warnings,
             "weighting": {
-                "status": "provisional_pending_faculty_uat",
+                "status": "global_only_peer_analysis_deferred",
                 "global_weight": COMBINED_SOURCE_WEIGHTS[BenchmarkType.GLOBAL],
                 "peer_weight": COMBINED_SOURCE_WEIGHTS[BenchmarkType.PEER],
                 "normalization": "within_source_dense_rank_percentile",
                 "formula": (
-                    "weighted_priority_score = source_weight * "
-                    "source_relative_priority"
+                    "weighted_priority_score = global_relative_priority"
                 ),
                 "interpretation": (
-                    "A review-order score, not a probability, accuracy measure, or "
-                    "proven institutional-gap severity."
+                    "Global topic-coverage review order only. Peer curriculum overview "
+                    "is not included in scoring."
                 ),
             },
         }
@@ -236,20 +206,22 @@ class BenchmarkingService:
         latest_global: Optional[BenchmarkRun],
         latest_peer: Optional[BenchmarkRun],
     ) -> List[Dict]:
-        """Build a source-balanced review queue without inventing topic pairing.
+        """Build a Global-only review queue without inventing Peer alignment.
 
-        Global evidence is measured against cluster centroids while peer evidence
-        is measured against staff profiles. Their raw distances are therefore
-        preserved but ranked only within their own source before the provisional
-        source weight is applied.
+        Only Global evidence is currently eligible. Peer uploads are descriptive
+        curriculum overviews and must not enter gap scoring.
         """
         combined: List[Dict] = []
         for run in (latest_global, latest_peer):
-            if run is None:
+            if run is None or run.benchmark_type != BenchmarkType.GLOBAL:
                 continue
-            relative_scores = cls._relative_priority_scores(run.white_spaces)
+            comparable_spaces = [
+                space for space in run.white_spaces
+                if space.displacement_score is not None
+            ]
+            relative_scores = cls._relative_priority_scores(comparable_spaces)
             source_weight = COMBINED_SOURCE_WEIGHTS[run.benchmark_type]
-            for space, relative_score in zip(run.white_spaces, relative_scores):
+            for space, relative_score in zip(comparable_spaces, relative_scores):
                 combined.append({
                     "source": run.benchmark_type.value,
                     "domain_label": space.domain_label,
@@ -379,63 +351,6 @@ class BenchmarkingService:
         return results
 
     @staticmethod
-    def _peer_label(chunk: DocumentChunk) -> str:
-        preview = re.sub(r"\s+", " ", chunk.excerpt)[:100]
-        return f"{chunk.filename} — {chunk.section}: {preview}"[:255]
-
-    @staticmethod
-    def _coverage_classification(distance: float) -> str:
-        if distance <= PEER_COVERED_MAX_DISTANCE:
-            return "covered"
-        if distance <= PEER_PARTIAL_MAX_DISTANCE:
-            return "partially_covered"
-        return "candidate_gap"
-
-    @classmethod
-    def _compute_peer_evidence(
-        cls,
-        profiles: Sequence[StaffExpertiseProfile],
-        centroids: Sequence[Sequence[float]],
-        cluster_labels: Sequence[str],
-        peer_vectors: Sequence[Sequence[float]],
-        peer_chunks: Sequence[DocumentChunk],
-    ) -> List[BenchmarkEvidence]:
-        """Create reviewable evidence without discarding lower-ranked chunks."""
-        if not profiles or not centroids or not peer_vectors:
-            return []
-        staff_matrix = np.asarray([profile.vector for profile in profiles], dtype=float)
-        cluster_matrix = np.asarray(centroids, dtype=float)
-        results: List[BenchmarkEvidence] = []
-        for chunk, vector in zip(peer_chunks, peer_vectors):
-            peer = np.asarray(vector, dtype=float)
-            staff_scores = cls._cosine_similarities(staff_matrix, peer)
-            cluster_scores = cls._cosine_similarities(cluster_matrix, peer)
-            staff_index = int(np.argmax(staff_scores))
-            cluster_index = int(np.argmax(cluster_scores))
-            staff_distance = float(1.0 - staff_scores[staff_index])
-            cluster_distance = float(1.0 - cluster_scores[cluster_index])
-            profile = profiles[staff_index]
-            results.append(BenchmarkEvidence(
-                domain_label=cls._peer_label(chunk),
-                displacement_score=staff_distance,
-                recommendation="Potential coverage area; administrator review required.",
-                peer_filename=chunk.filename,
-                detected_section=chunk.section,
-                source_excerpt=chunk.excerpt,
-                nearest_staff_id=profile.user_id if isinstance(profile.user_id, UUID) else None,
-                nearest_staff_name=profile.user_label,
-                nearest_cluster_label=cluster_labels[cluster_index],
-                nearest_cluster_distance=cluster_distance,
-                coverage_classification=cls._coverage_classification(staff_distance),
-                review_status="pending_administrator_review",
-            ))
-        return sorted(results, key=lambda item: (
-            -item.displacement_score,
-            (item.peer_filename or "").casefold(),
-            (item.detected_section or "").casefold(),
-            item.source_excerpt or "",
-        ))
-
     @staticmethod
     def _cosine_similarities(matrix: np.ndarray, vector: np.ndarray) -> np.ndarray:
         numerator = matrix @ vector
@@ -480,7 +395,7 @@ class BenchmarkingService:
 
     async def _persist_run(
         self, *, triggered_by: UUID, benchmark_type: BenchmarkType,
-        source_payload: Dict, visualization: Dict, narrative: str,
+        source_payload: Dict, visualization: Optional[Dict], narrative: Optional[str],
         white_spaces: Sequence[BenchmarkEvidence],
     ) -> BenchmarkRun:
         run = BenchmarkRun(
@@ -512,14 +427,83 @@ class BenchmarkingService:
                 external_works_count=item.external_works_count,
                 external_updated_date=item.external_updated_date,
             ))
+        await self._session.flush()
+        stale_ids = list((await self._session.execute(
+            select(BenchmarkRun.id)
+            .where(BenchmarkRun.benchmark_type == benchmark_type)
+            .order_by(BenchmarkRun.created_at.desc(), BenchmarkRun.id.desc())
+            .offset(BENCHMARK_HISTORY_LIMIT)
+        )).scalars())
+        if stale_ids:
+            await self._session.execute(
+                delete(BenchmarkRun).where(BenchmarkRun.id.in_(stale_ids))
+            )
         await self._session.commit()
         return await self._load_run(run.id)
 
-    async def _load_run(self, run_id: UUID) -> BenchmarkRun:
+    async def get_run(self, run_id: UUID) -> BenchmarkRun:
         stmt = select(BenchmarkRun).where(BenchmarkRun.id == run_id).options(
             selectinload(BenchmarkRun.white_spaces)
         )
-        return (await self._session.execute(stmt)).scalar_one()
+        run = (await self._session.execute(stmt)).scalar_one_or_none()
+        if run is None:
+            raise NotFoundError("Benchmark report was not found.")
+        return run
+
+    async def list_runs(
+        self, kind: BenchmarkType, *, limit: int = BENCHMARK_HISTORY_LIMIT
+    ) -> List[BenchmarkRun]:
+        stmt = (
+            select(BenchmarkRun)
+            .where(BenchmarkRun.benchmark_type == kind)
+            .options(selectinload(BenchmarkRun.white_spaces))
+            .order_by(BenchmarkRun.created_at.desc(), BenchmarkRun.id.desc())
+            .limit(limit)
+        )
+        return list((await self._session.execute(stmt)).scalars().unique())
+
+    async def global_runs_today(self) -> int:
+        start, end = self._global_daily_window()
+        stmt = select(func.count(BenchmarkRun.id)).where(
+            BenchmarkRun.benchmark_type == BenchmarkType.GLOBAL,
+            BenchmarkRun.created_at >= start,
+            BenchmarkRun.created_at < end,
+        )
+        return int((await self._session.execute(stmt)).scalar_one())
+
+    async def _acquire_run_lock(self) -> None:
+        acquired = bool((await self._session.execute(
+            select(func.pg_try_advisory_xact_lock(func.hashtext(_BENCHMARK_RUN_LOCK_KEY)))
+        )).scalar_one())
+        if not acquired:
+            raise ConflictError(
+                "Another global or peer benchmark is already running. Try again after it finishes."
+            )
+
+    async def _enforce_global_daily_limit(self) -> None:
+        settings = get_settings()
+        used = await self.global_runs_today()
+        if used >= settings.global_benchmark_daily_limit:
+            raise RateLimitError(
+                "The global benchmark daily limit has been reached. Try again tomorrow.",
+                details={
+                    "daily_limit": settings.global_benchmark_daily_limit,
+                    "runs_today": used,
+                    "timezone": settings.global_benchmark_daily_timezone,
+                },
+            )
+
+    @staticmethod
+    def _global_daily_window(now: Optional[datetime] = None) -> Tuple[datetime, datetime]:
+        settings = get_settings()
+        local_zone = ZoneInfo(settings.global_benchmark_daily_timezone)
+        current = now.astimezone(local_zone) if now else datetime.now(local_zone)
+        start_local = datetime.combine(current.date(), time.min, tzinfo=local_zone)
+        end_local = start_local + timedelta(days=1)
+        return start_local.astimezone(timezone.utc), end_local.astimezone(timezone.utc)
+
+    async def _load_run(self, run_id: UUID) -> BenchmarkRun:
+        return await self.get_run(run_id)
 
     async def _latest_run(self, kind: BenchmarkType) -> Optional[BenchmarkRun]:
         stmt = (
@@ -532,29 +516,7 @@ class BenchmarkingService:
         return (await self._session.execute(stmt)).scalar_one_or_none()
 
     @staticmethod
-    def _narrative_prompt(
-        white_spaces: Sequence[BenchmarkEvidence], *, scope: str,
-        require_administrator_review: bool = False,
-    ) -> str:
-        rendered = "\n".join(
-            f"- {item.domain_label} (displacement={item.displacement_score:.2f}): "
-            f"{item.recommendation or 'n/a'}" for item in white_spaces[:10]
-        )
-        review_boundary = (
-            " Do not describe any item as a proven institutional gap; every item "
-            "requires administrator review."
-            if require_administrator_review else ""
-        )
-        return (
-            "You are an academic strategy analyst. Given the following evidence "
-            f"comparing internal faculty capabilities to {scope}, produce a concise "
-            f"executive summary.{review_boundary}\n\nEvidence:\n{rendered}"
-        )
-
-    @staticmethod
-    def _combined_prompt(
-        items: Sequence[Dict], *, missing_sources: Sequence[str] = (),
-    ) -> str:
+    def _combined_prompt(items: Sequence[Dict]) -> str:
         rendered = "\n".join(
             f"- [{item['source']}] {item['domain_label']} "
             f"(raw_distance={item['displacement_score']:.2f}, "
@@ -562,18 +524,13 @@ class BenchmarkingService:
             f"weighted_priority={item['weighted_priority_score']:.2f})"
             for item in items[:15]
         )
-        availability = (
-            f" Missing sources: {', '.join(missing_sources)}. State clearly that the "
-            "report is incomplete."
-            if missing_sources else " Both configured evidence sources are present."
-        )
         return (
-            "Synthesize global and peer candidate coverage evidence. Do not call any "
+            "Summarize Global topic-coverage evidence. Peer curriculum uploads are "
+            "descriptive overviews and are intentionally excluded from this analysis. "
+            "Do not call any "
             "item a proven institutional gap; administrator review is required. "
-            "The weighted priority is a provisional review-order score using 50% "
-            "global and 50% peer influence after within-source ranking; it is not a "
-            "probability or gap-severity measurement."
-            f"{availability} "
+            "The relative priority is a Global-only review-order score; it is not a "
+            "probability or gap-severity measurement. "
             "Limit the response to roughly 300 words.\n\n"
             f"Aggregated evidence:\n{rendered}"
         )

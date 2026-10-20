@@ -13,6 +13,7 @@ import {
   AcademicBackgroundPage,
   AccountSettingsPage,
   AdminHomePage,
+  BenchmarkReportPage,
   CourseMappingPage,
   ExportSnapshotPage,
   GapAnalyticsPage,
@@ -51,14 +52,16 @@ const PAGE_TITLES: Record<string, string> = {
   "/admin/mapping/course": "Course Mapping",
   "/admin/mapping/grant": "Research Grant Mapping",
   "/admin/gap": "Gap Analytics Overview",
-  "/admin/benchmarking/global": "Global Benchmarking",
+  "/admin/benchmarking/global": "Global Benchmarking & Peer Overview",
 };
 
 function DocumentTitle() {
   const { pathname } = useLocation();
 
   useEffect(() => {
-    const pageTitle = PAGE_TITLES[pathname];
+    const pageTitle = pathname.startsWith("/admin/benchmarking/reports/")
+      ? "Benchmark Report"
+      : PAGE_TITLES[pathname];
     document.title = pageTitle
       ? `${pageTitle} | Expertise Insight`
       : "Expertise Insight";
@@ -139,6 +142,10 @@ export function App() {
         <Route
           path="/admin/benchmarking/global"
           element={<Protected><GlobalBenchmarkingPage /></Protected>}
+        />
+        <Route
+          path="/admin/benchmarking/reports/:runId"
+          element={<Protected><BenchmarkReportPage /></Protected>}
         />
 
         {/* Default landing */}

@@ -228,6 +228,7 @@ export interface DocumentPreviewSection {
   excerpt: string;
   included_by_default: boolean;
   token_count: number;
+  excluded_reason: string | null;
 }
 
 export interface DocumentPreview {
@@ -275,7 +276,7 @@ export type BenchmarkType = "global" | "peer";
 
 export interface BenchmarkWhiteSpace {
   domain_label: string;
-  displacement_score: number;
+  displacement_score: number | null;
   recommendation: string | null;
   peer_filename: string | null;
   detected_section: string | null;
@@ -285,7 +286,7 @@ export interface BenchmarkWhiteSpace {
   nearest_cluster_label: string | null;
   nearest_cluster_distance: number | null;
   coverage_classification: "covered" | "partially_covered" | "candidate_gap" | null;
-  review_status: "pending_administrator_review" | null;
+  review_status: "pending_administrator_review" | "source_overview" | null;
   external_source_id: string | null;
   external_subfield: string | null;
   external_works_count: number | null;
@@ -299,8 +300,12 @@ export interface BenchmarkSourcePayload {
   selection?: {
     strategy?: string;
     topics_per_subfield?: number;
+    group_by?: string;
+    work_types?: string[];
     time_series_used?: boolean;
   };
+  source_endpoint?: string;
+  embedding_input?: string;
   embedding_model?: string;
   distance_formula?: string;
   interpretation?: string;
@@ -310,10 +315,26 @@ export interface BenchmarkSourcePayload {
 export interface BenchmarkRun {
   id: string;
   benchmark_type: BenchmarkType;
+  created_at: string;
   narrative: string | null;
   source_payload: BenchmarkSourcePayload | null;
   visualization_payload: VisualizationPayload | null;
   white_spaces: BenchmarkWhiteSpace[];
+}
+
+export interface BenchmarkRunSummary {
+  id: string;
+  benchmark_type: BenchmarkType;
+  created_at: string;
+  item_count: number;
+}
+
+export interface BenchmarkHistory {
+  global_runs: BenchmarkRunSummary[];
+  peer_runs: BenchmarkRunSummary[];
+  global_daily_limit: number;
+  global_runs_today: number;
+  daily_timezone: string;
 }
 
 export interface VisualizationPoint {
@@ -352,7 +373,7 @@ export interface GapAnalysisItem {
 }
 
 export interface GapAnalysisWeighting {
-  status: "provisional_pending_faculty_uat";
+  status: "global_only_peer_analysis_deferred";
   global_weight: number;
   peer_weight: number;
   normalization: "within_source_dense_rank_percentile";
@@ -365,6 +386,8 @@ export interface GapAnalysisReport {
   white_spaces: GapAnalysisItem[];
   global_run_id: string | null;
   peer_run_id: string | null;
+  global_run_created_at: string | null;
+  peer_run_created_at: string | null;
   missing_sources: BenchmarkType[];
   warnings: string[];
   weighting: GapAnalysisWeighting;

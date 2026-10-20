@@ -52,6 +52,11 @@ class ValidationFailure(DomainError):
     code = "validation_failed"
 
 
+class RateLimitError(DomainError):
+    status_code = 429
+    code = "rate_limit_exceeded"
+
+
 class ExternalServiceError(DomainError):
     """Used for ORCID / OpenAlex connectivity failures.
 

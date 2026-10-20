@@ -25,7 +25,7 @@ const PORTFOLIO_LINKS: Record<PortfolioType, NavItem[]> = {
   faculty_manager: [
     { label: "Pending Registrations", path: "/admin/registrations", uc: "UC-2" },
     { label: "Gap Analytics Overview", path: "/admin/gap", uc: "UC-15/17" },
-    { label: "Global Benchmarking", path: "/admin/benchmarking/global", uc: "UC-15" },
+    { label: "Global Benchmarking & Peer Overview", path: "/admin/benchmarking/global", uc: "UC-15/16" },
     { label: "Staff Profiles", path: "/admin/staff", uc: "UC-7" },
   ],  head_of_department: [
     { label: "Gap Analytics Overview", path: "/admin/gap", uc: "UC-17" },

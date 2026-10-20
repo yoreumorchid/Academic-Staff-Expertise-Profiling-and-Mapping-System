@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import io
+from datetime import datetime, timezone
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -14,96 +15,80 @@ from reportlab.pdfgen import canvas
 from app.core.exceptions import ValidationFailure
 from app.api.routes_benchmarking import _to_run_out
 from app.db.models import BenchmarkType
-from app.services.benchmarking import BenchmarkEvidence, BenchmarkingService
+from app.services.benchmarking import BenchmarkingService
 from app.services.document_extract import extract_text_from_upload
-from app.services.document_representation import DocumentChunk
-from app.services.internal_expertise import StaffExpertiseProfile
+from app.services.document_representation import SourceSection
 
 
-def _profile(name: str, vector: tuple[float, float]) -> StaffExpertiseProfile:
-    return StaffExpertiseProfile(
-        user_id=uuid4(),
-        user_label=name,
-        vector=vector,
-        tag_weights=((name, 1.0),),
-    )
-
-
-def test_peer_evidence_keeps_all_chunks_and_exposes_staff_cluster_and_source() -> None:
-    profiles = [_profile("Niche Specialist", (1.0, 0.0)), _profile("Other Staff", (0.0, 1.0))]
-    chunks = [
-        DocumentChunk("synthetic.pdf", f"Section {index}", f"Exact source {index}", 3)
-        for index in range(30)
-    ]
-    vectors = [[1.0, 0.0] for _ in range(29)] + [[-1.0, 0.0]]
-
-    results = BenchmarkingService._compute_peer_evidence(
-        profiles,
-        [[2 ** -0.5, 2 ** -0.5]],
-        ["Broad institutional cluster"],
-        vectors,
-        chunks,
-    )
-
-    assert len(results) == 30
-    assert results[0].source_excerpt == "Exact source 29"
-    assert results[0].coverage_classification == "candidate_gap"
-    assert results[-1].coverage_classification == "covered"
-    assert results[-1].nearest_staff_name == "Niche Specialist"
-    assert results[-1].nearest_cluster_label == "Broad institutional cluster"
-    assert results[-1].nearest_cluster_distance == pytest.approx(1 - 2 ** -0.5)
-    assert all(item.review_status == "pending_administrator_review" for item in results)
-
-
-def test_peer_coverage_boundaries_are_inclusive_and_three_way() -> None:
-    assert BenchmarkingService._coverage_classification(0.40) == "covered"
-    assert BenchmarkingService._coverage_classification(0.41) == "partially_covered"
-    assert BenchmarkingService._coverage_classification(0.68) == "partially_covered"
-    assert BenchmarkingService._coverage_classification(0.69) == "candidate_gap"
-
-
-def test_peer_api_contract_exposes_reviewable_evidence() -> None:
-    staff_id = uuid4()
+def test_peer_api_contract_exposes_descriptive_source_evidence() -> None:
     evidence = SimpleNamespace(
-        domain_label="synthetic.pdf — Year 4",
-        displacement_score=0.71,
-        recommendation="Administrator review required.",
+        domain_label="synthetic.pdf — Distributed Systems",
+        displacement_score=None,
+        recommendation=None,
         peer_filename="synthetic.pdf",
-        detected_section="Year 4",
-        source_excerpt="Quantum algorithms and error correction.",
-        nearest_staff_id=staff_id,
-        nearest_staff_name="Nearest Staff",
-        nearest_cluster_label="Algorithms / Security",
-        nearest_cluster_distance=0.74,
-        coverage_classification="candidate_gap",
-        review_status="pending_administrator_review",
+        detected_section="Distributed Systems",
+        source_excerpt="Consensus, replication, and fault tolerance.",
+        nearest_staff_id=None,
+        nearest_staff_name=None,
+        nearest_cluster_label=None,
+        nearest_cluster_distance=None,
+        coverage_classification=None,
+        review_status="source_overview",
     )
     run = SimpleNamespace(
         id=uuid4(),
         benchmark_type=BenchmarkType.PEER,
+        created_at=datetime(2026, 10, 20, tzinfo=timezone.utc),
         narrative=None,
-        source_payload={},
-        visualization_payload={"points": []},
+        source_payload={"mode": "descriptive_curriculum_overview"},
+        visualization_payload=None,
         white_spaces=[evidence],
     )
 
     response = _to_run_out(run)
 
     assert response.white_spaces[0].peer_filename == "synthetic.pdf"
-    assert response.white_spaces[0].nearest_staff_id == staff_id
-    assert response.white_spaces[0].coverage_classification == "candidate_gap"
-    assert response.white_spaces[0].review_status == "pending_administrator_review"
+    assert response.white_spaces[0].displacement_score is None
+    assert response.white_spaces[0].nearest_staff_id is None
+    assert response.white_spaces[0].coverage_classification is None
+    assert response.white_spaces[0].review_status == "source_overview"
 
 
-def test_peer_narrative_prompt_cannot_claim_a_proven_gap() -> None:
-    prompt = BenchmarkingService._narrative_prompt(
-        [BenchmarkEvidence("Synthetic segment", 0.7)],
-        scope="peer institutional curricula",
-        require_administrator_review=True,
+def test_peer_overview_does_not_call_embeddings_staff_matching_or_llm(monkeypatch) -> None:
+    service = BenchmarkingService(SimpleNamespace())
+    captured: dict[str, object] = {}
+
+    async def no_op() -> None:
+        return None
+
+    async def unexpected(*args, **kwargs):
+        raise AssertionError("Peer overview must not run analytical comparison")
+
+    async def persist(**kwargs):
+        captured.update(kwargs)
+        return SimpleNamespace(id=uuid4())
+
+    service._acquire_run_lock = no_op  # type: ignore[method-assign]
+    service._load_internal_expertise = unexpected  # type: ignore[method-assign]
+    service._persist_run = persist  # type: ignore[method-assign]
+    monkeypatch.setattr("app.services.benchmarking.embed_texts", unexpected)
+    monkeypatch.setattr("app.services.benchmarking.synthesize_narrative", unexpected)
+    section = SourceSection(
+        id="section-1",
+        filename="synthetic.pdf",
+        section="Distributed Systems",
+        excerpt="Consensus, replication, and fault tolerance.",
+        included_by_default=True,
+        token_count=6,
     )
 
-    assert "Do not describe any item as a proven institutional gap" in prompt
-    assert "requires administrator review" in prompt
+    asyncio.run(service.run_peer_overview(triggered_by=uuid4(), peer_sections=[section]))
+
+    assert captured["narrative"] is None
+    assert captured["visualization"] is None
+    evidence = captured["white_spaces"][0]
+    assert evidence.displacement_score is None
+    assert evidence.nearest_staff_name is None
 
 
 def test_generated_text_pdf_is_readable() -> None:

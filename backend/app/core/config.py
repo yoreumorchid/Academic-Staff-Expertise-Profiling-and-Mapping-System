@@ -82,6 +82,8 @@ class Settings(BaseSettings):
     peer_document_max_files: int = Field(default=8, gt=0)
     peer_document_max_total_bytes: int = Field(default=25 * 1024 * 1024, gt=0)
     embedding_batch_size: int = Field(default=32, gt=0)
+    global_benchmark_daily_limit: int = Field(default=5, gt=0)
+    global_benchmark_daily_timezone: str = "Asia/Kuala_Lumpur"
 
     # Harvest limits — cap publications processed per sync to keep the
     # NLP pipeline bounded and avoid LLM provider rate-limits.  Most

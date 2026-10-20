@@ -1,6 +1,6 @@
 """Deterministic analytical-document cleaning, preview, and token chunking.
 
-This module is shared by UC-14 mapping and UC-16 peer benchmarking.  It keeps
+This module is shared by UC-14 mapping and UC-16 Peer curriculum overview. It keeps
 source text reviewable: no LLM rewriting, summarisation, or OCR is performed.
 """
 from __future__ import annotations
@@ -17,12 +17,29 @@ from app.services.embeddings import get_embedding_tokenizer
 _HEADING_WORDS = re.compile(
     r"\b(title|overview|description|aims?|objectives?|learning outcomes?|topics?|"
     r"syllabus|curriculum|modules?|courses?|requirements?|eligibility|duties|"
-    r"responsibilities|scope|deliverables|technical|skills?|knowledge)\b",
+    r"responsibilities|scope|deliverables|technical|skills?|knowledge|"
+    r"examinations?|information|dates? of (?:full )?term)\b",
     re.IGNORECASE,
 )
 _ADMIN_ONLY = re.compile(
     r"\b(table of contents|document control|version history|approved by|copyright|"
     r"contact us|office hours|telephone|fax|page \d+|last updated)\b",
+    re.IGNORECASE,
+)
+_PEER_DATE_ADMIN = re.compile(
+    r"\b(dates? of (?:full )?term|term dates?|academic calendar|calendar of dates|"
+    r"michaelmas term|hilary term|trinity term)\b",
+    re.IGNORECASE,
+)
+_PEER_EXAM_ADMIN = re.compile(
+    r"\b(examinations? (?:will be |are )?(?:sat|held|taken|scheduled)|"
+    r"written examinations?|exam(?:ination)? (?:duration|arrangements?|regulations?)|"
+    r"past papers?|attempt (?:one|two|three|\d+) questions?|marks? (?:are|will be))\b",
+    re.IGNORECASE,
+)
+_PEER_WEB_ADMIN = re.compile(
+    r"(?:https?://|www\.|\b(?:available|details?|information) (?:is |are )?"
+    r"(?:available|found) on (?:the )?.{0,40}\bwebsite\b)",
     re.IGNORECASE,
 )
 _PROGRAMME_CUES = re.compile(
@@ -43,6 +60,7 @@ class SourceSection:
     excerpt: str
     included_by_default: bool
     token_count: int = 0
+    excluded_reason: str | None = None
 
 
 @dataclass(frozen=True)
@@ -122,11 +140,35 @@ def _looks_like_heading(line: str) -> bool:
         return True
     if len(words) <= 12 and _HEADING_WORDS.search(clean):
         return True
+    heading_connectors = {"and", "of", "for", "to", "in", "with", "&"}
+    if 2 <= len(words) <= 10 and all(
+        word.casefold() in heading_connectors
+        or (next((char for char in word if char.isalpha()), "").isupper())
+        for word in words
+    ):
+        return True
     letters = [char for char in clean if char.isalpha()]
     return bool(letters) and len(words) <= 10 and all(char.isupper() for char in letters)
 
 
-def extract_sections(filename: str, raw_text: str) -> list[SourceSection]:
+def _peer_administrative_reason(heading: str, excerpt: str) -> str | None:
+    text = f"{heading}\n{excerpt}"
+    if _PEER_DATE_ADMIN.search(text):
+        return "Administrative date or academic-calendar content"
+    if _PEER_EXAM_ADMIN.search(text):
+        return "Examination logistics rather than curriculum content"
+    if _PEER_WEB_ADMIN.search(text) and not re.search(
+        r"\b(learning outcomes?|course description|module description|topics?|syllabus)\b",
+        text,
+        re.IGNORECASE,
+    ):
+        return "Website or administrative reference without curriculum content"
+    return None
+
+
+def extract_sections(
+    filename: str, raw_text: str, *, exclude_peer_administrative: bool = False
+) -> list[SourceSection]:
     """Clean parser output and split it into reviewable heading/paragraph sections."""
     cleaned = _remove_repeated_page_furniture(raw_text)
     cleaned = re.sub(r"(?<=\w)-\n(?=\w)", "", cleaned)
@@ -169,9 +211,13 @@ def extract_sections(filename: str, raw_text: str) -> list[SourceSection]:
     for index, (detected_heading, excerpt) in enumerate(sections):
         content_words = re.findall(r"\b[\w+#.-]+\b", excerpt)
         administrative = bool(_ADMIN_ONLY.search(f"{detected_heading} {excerpt}"))
+        excluded_reason = (
+            _peer_administrative_reason(detected_heading, excerpt)
+            if exclude_peer_administrative else None
+        )
         include = len(content_words) >= 5 and not (
             administrative and not _HEADING_WORDS.search(excerpt)
-        )
+        ) and excluded_reason is None
         digest = hashlib.sha256(
             f"{filename}\0{index}\0{detected_heading}\0{excerpt}".encode("utf-8")
         ).hexdigest()[:16]
@@ -182,6 +228,7 @@ def extract_sections(filename: str, raw_text: str) -> list[SourceSection]:
                 section=detected_heading,
                 excerpt=excerpt,
                 included_by_default=include,
+                excluded_reason=excluded_reason,
             )
         )
     return result
@@ -198,12 +245,16 @@ def preview_documents(
     *,
     max_source_tokens: int,
     max_chunks: int,
+    exclude_peer_administrative: bool = False,
 ) -> DocumentPreview:
     settings = get_settings()
     sections = [
         section
         for filename, text in documents
-        for section in extract_sections(filename, text)
+        for section in extract_sections(
+            filename, text,
+            exclude_peer_administrative=exclude_peer_administrative,
+        )
     ]
     included = [section for section in sections if section.included_by_default]
     if not included:
@@ -228,8 +279,8 @@ def preview_documents(
     warnings: list[str] = []
     if appears_single_course:
         warnings.append(
-            "The preview appears to describe one course or module. Confirm that the "
-            "selected files adequately cover the wider programme before peer benchmarking."
+            "The preview appears to describe one course or module. The resulting overview "
+            "will describe only that material and must not represent the peer institution."
         )
     selected_tokens = sum(section.token_count for section in included)
     warning_source_tokens = max(1, int(max_source_tokens * 0.8))
@@ -264,7 +315,16 @@ def select_sections(
     unknown = requested - {section.id for section in preview.sections}
     if unknown:
         raise ValidationFailure("The document preview is stale. Preview the files again.")
+    excluded = [section for section in selected if section.excluded_reason]
+    if excluded:
+        raise ValidationFailure(
+            "Administrative sections excluded by the system cannot be included in a peer overview."
+        )
     return selected
+
+
+def sections_payload(sections: Sequence[SourceSection]) -> list[dict]:
+    return [asdict(section) for section in sections]
 
 
 def _split_long_piece(

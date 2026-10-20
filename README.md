@@ -133,9 +133,9 @@ Status meanings:
 | UC-12 Trigger expertise sync | Implemented | First-login, manual, administrator, and quarterly triggers share the Redis/Celery queue and persisted `SyncJob` model. Duplicate active jobs are constrained per user. |
 | UC-13 Input course/grant specs | Implemented | Text and validated, size-limited PDF/DOCX ingestion, embedding, listing, and deletion exist. |
 | UC-14 Match expertise | Partial | Cosine plus one-hop spreading activation, ranked results, saved reports, optional LLM explanation, and PDF export exist. The scoring design still needs evaluation against a defensible labelled set. |
-| UC-15 Global benchmarking | Implemented baseline / administrator validation pending | The system uses the official OpenAlex Computer Science hierarchy, selects two high-output research topics per subfield, compares their name/description embeddings with internal capability clusters, and displays source counts, provenance, nearest clusters, and raw coverage distance. This is current topic coverage for administrator review, not trend prediction or an automatic staffing-gap conclusion. |
-| UC-16 Peer benchmarking | Implemented baseline / faculty validation pending | Validated PDF/DOCX upload, deterministic cleaning and token-bounded chunking, nearest-staff and nearest-cluster semantic evidence, persisted provenance, sortable three-way coverage display, UMAP/PCA visualization, and explicit pending-review status exist. Synthetic calibration is reproducible, but real faculty-labelled examples are still required before accuracy claims. |
-| UC-17 Gap analysis | Implemented baseline / faculty UAT pending | The UI combines the latest global/peer runs into one source-balanced review queue, retains the underlying evidence, and exposes the provisional 50/50 formula and missing-source warnings. UC-17 is cross-source synthesis and prioritization; it does not turn unvalidated UC-15/16 inputs into ground truth. Faculty management must confirm or revise the weighting during UAT. |
+| UC-15 Global benchmarking | Implemented baseline / administrator validation pending | The system uses the official OpenAlex Computer Science hierarchy, selects two high-output research topics per subfield, compares their name/description embeddings with internal capability clusters, and displays source counts, provenance, nearest clusters, and raw coverage distance in a full report page. Global and peer runs are mutually exclusive, global runs default to five per local day, and the latest five reports per type are retained. UC-15 does not generate an LLM executive summary. This is current topic coverage for administrator review, not trend prediction or an automatic staffing-gap conclusion. |
+| UC-16 Peer curriculum overview | Implemented | Validated PDF/DOCX upload, deterministic cleaning, administrator section review, automatic exclusion of obvious dates/examination/web-administration content, persisted source excerpts, full-page reports, and five-run history exist. The overview deliberately performs no staff matching, embedding-based coverage scoring, gap classification, visualization, or LLM synthesis. |
+| UC-17 Gap analysis | Implemented baseline / administrator validation pending | Each generation uses the newest retained Global report available at click time and creates a Global-only review-priority queue with full provenance. Peer curriculum overviews are intentionally excluded until a faculty-labelled course-level alignment method has been validated. The displayed priority is not a probability or proven staffing/curriculum gap. |
 | UC-18 Export customized CV | Implemented prototype | Staff can select or default profile items and export a one-page PDF or DOCX expertise snapshot. This is a snapshot, not a full general-purpose CV builder. |
 
 ## Synchronization and Concurrency: Implemented Decisions
@@ -289,57 +289,87 @@ Methodological basis:
   to cluster-label numbering. See the
   [scikit-learn ARI definition](https://scikit-learn.org/stable/modules/generated/sklearn.metrics.adjusted_rand_score.html).
 
+### Benchmarking Access, Execution, Retention, and Report Selection
+
+The following rules are the implemented UC-15/16/17 business contract:
+
+- **Access and sharing:** only users holding the `faculty_manager`,
+  `head_of_department`, or `deputy_dean_ugpg` portfolio may run benchmarking,
+  list history, open retained reports, or generate Gap Analytics. Ordinary
+  academic staff cannot access these routes. Reports, history, and limits are
+  shared at faculty scope rather than owned privately by the administrator who
+  triggered a run.
+- **Mutual exclusion:** only one Global or Peer analysis may run at a time for
+  the faculty. The UI disables both actions while either is active, and the API
+  independently enforces the rule with one PostgreSQL transaction-level
+  advisory lock so another browser tab or administrator cannot bypass it.
+  Upload preview is preparatory work; the mutual-exclusion rule applies when the
+  benchmark analysis begins.
+- **Global daily allowance:** at most five successfully persisted Global runs
+  are allowed per faculty calendar day by default. Failed or rejected attempts
+  are not counted. The API checks the persisted Global run count before calling
+  OpenAlex or running embeddings. `GLOBAL_BENCHMARK_DAILY_LIMIT` changes the
+  allowance, and `GLOBAL_BENCHMARK_DAILY_TIMEZONE` defines the calendar-day
+  boundary; the default timezone is `Asia/Kuala_Lumpur`.
+- **Retention:** Global and Peer history each retain only their five newest
+  successful reports. Saving a sixth report of a type deletes that type's
+  oldest report and its associated evidence through the existing cascade.
+  Reports are listed separately by type. A new run keeps the administrator on
+  the benchmarking page with an explicit processing state, then navigates the
+  current tab only after the report has been fully persisted. Historical report
+  links may still be opened separately for comparison.
+- **Global output:** UC-15 stores and displays the OpenAlex retrieval time,
+  field/topic provenance, research-output counts, embeddings, nearest internal
+  clusters, raw cosine distances, visualization inputs, and method details. It
+  does not generate an LLM executive summary. The evidence is current topic
+  coverage for administrator review, not a trend forecast or proven staffing
+  gap.
+- **Peer output:** UC-16 is a descriptive curriculum overview. The server
+  automatically excludes obvious term dates, examination logistics, marks,
+  question-count instructions, and bare website/reference sections even if a
+  client attempts to select them. The administrator reviews the remaining
+  course/module headings and exact excerpts before saving. The current workflow
+  does not embed peer text, identify a closest staff member or cluster, assign a
+  coverage label, claim a gap, create a projection, or ask an LLM to interpret
+  it. Five Peer overviews are retained separately from five Global reports.
+- **Gap Analytics source selection:** every click selects the newest retained
+  Global report at that moment. Its ID and creation time are returned and shown
+  in the generated response. Peer overview IDs are absent because Peer evidence
+  is not used in the score. An already open response is a snapshot and does not
+  update when a newer Global report is saved; the administrator must generate it
+  again.
+- **Gap Analytics calculation:** evidence from the selected Global report is
+  ranked by distinct raw semantic distance to internal capability clusters. The
+  weakest-covered topic receives relative priority `1`, the strongest `0`, and
+  a single or fully tied set receives `1`. The configured Global weight is
+  `1.0`; the Peer weight is `0.0`. The displayed value determines review order
+  only and is not a probability, accuracy measure, or gap-severity score. An LLM
+  may explain this deterministic Global evidence but cannot change its score.
+
 ### Benchmarking Interpretation Boundary
 
-- **UC-16 peer benchmarking** parses uploaded curriculum documents, produces
-  embeddings, compares them with internal staff capability representations, and
-  reports reproducible semantic-coverage distances plus their source text. It
-  may surface candidate gaps, but a human administrator must confirm whether a
-  distant segment is meaningful curriculum evidence or extraction/noise.
-- For UC-16, a peer "curriculum document" means a programme-level curriculum or
-  a collection that adequately represents the programme across multiple
-  courses, such as a four-year study plan plus course titles/descriptions. One
-  isolated module syllabus is not sufficient evidence for an institution-level
-  peer gap and must not be presented as if it represented the whole programme.
-- **UC-17 gap analysis** combines and prioritizes evidence from global and peer
-  benchmark runs and may use an LLM to explain the deterministic evidence. It is
-  not the first point at which comparison happens, and it cannot make weak
-  UC-15/16 evidence valid merely by combining it.
-- UC-17 currently uses a provisional 50% global / 50% peer review-priority
-  rule requested before faculty UAT. Because global evidence measures distance
-  to an internal cluster while peer evidence measures distance to an individual
-  staff profile, raw distances are not directly averaged. Evidence is ranked by
-  distinct raw distance within its own source, with the weakest coverage assigned
-  relative priority `1` and the strongest `0` (a single or fully tied source is
-  assigned `1`). The displayed score is
-  `source_weight * source_relative_priority`. It determines review order only;
-  it is not a probability, accuracy measure, or gap-severity scale. No unvalidated
-  semantic topic-pairing is invented between OpenAlex topics and curriculum
-  chunks.
-- When either source is absent, UC-17 names the missing source and retains the
-  available source's 50% weight rather than silently treating it as 100% of the
-  evidence. The individual UC-15 and UC-16 views remain available for detailed
-  source-specific inspection.
-- Embedding comparison avoids generative hallucination in numeric scoring, but
-  it is still a machine-learned semantic judgement and can misunderstand
-  specialist vocabulary, long text, or mismatched writing styles. Describe it
-  as reproducible rather than perfectly objective.
-- The current shared `all-MiniLM-L6-v2` model is a small general-purpose
-  sentence/paragraph encoder, not a curriculum or scientific-domain truth
-  model. Its
-  [official model card](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2)
-  states that inputs longer than 256 word pieces are truncated. PEER-01 therefore
-  improves document representation before EMBED-01 asks whether this model is
-  sufficiently accurate for this FYP.
-- UC-16 uses heading/sentence-aware chunks capped at 220 model tokens with a
-  25-token overlap. It returns every retained chunk within the existing
-  60-chunk request limit and lets administrators sort the evidence; it no
-  longer applies the previous top-25 result truncation. These remain FYP/UAT
-  choices rather than universally validated curriculum-analysis constants.
-- Until stakeholders confirm weighting rules, every retained peer segment has
-  equal importance; the system does not claim that compulsory modules, credit
-  weight, programme frequency, accreditation requirements, and one-off mentions
-  are equivalent in real curriculum strategy.
+- **UC-16 Peer curriculum overview** answers “what academic content appears in
+  the uploaded files?” It does not answer “which staff member is closest?” or
+  “what is our gap?” Dates, examination mechanics, marks, and bare web/reference
+  text are excluded automatically; administrators can further deselect noisy or
+  irrelevant sections. A syllabus for one module is valid as an overview of that
+  module, but it is not evidence about the whole peer institution.
+- **UC-17 Gap Analysis** currently prioritizes evidence only from the newest
+  retained UC-15 Global report. This is deliberate: combining validated
+  OpenAlex topic evidence with unvalidated arbitrary handbook passages would
+  create an apparently precise but methodologically weak result. The report
+  shows the selected Global run and retrieval time, is a snapshot, and must be
+  regenerated after a newer Global run is saved.
+- **Proposed, not implemented:** a future “Peer Curriculum Alignment” may
+  compare administrator-confirmed academic units (course/module title plus
+  description, learning outcomes, or syllabus topics) with internal capability
+  clusters. It should not reduce the source to LLM-invented tags. Before this can
+  feed Gap Analytics, faculty reviewers must label representative real units,
+  approve the unit of analysis and interpretation, and validate the retrieval or
+  ranking method. Only then should stakeholders decide whether Global and Peer
+  evidence stay side by side or receive an explicit combined weighting.
+Supervisor meeting questions and speaking notes are maintained separately in
+[`SUPERVISOR_MEETING_TALKING_POINTS.md`](SUPERVISOR_MEETING_TALKING_POINTS.md).
 
 ### Human Validation Plan for Analytical Use Cases
 
@@ -353,21 +383,19 @@ large model-training programme.
 - UC-15: administrator review of whether selected OpenAlex computer-science
   topics are relevant and whether the displayed internal coverage is plausible
   (`BENCH-02`).
-- UC-16: peer segments labelled as curriculum-relevant/noise and, where
-  relevant, covered/partially covered/candidate gap (`PEER-01`).
-- UC-17: stakeholder review of cross-source priority and whether the generated
-  explanation is faithful to the displayed evidence (`BENCH-03` and `QA-01`).
+- UC-16: peer sections labelled as academic-content/relevant or administrative
+  noise to validate the overview filter (`PEER-01`).
+- UC-17: administrator review of Global-only priority and whether the generated
+  explanation is faithful to displayed evidence (`BENCH-03` and `QA-01`). Any
+  later Peer alignment needs a separate faculty-labelled validation set.
 
 For the next supervisor UAT, real synchronized staff publication/tag data may be
 used as the internal evidence without waiting for the formal labelled sets.
 First confirm that synchronization completed and manually inspect/correct the
-demonstration staff tags. The external peer input may be a clearly labelled
-synthetic programme-curriculum fixture rather than material attributed to a real
-university: it should contain a plausible multi-year structure and multiple
-course titles/descriptions so expected matches are understandable. Treat this
-as a functional UAT smoke check, not real peer-university evidence or the final
-accuracy evaluation; the documented 30-50-example evaluation remains
-EMBED-01/MAP-01 work.
+demonstration staff tags. The external Peer input may be a clearly labelled
+synthetic curriculum fixture rather than material attributed to a real
+university. Treat it only as an extraction and overview UAT smoke check, not
+evidence of alignment or a final accuracy evaluation.
 
 ## Prototype Security Baseline
 
@@ -494,9 +522,9 @@ external validation of real faculty clusters.
 
 #### [x] DOCREP-01 - Clean and Structure Uploaded Analytical Documents
 
-**Goal:** give UC-14 and UC-16 the same small, deterministic document-
-representation pipeline before their text is embedded; do not add an LLM parser
-or OCR infrastructure for the UAT baseline.
+**Goal:** give UC-14 and UC-16 the same small, deterministic extraction pipeline;
+UC-14 embeds bounded chunks, while UC-16 saves reviewed source sections as a
+descriptive overview. Do not add an LLM parser or OCR infrastructure.
 
 **Acceptance criteria:**
 
@@ -506,22 +534,20 @@ or OCR infrastructure for the UAT baseline.
   curricula, preserve course title, description, learning outcomes, and topic
   lists; for course/grant specifications, preserve title, duties or objectives,
   requirements, and technical topics.
-- Produce token-bounded chunks below the selected embedding model's input limit.
-  Start with approximately 20-30 tokens of overlap, keep the setting explicit,
-  and verify that boundary topics and the final chunk are not lost.
-- Generate chunk embeddings in batches rather than one model call per chunk.
+- For UC-14, produce token-bounded chunks below the selected embedding model's
+  input limit, retain boundary/final content, and generate embeddings in batches.
+- For UC-16, retain reviewed academic sections as source excerpts without
+  embedding or staff comparison.
 - Detect image-only or extraction-poor PDFs and return a clear request for a
   text-based copy. Defer OCR unless representative UAT files demonstrate that it
   is required.
 - Provide a preview in which the administrator can include or exclude extracted
-  sections before running UC-14 or UC-16. Preserve filename, detected section,
-  and exact source excerpt for every retained chunk.
-- For UC-16, explain in the upload UI that the intended unit is a complete
-  programme curriculum or a multi-document collection covering that programme.
-  Warn when the preview appears to contain only one course and require the
-  administrator to confirm adequate programme coverage; do not label a single-
-  course comparison as an institution-level gap.
-- Reuse one focused service from both mapping and peer benchmarking rather than
+  sections before UC-14 ingestion or UC-16 overview creation. Preserve filename,
+  detected section, and exact source excerpt for every retained item.
+- For UC-16, automatically exclude obvious administrative/examination content,
+  enforce that exclusion server-side, and warn that one syllabus describes only
+  that material rather than the institution.
+- Reuse one focused service from both mapping and Peer overview creation rather than
   implementing two divergent chunking/filtering pipelines.
 
 **Completed 2026-10-18:** UC-14 specification uploads and UC-16 peer-curriculum
@@ -530,11 +556,9 @@ Both flows are two-stage: the API first returns a review preview, then the
 administrator includes or excludes detected sections before ingestion or
 analysis. The UI groups sections by file, keeps long previews in a scrollable
 collapsed list, provides per-file select/clear controls, and shows default-
-excluded administrative material so it can be restored rather than silently
-discarded. UC-16 describes the expected input as a complete programme
-curriculum or multi-document collection; a conservative single-course
-detection produces a warning and requires explicit programme-coverage
-confirmation.
+excluded administrative material with its reason. UC-16 exclusions cannot be
+re-enabled by the client, and single-course detection warns about the limited
+scope without blocking a descriptive overview.
 
 The representation is deliberately tolerant of differing document structures:
 
@@ -569,13 +593,13 @@ The representation is deliberately tolerant of differing document structures:
 - UC-16 accepts at most 8 files per analysis, 10 MiB per file, and 25 MiB for
   the combined request. The per-file and request limits bound parsing/memory
   work; the token/chunk budgets are the accuracy-oriented limits.
-- Chunks are embedded in one batched call (`EMBEDDING_BATCH_SIZE`, default 32),
-  not one inference call per chunk. UC-14 stores an L2-normalized mean of its
+- UC-14 chunks are embedded in one batched call (`EMBEDDING_BATCH_SIZE`, default
+  32), not one inference call per chunk. UC-14 stores an L2-normalized mean of its
   chunk vectors for compatibility with the existing matching formula. The new
   nullable `course_grant_specs.document_payload` JSONB column preserves each
   retained chunk's filename, detected section, exact cleaned source excerpt,
-  token count, model, and aggregation rule. UC-16 stores the same provenance in
-  the existing benchmark `source_payload`.
+  token count, model, and aggregation rule. UC-16 stores reviewed source-section
+  provenance in the existing benchmark `source_payload` without embeddings.
 - Extraction-poor, scanned, or image-only files receive a request for a text-
   based copy. OCR and LLM parsing remain intentionally deferred until UAT files
   demonstrate a need.
@@ -645,7 +669,12 @@ filters and selection rule, filtered research-output counts, OpenAlex raw counts
 and update dates, embedding model and input text, topic embeddings, internal
 centroids, and the distance formula. The UI exposes source IDs, subfields,
 counts, descriptions, nearest internal clusters, raw distances, and pending
-administrator-review status, with sorting by coverage or subfield. IEEE client
+administrator-review status, with sorting by coverage or subfield. Global runs
+do not generate an LLM executive summary; the deterministic report opens in a
+full page with method details expanded. Global and peer execution is mutually
+exclusive, only the latest five reports of each type are retained, and the
+configurable global default is five completed runs per Kuala Lumpur calendar
+day. IEEE client
 code, settings, and credentials have been removed. OpenAlex basic access needs
 no key; `OPENALEX_API_KEY` remains optional.
 
@@ -656,7 +685,8 @@ official query shape, deterministic distance ordering/provenance, and API
 contract. When the FYP report is restored, update UC-15, External Data Sources,
 Benchmarking Methodology, Results Presentation, and Limitations with this
 current-topic coverage design, the administrator-review boundary, the no-time-
-series decision, and the OpenAlex classifier-version caveat.
+series decision, report retention/rate-limit behavior, full-page report flow,
+and the OpenAlex classifier-version caveat.
 
 Verification completed with the three focused BENCH-02 tests and seven affected
 PEER-01 regressions passing. The frontend production build passes. Alembic
@@ -665,108 +695,55 @@ migration `a61d72e5b904` was applied to the local development database and
 requests also confirmed the documented primary-topic grouping response and the
 batch topic-detail fields used by the implementation.
 
-#### [x] PEER-01 - Validate Peer Curriculum Benchmarking
+#### [x] PEER-01 - Provide a Defensible Peer Curriculum Overview
 
-**Depends on:** BENCH-01 and DOCREP-01.
+**Depends on:** DOCREP-01.
 
-**Goal:** make UC-16 a reproducible semantic-coverage benchmark that produces
-reviewable candidate gaps without requiring an LLM to parse or score documents.
+**Current goal:** make UC-16 a reviewable source overview without implying that
+arbitrary handbook paragraphs are comparable staff-capability units.
 
-**Acceptance criteria:**
+**Implemented decision (2026-10-20):** the earlier synthetic semantic-gap
+baseline is superseded. It produced implausible results such as matching term
+dates and examination instructions to a “closest staff” member. Synthetic
+threshold calibration did not establish that handbook chunks were a valid unit
+for institutional gap claims.
 
-- Treat DOCREP-01 document representation as the first priority: improve
-  extraction and remove or isolate obvious non-curriculum noise before changing
-  the embedding model, distance formula, threshold, or result count.
-- Build a small documented test set covering normal text PDFs/DOCX, a long
-  programme curriculum, an administration-heavy document, tables, and a scanned or
-  extraction-poor PDF. The UAT fixture may be a synthetic multi-year programme
-  curriculum, but its synthetic provenance must be visible in test records and
-  any screenshots or exported results.
-- Label extracted segments as curriculum-relevant or noise before choosing a
-  filter. Measure the noise effect first; prefer deterministic heading,
-  sentence, repeated-header/footer, minimum-content, and manual include/exclude
-  controls over an LLM parser unless evidence shows they are insufficient.
-- Replace character-only chunking with heading/sentence-aware, token-bounded
-  DOCREP-01 chunks that remain below the configured embedding model's input
-  limit; test the 20-30-token overlap, batched embedding, and final-section
-  retention through the UC-16 path.
-- Define how segment distance becomes **covered**, **partially covered**, or a
-  **candidate gap**, using a small human-labelled development set. Keep the raw
-  distance and source excerpt visible for review.
-- Each result must show the peer filename, detected section, exact source
-  excerpt, nearest staff profile, nearest capability cluster, raw distance, and
-  **pending administrator review** status. This evidence display is part of the
-  UC-16 result, not an optional LLM explanation.
-- Use nearest staff to expose niche expertise that a cluster average can hide,
-  while retaining nearest cluster as the institutional summary. Defer cluster-
-  headcount weighting unless it becomes a confirmed stakeholder requirement.
-- Treat the current top-25 cap as unvalidated. During UAT ask whether users need
-  a fixed top-N, a calibrated threshold, all sortable results, or pagination;
-  record the chosen display and decision rationale.
-- During UAT ask whether compulsory/elective status, credit weight, recurrence
-  across programmes, accreditation importance, and single mentions should
-  affect priority. Until confirmed and available as reliable input, keep equal
-  weighting and display that limitation.
-- Ask stakeholders and the supervisor to approve wording that UC-16 surfaces
-  **candidate white spaces requiring administrator review**, rather than
-  claiming automatically proven institutional gaps. Update `use_cases.md` and
-  the FYP report only after that decision.
-- Add focused extraction, chunk-completeness, formula, ordering, and API tests;
-  document the representative files without committing copyrighted curricula.
+The active UC-16 path therefore:
 
-**Completed baseline 2026-10-18:** UC-16 now treats every selected curriculum
-chunk as reviewable evidence rather than an automatically proven institutional
-gap. The raw score is cosine distance to the nearest eligible staff profile,
-which exposes niche expertise that a cluster mean can hide. The response also
-stores and displays the nearest staff member, nearest internal cluster and its
-distance, peer filename, detected section, exact source excerpt, provisional
-coverage class, and `pending_administrator_review` status. All retained chunks
-within the existing 60-chunk input bound are returned and can be sorted by gap,
-coverage, or source; the unvalidated top-25 truncation was removed for UC-16.
+- validates and parses PDF/DOCX files, removes repeated page furniture, and
+  shows detected sections for administrator review;
+- automatically excludes obvious term dates, examination logistics, marks,
+  question-count instructions, and bare website/reference sections, with the
+  same exclusion enforced by the server on submission;
+- persists selected filename, heading, exact excerpt, and source provenance;
+- retains the latest five Peer overviews and opens the completed overview in the
+  current tab; and
+- performs no Peer embeddings, nearest-staff/cluster retrieval, coverage
+  thresholds, gap labels, projection, or LLM narrative.
 
-The confirmed UAT decisions are to keep retained chunks equally weighted, not
-infer compulsory/elective, credit, recurrence, accreditation, or single-mention
-importance from unreliable input, and use **candidate coverage gap requiring
-administrator review** wording. The optional LLM narrative receives only the
-deterministic evidence and is instructed not to claim proven institutional
-gaps; it does not parse, score, or classify curriculum text.
+Migration `91c7e4b2d5a0` makes Peer evidence distance nullable and removes
+derived staff/gap fields from historical Peer reports while retaining their
+source excerpts. The old synthetic dataset and evaluation artefacts remain only
+as an audit trail of the superseded experiment; they must not be cited as
+validation of the current overview or a future Peer alignment method.
 
-`evaluation/datasets/peer_benchmark_synthetic.json` is an explicitly synthetic
-development set informed only by the public structure of Stanford and Oxford
-Computer Science curriculum pages. No third-party curriculum file is committed.
-The documented generated-file matrix covers a normal text PDF, a DOCX table, a
-long multi-year programme, administration-heavy content, repeated page
-furniture, and an extraction-poor PDF. The repeatable calibration with
-`all-MiniLM-L6-v2` selected `covered <= 0.40`, `partially covered <= 0.68`, and
-otherwise `candidate gap`, with macro F1 `0.719` on 14 synthetic examples. The
-JSON/Markdown report records per-example distances, predictions, the formula,
-model, provenance, and confusion matrix.
+The next product/research decision is intentionally deferred to
+`SUPERVISOR_MEETING_TALKING_POINTS.md`. If course-level alignment is approved, create a new
+faculty-labelled evaluation task using administrator-confirmed course/module
+units. Do not reactivate the previous chunk-to-nearest-staff thresholds.
 
-This is an **implemented synthetic baseline**, not real-faculty validation.
-Before reporting UC-16 accuracy, rerun the supplied evaluation workflow with
-the institution's permitted UC-14 syllabus/peer examples and faculty or
-supervisor labels. `backend/evaluation/PEER_BENCHMARK.md` records that UAT
-handoff and the public reference links.
-
-Focused verification passed: 13 PEER-01/DOCREP/upload tests, followed by 7
-PEER-01 tests after adding the API-contract and narrative-boundary assertions;
-the frontend production build succeeded. Migration `f3a1c9d84e62` was applied
-to the local database and
-`alembic check` reports no new upgrade operations.
-
-When the FYP report is restored, update the UC-16 use-case flow, benchmarking
-methodology, database design, evaluation results, limitations, and UI evidence
-figures with the nearest-staff formula, separate cluster summary, synthetic
-threshold provenance, equal-weight decision, pending-review wording, and the
-requirement for later faculty-labelled calibration.
+When the FYP report is restored, revise UC-16, Benchmarking Methodology,
+Evaluation, Limitations, database design, and UI figures to distinguish the
+superseded experiment from the implemented descriptive overview.
 
 #### [ ] EMBED-01 - Confirm the Shared Embedding Model Is Good Enough
 
-**Depends on:** DOCREP-01 and the initial PEER-01/MAP-01 UAT examples.
+**Depends on:** DOCREP-01 and MAP-01 UAT examples; a future Peer alignment would
+need its own approved examples.
 
-**Goal:** make one small, human-grounded model decision for UC-14 and UC-16;
-this task is not a model-tuning research project and does not seek a universally
-best embedding model.
+**Goal:** make one small, human-grounded model decision for the active embedded
+matching/coverage use cases. UC-16 currently performs no embedding. This task is
+not a model-tuning research project and does not seek a universally best model.
 
 **Acceptance criteria:**
 
@@ -788,46 +765,35 @@ best embedding model.
   one-time regeneration of affected embeddings and reports. Do not build online
   model switching, dual-version storage, or a general migration platform.
 
-#### [ ] BENCH-03 - Validate Combined Gap Analysis
+#### [ ] BENCH-03 - Validate Gap Analytics and Decide Whether to Combine Sources
 
-**Depends on:** BENCH-02 and PEER-01. EMBED-01 supplies later accuracy evidence
-but does not block the initial supervisor UAT.
+**Depends on:** BENCH-02 and the supervisor decisions recorded in
+`SUPERVISOR_MEETING_TALKING_POINTS.md`. A future
+Peer alignment also depends on a new faculty-labelled validation task.
 
-**Goal:** make UC-17 combine validated global-topic and peer-curriculum evidence
-consistently, explainably, and demonstrably.
+**Current implementation (2026-10-20):** UC-17 selects the newest retained
+Global report, preserves its provenance and raw cluster distances, and produces
+a Global-only relative review-priority queue. Global weight is `1.0`; Peer is
+explicitly excluded with weight `0.0`. The result is a snapshot and its score is
+not a probability or validated gap-severity measure.
 
-**Acceptance criteria:**
+The previous provisional 50/50 Global/Peer queue is superseded because the Peer
+input is now a descriptive curriculum overview and has no validated comparable
+score. Focused tests must preserve this exclusion and the missing-Global error.
 
-- Keep global and peer results usable separately. Show source provenance,
-  nearest internal cluster, component scores, review status, and supporting
-  excerpts where available rather than relying only on an LLM narrative.
-- During UAT, ask faculty management whether UC-17 should show the two evidence
-  sources side by side or calculate a combined priority. Add global/peer weights
-  only when stakeholders confirm both that a combined ranking is useful and how
-  the weighting should be interpreted.
-- Combined results retain global/peer provenance and handle either source being
-  absent with a clear message.
-- UMAP failure still yields the existing PCA/table fallback.
-- Add focused formula and API tests and document limitations honestly.
+**Decision and validation still required:**
 
-**Implementation status (2026-10-18):** the technical baseline is implemented.
-UC-17 returns a unified source-balanced review queue with full provenance,
-component values, provisional 50/50 weights, missing-source warnings, and an LLM
-prompt that preserves the interpretation boundary. The frontend exposes the
-formula and supporting evidence rather than relying on the narrative. Focused
-formula, missing-source, and contract regressions are in
-`test_combined_gap_analysis.py`. The task remains unchecked until faculty UAT
-confirms whether the 50/50 rule reflects decision-making practice or supplies a
-replacement rule; no stakeholder decision has been fabricated.
+- Ask whether the current view should retain the “Gap Analysis” name or be
+  renamed to “Global Coverage Priorities”.
+- Validate selected Global-topic relevance, cluster alignment plausibility, and
+  the faithfulness of any optional LLM explanation with administrators.
+- If Peer alignment is later approved and validated, ask whether sources should
+  remain side by side or receive a combined priority; add weights only after the
+  management decision and interpretation are documented.
 
-Technical verification completed on **2026-10-18**: the four focused BENCH-03
-tests passed and the TypeScript/Vite production build succeeded. No Alembic
-check was run because this change does not alter database models or schema.
-
-**FYP report update required when the report is available:** revise the UC-17
-method/formula, combined-report UI and limitation/UAT subsections to describe
-the provisional source-balanced ranking, missing-source behavior, and the fact
-that the score is review order rather than validated gap severity.
+**FYP report update required when available:** replace the old 50/50 method with
+the current Global-only boundary and clearly mark any future combined method as
+proposed until stakeholder-approved and validated.
 
 #### [ ] MAP-01 - Evaluate Course/Grant Matching
 

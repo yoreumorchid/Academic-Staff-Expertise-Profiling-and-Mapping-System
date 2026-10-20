@@ -467,7 +467,7 @@ class BenchmarkWhiteSpace(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         ForeignKey("benchmark_runs.id", ondelete="CASCADE"), nullable=False, index=True
     )
     domain_label: Mapped[str] = mapped_column(String(255), nullable=False)
-    displacement_score: Mapped[float] = mapped_column(Float, nullable=False)
+    displacement_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     recommendation: Mapped[Optional[str]] = mapped_column(Text)
     peer_filename: Mapped[Optional[str]] = mapped_column(String(255))
     detected_section: Mapped[Optional[str]] = mapped_column(String(255))

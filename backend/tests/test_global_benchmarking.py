@@ -2,12 +2,14 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import datetime, timezone
 from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
 
 from app.api.routes_benchmarking import _to_run_out
+from app.core.exceptions import ConflictError, RateLimitError
 from app.db.models import BenchmarkType
 from app.services import external_apis
 from app.services.benchmarking import BenchmarkingService
@@ -140,6 +142,7 @@ def test_global_api_contract_exposes_method_and_topic_evidence() -> None:
     run = SimpleNamespace(
         id=uuid4(),
         benchmark_type=BenchmarkType.GLOBAL,
+        created_at=datetime(2026, 10, 20, tzinfo=timezone.utc),
         narrative=None,
         source_payload={"provider": "OpenAlex", "selection": {"time_series_used": False}},
         visualization_payload={"points": []},
@@ -152,3 +155,71 @@ def test_global_api_contract_exposes_method_and_topic_evidence() -> None:
     assert response.source_payload["selection"]["time_series_used"] is False
     assert response.white_spaces[0].external_source_id == "T10002"
     assert response.white_spaces[0].external_works_count == 987
+
+
+def test_global_daily_window_uses_configured_local_calendar_day() -> None:
+    start, end = BenchmarkingService._global_daily_window(
+        datetime(2026, 10, 20, 18, 30, tzinfo=timezone.utc)
+    )
+
+    assert start == datetime(2026, 10, 20, 16, 0, tzinfo=timezone.utc)
+    assert end == datetime(2026, 10, 21, 16, 0, tzinfo=timezone.utc)
+
+
+def test_benchmark_lock_rejects_a_concurrent_global_or_peer_run() -> None:
+    class _Result:
+        def scalar_one(self) -> bool:
+            return False
+
+    class _Session:
+        async def execute(self, statement: object) -> _Result:
+            return _Result()
+
+    with pytest.raises(ConflictError, match="already running"):
+        asyncio.run(BenchmarkingService(_Session())._acquire_run_lock())  # type: ignore[arg-type]
+
+
+def test_global_daily_limit_is_enforced_before_expensive_work() -> None:
+    service = BenchmarkingService(SimpleNamespace())
+
+    async def at_limit() -> int:
+        return 5
+
+    service.global_runs_today = at_limit  # type: ignore[method-assign]
+
+    with pytest.raises(RateLimitError, match="daily limit"):
+        asyncio.run(service._enforce_global_daily_limit())
+
+
+def test_global_run_does_not_generate_an_llm_summary(monkeypatch: pytest.MonkeyPatch) -> None:
+    service = BenchmarkingService(SimpleNamespace())
+    captured: dict[str, object] = {}
+
+    async def no_op() -> None:
+        return None
+
+    async def clusters():
+        return [[1.0, 0.0]], ["Data / AI"]
+
+    async def global_vectors():
+        topic = {"id": "T1", "display_name": "AI", "research_output_count": 1}
+        return {"field": {"display_name": "Computer Science"}, "topics": [topic]}, [[1.0, 0.0]], ["AI"]
+
+    async def persist(**kwargs):
+        captured.update(kwargs)
+        return SimpleNamespace(id=uuid4())
+
+    async def unexpected_summary(prompt: str) -> str:
+        raise AssertionError("Global benchmarking should not call the LLM summary path")
+
+    service._acquire_run_lock = no_op  # type: ignore[method-assign]
+    service._enforce_global_daily_limit = no_op  # type: ignore[method-assign]
+    service._cluster_internal_expertise = clusters  # type: ignore[method-assign]
+    service._fetch_global_vectors = global_vectors  # type: ignore[method-assign]
+    service._build_visualization_payload = lambda *args, **kwargs: {}  # type: ignore[method-assign]
+    service._persist_run = persist  # type: ignore[method-assign]
+    monkeypatch.setattr("app.services.benchmarking.synthesize_narrative", unexpected_summary)
+
+    asyncio.run(service.run_global_benchmark(triggered_by=uuid4()))
+
+    assert captured["narrative"] is None

@@ -30,7 +30,7 @@ export function DocumentSectionPreview({
   const toggleFile = (filename: string, include: boolean) => {
     const next = new Set(selected);
     preview.sections.filter((s) => s.filename === filename).forEach((s) => {
-      if (include) next.add(s.id); else next.delete(s.id);
+      if (include && !s.excluded_reason) next.add(s.id); else next.delete(s.id);
     });
     onChange(next);
   };
@@ -68,14 +68,20 @@ export function DocumentSectionPreview({
             {preview.sections.filter((s) => s.filename === filename).map((section) => (
               <details key={section.id} className="rounded-comfy bg-bg-deepest p-2">
                 <summary className="cursor-pointer text-small text-text-primary">
-                  <input className="mr-2" type="checkbox" checked={selected.has(section.id)} onClick={(e) => e.stopPropagation()} onChange={(e) => {
+                  <input className="mr-2" type="checkbox" checked={selected.has(section.id)} disabled={!!section.excluded_reason} onClick={(e) => e.stopPropagation()} onChange={(e) => {
                     const next = new Set(selected);
                     if (e.target.checked) next.add(section.id); else next.delete(section.id);
                     onChange(next);
                   }} />
-                  {section.section}{!section.included_by_default && <span className="ml-2 text-caption text-text-tertiary">default excluded</span>}
+                  {section.section}
+                  {section.excluded_reason ? (
+                    <span className="ml-2 text-caption text-status-amber">automatically excluded</span>
+                  ) : !section.included_by_default && (
+                    <span className="ml-2 text-caption text-text-tertiary">default excluded</span>
+                  )}
                 </summary>
                 <p className="mt-2 whitespace-pre-line text-caption text-text-secondary">{section.excerpt}</p>
+                {section.excluded_reason && <p className="mt-2 text-caption text-status-amber">{section.excluded_reason}</p>}
               </details>
             ))}
           </div>

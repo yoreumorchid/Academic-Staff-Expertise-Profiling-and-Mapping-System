@@ -15,7 +15,7 @@ export { ExportSnapshotPage } from "./Export";
 export { AdminHomePage } from "./AdminHome";
 export { StaffDirectoryPage } from "./StaffDirectory";
 export { CourseMappingPage, GrantMappingPage } from "./Mapping";
-export { GapAnalyticsPage, GlobalBenchmarkingPage } from "./Gap";
+export { BenchmarkReportPage, GapAnalyticsPage, GlobalBenchmarkingPage } from "./Gap";
 
 // ---------------------------------------------------------------------------
 // UC-2 — Pending Registrations (kept inline as the only admin-side surface

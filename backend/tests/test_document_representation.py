@@ -12,6 +12,7 @@ from app.services.document_representation import (
     chunk_sections,
     extract_sections,
     preview_documents,
+    select_sections,
 )
 from app.services.mapping import MappingService
 
@@ -41,6 +42,34 @@ Page 3"""
     assert all("FACULTY HANDBOOK" not in section.excerpt for section in sections)
     assert any(section.section == "Learning Outcomes" and section.included_by_default for section in sections)
     assert any(section.section == "Document Control" and not section.included_by_default for section in sections)
+
+
+def test_peer_overview_excludes_dates_exams_and_web_references_server_side() -> None:
+    raw = """4.1 Dates of term
+Michaelmas Term: Sunday 11th October 2026 – Saturday 5th December 2026.
+
+Distributed Systems
+Students study consensus, replication, fault tolerance, and distributed storage.
+
+Examination arrangements
+The written examination will be sat in Trinity Term and will last two hours.
+
+Further information
+Details are available on the University's website at https://example.edu/programme.
+"""
+
+    sections = extract_sections(
+        "handbook.pdf", raw, exclude_peer_administrative=True
+    )
+    academic = next(section for section in sections if section.section == "Distributed Systems")
+    excluded = [section for section in sections if section.excluded_reason]
+
+    assert academic.included_by_default
+    assert len(excluded) == 3
+    assert all(not section.included_by_default for section in excluded)
+    preview = SimpleNamespace(sections=sections)
+    with pytest.raises(ValidationFailure, match="cannot be included"):
+        select_sections(preview, [academic.id, excluded[0].id])
 
 
 def test_sentence_chunks_keep_overlap_boundary_topic_and_final_text() -> None:

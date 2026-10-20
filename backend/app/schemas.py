@@ -394,6 +394,7 @@ class DocumentPreviewSection(BaseModel):
     excerpt: str
     included_by_default: bool
     token_count: int
+    excluded_reason: Optional[str] = None
 
 
 class DocumentPreviewOut(BaseModel):
@@ -432,7 +433,7 @@ class MappingReportOut(_ORM):
 
 class BenchmarkWhiteSpaceOut(_ORM):
     domain_label: str
-    displacement_score: float
+    displacement_score: Optional[float]
     recommendation: Optional[str]
     peer_filename: Optional[str] = None
     detected_section: Optional[str] = None
@@ -452,10 +453,26 @@ class BenchmarkWhiteSpaceOut(_ORM):
 class BenchmarkRunOut(_ORM):
     id: UUID
     benchmark_type: BenchmarkType
+    created_at: datetime
     narrative: Optional[str]
     source_payload: Optional[dict]
     visualization_payload: Optional[dict]
     white_spaces: List[BenchmarkWhiteSpaceOut]
+
+
+class BenchmarkRunSummaryOut(_ORM):
+    id: UUID
+    benchmark_type: BenchmarkType
+    created_at: datetime
+    item_count: int
+
+
+class BenchmarkHistoryOut(BaseModel):
+    global_runs: List[BenchmarkRunSummaryOut]
+    peer_runs: List[BenchmarkRunSummaryOut]
+    global_daily_limit: int
+    global_runs_today: int
+    daily_timezone: str
 
 
 
@@ -624,6 +641,8 @@ class GapAnalysisReport(BaseModel):
     white_spaces: List[GapAnalysisItem]
     global_run_id: Optional[UUID] = None
     peer_run_id: Optional[UUID] = None
+    global_run_created_at: Optional[datetime] = None
+    peer_run_created_at: Optional[datetime] = None
     missing_sources: List[str]
     warnings: List[str]
     weighting: GapAnalysisWeighting
