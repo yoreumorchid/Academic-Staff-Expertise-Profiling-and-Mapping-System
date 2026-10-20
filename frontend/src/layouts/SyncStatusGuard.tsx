@@ -121,7 +121,7 @@ export function SyncStatusGuard() {
   if (!activeJobId && !completedJob) return null;
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/30 p-4"
       role="status"
       aria-live="polite"
     >
@@ -161,7 +161,8 @@ export function SyncStatusGuard() {
                 : STAGE_MESSAGES[progressStage]}
             </p>
             <p className="mt-2 text-small text-text-tertiary">
-              Please keep this page open and wait until synchronization finishes.
+              This job is tracked centrally. Its latest status will be restored
+              after a refresh.
             </p>
           </>
         )}

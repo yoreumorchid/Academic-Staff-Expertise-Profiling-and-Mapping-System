@@ -15,6 +15,10 @@ node_modules/
 dist/
 .vite/
 
+# Local generated credentials and database backups
+backend/demo_backups/
+deploy/backups/
+
 # IDE
 .vscode/
 .idea/
@@ -24,5 +28,8 @@ dist/
 Thumbs.db
 
 # Docs
-use_cases.md
-AGENTS.md
+docs/
+
+# Tools
+backend/app/tools
+backend/lauch_demo_accounts_gui

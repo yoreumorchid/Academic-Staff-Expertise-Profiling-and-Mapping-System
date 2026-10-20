@@ -17,6 +17,11 @@ measurement justifies it.
 > critical validation before performance tuning or publication-oriented model
 > optimization.
 
+> **Pilot packaging:** a reproducible single-server Docker deployment and a
+> guarded local demo-account importer are now implemented. They remain a
+> controlled UAT package—not a production-readiness claim—until the outstanding
+> QA, sync-recovery, restore-drill, security, and load evidence is completed.
+
 ## Start Here in a New Development Session
 
 Read these files before changing a module:
@@ -873,37 +878,51 @@ to register and approve each academic account manually.
 
 **Acceptance criteria:**
 
-- Build a simple local-only GUI, preferably with Python's standard-library
-  Tkinter, that accepts multiple rows containing staff name and ORCID ID plus a
-  shared/default department.
+- Build a local-only Tkinter window with separate fields for one staff name,
+  ORCID ID, department, and a shared password for the session.
 - Validate ORCID format/checksum and duplicate ORCID/name rows before making any
   database change. Do not commit staff names, ORCID IDs, generated credentials,
   or exported real data to the repository.
-- Generate unique, visibly simulated, non-deliverable email addresses under the
-  reserved `example.invalid` domain. Create academic-staff accounts directly in
-  `active` state for this demo-only workflow, without sending registration or
-  approval notifications.
+- Continue the confirmed local login convention
+  `academic_staff[N]@um.edu.my` from the highest preserved number. Create
+  academic-staff accounts directly in `active` state for this demo-only
+  workflow, without sending registration or approval notifications.
 - Reuse the application's password hashing, SQLAlchemy models, and existing
   durable `SyncJob`/Celery enqueue path. Do not call the harvesting service
   directly or create a second synchronization mechanism. Show enqueue success or
   failure for each created account.
 - Provide a destructive reset action that is disabled outside an explicitly
   configured local/development environment. Before it runs, display the resolved
-  database target, all accounts that would be removed, and the exact one
-  administrator account selected to remain; require typed confirmation and make
+  database target, all accounts that would be removed, and every non-academic
+  account selected to remain; require typed confirmation and make
   a timestamped backup/export.
 - In one transaction, remove the other user-owned/demo analytical data and stale
-  benchmark/mapping results while preserving the selected active administrator
-  and required schema. Report what was removed. Do not infer the retained
-  administrator from role alone when several administrators exist.
-- Keep reset and import as separate buttons so the user can preview/validate the
-  batch without deleting data. Make reruns detect existing email/ORCID conflicts
-  rather than silently duplicating staff.
+  benchmark/mapping results while preserving all faculty-administrator accounts
+  and required schema. Report what was removed.
+- Keep reset and staff entry in separate GUI tabs so the user can preview and
+  validate entries without deleting data. Make reruns detect existing name and
+  ORCID conflicts rather than silently duplicating staff.
 - After reset/import, run a focused demo-readiness check: retained administrator
   login, expected staff count, one queued/successful sync per imported ORCID, and
   no unexpected pending accounts. Record the commands and recovery steps.
 - This utility is developer/demo tooling, not an administrator-facing production
   feature and not part of the normal UC-1/UC-2 registration contract.
+
+**Partially implemented 2026-10-19:** `python -m app.tools.demo_accounts` opens
+a Tkinter window with one-person input fields, a reviewable pending list, a
+shared hidden password, queue results, and a separate reset-preview tab. The
+Windows launcher `backend/launch_demo_accounts_gui.cmd` opens the same window
+by double-click; existing CLI commands remain available. The tool validates ORCID checksums and
+session/database duplicates, assigns the existing incrementing
+`academic_staff[N]@um.edu.my` login format, preserves faculty administrators,
+and requires a `pg_dump` backup plus exact confirmation before reset. Account
+creation reuses the durable synchronization queue. See `docs/DEPLOYMENT.md`.
+The local reset has not yet been executed, staff have not yet been entered, and
+the post-sync readiness check remains outstanding.
+
+When the FYP report is restored, document this only as local demonstration-data
+tooling in the Implementation/Test Data Preparation section; it is not a new
+administrator use case or a production bulk-account interface.
 
 ### P1 - Essential Engineering Before a Faculty Pilot
 
@@ -1056,6 +1075,26 @@ required for this internal maintainability refactor.
 - Document HTTPS/reverse-proxy configuration and a rollback procedure.
 - Call it production-ready only after QA, security, backup restore, and load
   targets have been demonstrated.
+
+**Partially implemented 2026-10-18:** `deploy/compose.yaml` packages PostgreSQL, persistent
+Redis, a one-shot Alembic migration, FastAPI, scalable Celery workers, exactly
+one Beat scheduler, the built React/Nginx frontend, and Caddy HTTPS on one Linux
+host. It includes service health checks, JSON application/access logs with
+rotation, externalized secrets, persistent data/model-cache volumes, guarded
+backup/restore scripts, and documented migration, diagnosis, scaling, update,
+rollback, and shutdown procedures in `docs/DEPLOYMENT.md`. This is a faculty-
+pilot/UAT package. Live HTTPS deployment, a restore drill, QA-01, SYNC-01, and
+PERF-02/03 evidence remain outstanding, so the project is not described as
+production-ready.
+
+When the FYP report is restored, update Deployment Architecture, Operational
+Recovery, Security Limitations, and Performance Evaluation with the single-host
+pilot topology, one-Beat invariant, secrets boundary, health/logging behavior,
+backup/rollback procedure, and remaining evidence gates.
+
+Compose configuration parsing passes, but a real Linux image build, HTTPS
+launch, migration run, and restore drill are still required before this task can
+be checked complete.
 
 ### Research and Publication Track (After Core FYP Completion)
 

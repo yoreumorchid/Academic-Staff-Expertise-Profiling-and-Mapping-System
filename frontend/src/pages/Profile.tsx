@@ -13,6 +13,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api, extractApiError } from "../api/client";
+import { submitSync } from "../api/sync";
 import { useAuthStore } from "../store/auth";
 import type {
   Publication,
@@ -34,7 +35,7 @@ const PORTFOLIO_LABELS: Record<string, string> = {
 };
 
 export function ProfileOverviewPage() {
-  const { user, logout, activeSyncJobId, setActiveSyncJobId } = useAuthStore();
+  const { user, logout, activeSyncJobId } = useAuthStore();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<StaffProfileDetail | null>(null);
   const [jobs, setJobs] = useState<SyncJob[]>([]);
@@ -107,9 +108,12 @@ export function ProfileOverviewPage() {
     setError(null);
     setInfo(null);
     try {
-      const { data } = await api.post<SyncJob>("/sync/me");
-      setActiveSyncJobId(data.id);
-      setInfo("Synchronization queued. You may safely navigate to another page.");
+      const submission = await submitSync();
+      setInfo(
+        submission.alreadyActive
+          ? "The synchronization already in progress is now being tracked."
+          : "Synchronization queued. Progress is now being tracked.",
+      );
     } catch (err) {
       setError(extractApiError(err, "Manual sync failed."));
     } finally {

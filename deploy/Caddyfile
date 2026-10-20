@@ -1,0 +1,16 @@
+{$SITE_ADDRESS} {
+    encode zstd gzip
+    reverse_proxy frontend:8080
+
+    log {
+        output stdout
+        format json
+    }
+
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+    }
+}

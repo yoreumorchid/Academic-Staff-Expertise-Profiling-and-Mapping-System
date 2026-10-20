@@ -5,7 +5,9 @@ from celery import Celery
 from celery.schedules import crontab
 
 from app.core.config import get_settings
+from app.core.logging import configure_logging
 
+configure_logging()
 settings = get_settings()
 
 celery_app = Celery(
@@ -14,6 +16,7 @@ celery_app = Celery(
     include=["app.tasks.sync"],
 )
 celery_app.conf.update(
+    worker_hijack_root_logger=False,
     task_ignore_result=True,
     task_serializer="json",
     accept_content=["json"],

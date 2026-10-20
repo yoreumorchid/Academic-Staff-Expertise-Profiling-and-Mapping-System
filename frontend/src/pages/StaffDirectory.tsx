@@ -16,6 +16,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { api, extractApiError } from "../api/client";
+import { submitSync } from "../api/sync";
 import type {
   StaffDirectoryEntry,
   StaffDirectoryPage,
@@ -49,6 +50,10 @@ export function StaffDirectoryPage() {
   const [openProfile, setOpenProfile] = useState<StaffProfileDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [syncBusy, setSyncBusy] = useState(false);
+  const [pendingSyncTargetId, setPendingSyncTargetId] = useState<string | null>(
+    null,
+  );
   const [viewMode, setViewMode] = useState<ViewMode>("individual");
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -109,14 +114,37 @@ export function StaffDirectoryPage() {
   }, [params]);
 
   async function triggerSync(id: string) {
+    if (syncBusy) return;
+    setSyncBusy(true);
     setError(null);
     try {
-      await api.post(`/sync/users/${id}`);
-      await openStaff(id);
+      setPendingSyncTargetId(id);
+      await submitSync(id);
     } catch (err) {
+      setPendingSyncTargetId(null);
       setError(extractApiError(err, "Sync trigger failed."));
+    } finally {
+      setSyncBusy(false);
     }
   }
+
+  useEffect(() => {
+    if (!pendingSyncTargetId) return;
+    const refreshCompletedProfile = () => {
+      const targetId = pendingSyncTargetId;
+      setPendingSyncTargetId(null);
+      void openStaff(targetId);
+      void search(page);
+    };
+    window.addEventListener("expertise-sync-completed", refreshCompletedProfile);
+    return () =>
+      window.removeEventListener(
+        "expertise-sync-completed",
+        refreshCompletedProfile,
+      );
+    // The current page is deliberately captured so its directory cards refresh.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingSyncTargetId]);
 
   // ---------------------------------------------------------------------
   // View-By regrouping (client-side only — no backend round-trip).
@@ -316,8 +344,13 @@ export function StaffDirectoryPage() {
                   type="button"
                   className="btn-ghost"
                   onClick={() => triggerSync(openProfile.id)}
+                  disabled={syncBusy || Boolean(pendingSyncTargetId)}
                 >
-                  Trigger sync
+                  {syncBusy
+                    ? "Queuing…"
+                    : pendingSyncTargetId
+                      ? "Sync in progress…"
+                      : "Trigger sync"}
                 </button>
                 <button
                   type="button"
