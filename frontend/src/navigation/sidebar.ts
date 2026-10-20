@@ -18,6 +18,7 @@ const STAFF_LINKS: NavItem[] = [
   { label: "Academic Background", path: "/staff/background", uc: "UC-10" },
   { label: "Publications & Abstracts", path: "/staff/publications", uc: "UC-9" },
   { label: "Export Portfolio Snapshot", path: "/staff/export", uc: "UC-18" },
+  { label: "Account Settings", path: "/account", uc: "UC-4" },
 ];
 
 const PORTFOLIO_LINKS: Record<PortfolioType, NavItem[]> = {
@@ -63,6 +64,7 @@ export function sidebarForActiveView(
       }
     }
   }
+  merged.push({ label: "Account Settings", path: "/account", uc: "UC-4" });
   return merged;
 }
 

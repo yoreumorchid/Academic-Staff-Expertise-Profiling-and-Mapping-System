@@ -8,6 +8,7 @@ from app.api import (
     routes_auth,
     routes_benchmarking,
     routes_export,
+    routes_internal_expertise,
     routes_mapping,
     routes_profile,
     routes_profile_background,
@@ -27,3 +28,4 @@ api_router.include_router(routes_sync.router)
 api_router.include_router(routes_mapping.router)
 api_router.include_router(routes_benchmarking.router)
 api_router.include_router(routes_export.router)
+api_router.include_router(routes_internal_expertise.router)

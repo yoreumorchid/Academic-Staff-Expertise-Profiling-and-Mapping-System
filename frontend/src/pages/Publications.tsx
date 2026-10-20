@@ -95,7 +95,7 @@ export function PublicationsPage() {
         <h1 className="text-heading-1 font-announce text-text-primary">
           Publications &amp; Abstracts
         </h1>
-        <p className="mt-2 text-small text-text-tertiary">
+        <p className="mt-2 max-w-3xl text-body leading-relaxed text-text-tertiary">
           When OpenAlex cannot return an abstract for a paper we found via
           your ORCID, the ABSTRACT row is flagged <em>Missing</em>. Click
           <span className="mx-1 font-signature">Supplement</span>
@@ -108,62 +108,60 @@ export function PublicationsPage() {
       {info && <Banner kind="success">{info}</Banner>}
 
       <section className="card overflow-hidden p-0">
-        <table className="min-w-full divide-y divide-border-secondary text-small">
-          <thead className="bg-bg-surface text-caption uppercase tracking-wide text-text-quaternary">
-            <tr>
-              <th className="px-4 py-3 text-left font-signature">Title</th>
-              <th className="px-4 py-3 text-left font-signature">Venue</th>
-              <th className="px-4 py-3 text-left font-signature">Year</th>
-              <th className="px-4 py-3 text-left font-signature">Abstract</th>
-              <th className="px-4 py-3 text-right font-signature">Action</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border-secondary">
-            {pubs.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-text-tertiary">
-                  No publications harvested yet.
-                </td>
-              </tr>
-            ) : (
-              pubs.map((p) => (
-                <tr key={p.id}>
-                  <td className="px-4 py-3 text-text-primary">
-                    {p.title ?? p.doi}
-                  </td>
-                  <td className="px-4 py-3 text-text-secondary">{p.venue ?? "—"}</td>
-                  <td className="px-4 py-3 text-text-secondary">
-                    {p.publication_year ?? "—"}
-                  </td>
-                  <td className="px-4 py-3">
-                    {p.abstract_missing ? (
-                      <span className="text-caption font-signature text-status-amber">
-                        Missing
-                      </span>
-                    ) : (
-                      <span className="text-caption font-signature text-status-green">
-                        OK
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    {p.abstract_missing ? (
-                      <button
-                        type="button"
-                        className="btn-primary"
-                        onClick={() => openDrawer(p.id)}
-                      >
-                        Supplement
-                      </button>
-                    ) : (
-                      <span className="text-caption text-text-quaternary">—</span>
-                    )}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+        {pubs.length === 0 ? (
+          <p className="px-6 py-8 text-center text-body text-text-tertiary">
+            No publications harvested yet.
+          </p>
+        ) : (
+          <ul className="divide-y divide-border-secondary">
+            {pubs.map((p) => (
+              <li key={p.id} className="p-5 sm:p-6">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <h2 className="text-body-lg font-signature leading-relaxed text-text-primary">
+                      {p.title ?? p.doi}
+                    </h2>
+                    <dl className="mt-2 flex flex-wrap gap-x-6 gap-y-2 text-small text-text-tertiary">
+                      <div className="inline-flex gap-2">
+                        <dt>Venue</dt>
+                        <dd className="text-text-secondary">
+                          {p.venue ?? "Not available"}
+                        </dd>
+                      </div>
+                      <div className="inline-flex gap-2">
+                        <dt>Year</dt>
+                        <dd className="text-text-secondary">
+                          {p.publication_year ?? "Not available"}
+                        </dd>
+                      </div>
+                      <div className="inline-flex items-center gap-2">
+                        <dt>Abstract</dt>
+                        <dd
+                          className={`font-signature ${
+                            p.abstract_missing
+                              ? "text-status-amber"
+                              : "text-status-green"
+                          }`}
+                        >
+                          {p.abstract_missing ? "Missing" : "Available"}
+                        </dd>
+                      </div>
+                    </dl>
+                  </div>
+                  {p.abstract_missing && (
+                    <button
+                      type="button"
+                      className="btn-primary shrink-0 self-start sm:self-center"
+                      onClick={() => openDrawer(p.id)}
+                    >
+                      Supplement abstract
+                    </button>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       {openId && (
@@ -185,7 +183,7 @@ export function PublicationsPage() {
                 >
                   Supplement abstract
                 </h2>
-                <p className="mt-1 text-caption text-text-tertiary">
+                <p className="mt-1 text-small leading-relaxed text-text-tertiary">
                   Paste the abstract from the publisher's page, or upload
                   the PDF/DOCX. The text is parsed locally and sent through
                   the same NLP pipeline that runs on quarterly sync.
@@ -202,7 +200,10 @@ export function PublicationsPage() {
             </header>
 
             <form onSubmit={submitText} className="space-y-3">
-              <label className="label" htmlFor="abstract">
+              <label
+                className="mb-2 block text-small font-signature text-text-secondary"
+                htmlFor="abstract"
+              >
                 Paste abstract text (≥ 200 characters)
               </label>
               <textarea
@@ -219,7 +220,7 @@ export function PublicationsPage() {
             </form>
 
             <div className="border-t border-border-secondary pt-4">
-              <p className="text-caption text-text-tertiary">
+              <p className="text-small text-text-tertiary">
                 Or upload a PDF / DOCX document:
               </p>
               <div className="mt-2 flex items-center gap-2">

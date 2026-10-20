@@ -185,6 +185,29 @@ export interface StaffProfileDetail extends StaffDirectoryEntry {
   expertise: UserExpertiseTag[];
 }
 
+export interface InternalExpertiseArea {
+  label: string;
+  staff_count: number;
+  share: number;
+  department_count: number;
+  departments: { name: string; staff_count: number }[];
+}
+
+export interface InternalExpertiseOverview {
+  total_academic_staff: number;
+  total_departments: number;
+  profiles_with_usable_expertise: number;
+  profiles_without_usable_expertise: number;
+  total_expertise_areas: number;
+  areas: InternalExpertiseArea[];
+  methodology: {
+    observation_unit: string;
+    inclusion_rule: string;
+    confidence_threshold: number;
+    interpretation: string;
+  };
+}
+
 export type StaffSearchCategory =
   | "all"
   | "name"

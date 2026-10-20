@@ -4,11 +4,15 @@ from __future__ import annotations
 import random
 
 import numpy as np
+import pytest
 
 from app.services.internal_expertise import (
     ExpertiseEvidence,
+    InternalExpertiseDataset,
+    StaffClusterResult,
     build_staff_profiles,
     cluster_staff_profiles,
+    summarize_internal_expertise,
 )
 
 
@@ -110,3 +114,46 @@ def test_input_permutation_preserves_user_vector_and_cluster_alignment() -> None
     assert baseline.labels == repeated.labels == ("Alpha", "Beta")
     assert baseline.assignments == repeated.assignments
     assert np.allclose(baseline.centroids, repeated.centroids)
+
+
+def test_internal_overview_reports_area_coverage_without_exposing_staff_names() -> None:
+    profiles = tuple(build_staff_profiles([
+        _evidence("u1", "AI", [1.0, 0.0], confidence=1.0, validated=True),
+        _evidence("u2", "Vision", [0.9, 0.1], confidence=0.8, validated=False),
+        _evidence("u3", "Security", [0.0, 1.0], confidence=1.0, validated=True),
+    ]))
+    dataset = InternalExpertiseDataset(
+        profiles=profiles,
+        clusters=StaffClusterResult(
+            centroids=((1.0, 0.0), (0.0, 1.0)),
+            labels=("AI / Vision", "Security"),
+            assignments=(("u1", 0), ("u2", 0), ("u3", 1)),
+            selected_k=2,
+            silhouette=0.75,
+        ),
+        total_academic_staff=4,
+        total_departments=2,
+        department_by_user={"u1": "Computing", "u2": "Computing", "u3": "Engineering"},
+        area_labels_by_user={
+            "u1": ("Artificial Intelligence",),
+            "u2": ("Artificial Intelligence",),
+            "u3": ("Cybersecurity",),
+        },
+    )
+
+    overview = summarize_internal_expertise(dataset)
+
+    assert overview["profiles_with_usable_expertise"] == 3
+    assert overview["total_departments"] == 2
+    assert overview["profiles_without_usable_expertise"] == 1
+    assert overview["total_expertise_areas"] == 2
+    assert [area["label"] for area in overview["areas"]] == [
+        "Artificial Intelligence",
+        "Cybersecurity",
+    ]
+    assert overview["areas"][0]["staff_count"] == 2
+    assert overview["areas"][0]["share"] == pytest.approx(2 / 3)
+    assert overview["areas"][0]["departments"] == [
+        {"name": "Computing", "staff_count": 2}
+    ]
+    assert "user_label" not in str(overview)

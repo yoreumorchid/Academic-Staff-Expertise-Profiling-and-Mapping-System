@@ -172,10 +172,24 @@ export function TagRefinementPage() {
                           </span>
                         )}
                       </div>
-                      <div className="mt-1 text-caption text-text-tertiary">
-                        {t.tag.domain ?? "Unclassified"} · confidence{" "}
-                        {(t.confidence * 100).toFixed(0)}% · source {t.source}
-                      </div>
+                      <dl className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-caption">
+                        <div className="inline-flex items-center gap-1">
+                          <dt className="text-text-tertiary">Domain</dt>
+                          <dd className="text-text-secondary">
+                            {t.tag.domain ?? "Unclassified"}
+                          </dd>
+                        </div>
+                        <div className="inline-flex items-center gap-1">
+                          <dt className="text-text-tertiary">Confidence</dt>
+                          <dd className="text-text-secondary">
+                            {(t.confidence * 100).toFixed(0)}%
+                          </dd>
+                        </div>
+                        <div className="inline-flex items-center gap-1">
+                          <dt className="text-text-tertiary">Source</dt>
+                          <dd className="text-text-secondary">{t.source}</dd>
+                        </div>
+                      </dl>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">

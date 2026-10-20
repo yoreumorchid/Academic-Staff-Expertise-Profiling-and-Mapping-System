@@ -11,6 +11,7 @@ import {
 } from "./pages/Auth";
 import {
   AcademicBackgroundPage,
+  AccountSettingsPage,
   AdminHomePage,
   CourseMappingPage,
   ExportSnapshotPage,
@@ -38,6 +39,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/register": "Create Account",
   "/forgot-password": "Reset Password",
   "/reset-password": "Choose New Password",
+  "/account": "Account Settings",
   "/staff/profile": "Profile Overview",
   "/staff/tags": "Expertise Tag Refinement",
   "/staff/background": "Academic Background",
@@ -101,7 +103,10 @@ export function App() {
           path="/staff/export"
           element={<Protected><ExportSnapshotPage /></Protected>}
         />
-
+        <Route
+          path="/account"
+          element={<Protected><AccountSettingsPage /></Protected>}
+        />
         {/* Admin portal — UC-2, UC-7, UC-13, UC-14, UC-15, UC-17 */}
         <Route
           path="/admin"

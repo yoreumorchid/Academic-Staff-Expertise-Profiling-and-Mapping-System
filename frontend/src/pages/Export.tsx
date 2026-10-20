@@ -120,7 +120,7 @@ export function ExportSnapshotPage() {
             checked={useDefaults}
             onChange={(e) => setUseDefaults(e.target.checked)}
           />
-          Let the server choose the top tags &amp; recent publications
+          Let the system choose the top tags &amp; recent publications
         </label>
         <div className="ml-auto inline-flex items-center gap-2">
           <span className="text-caption text-text-tertiary">Format</span>
@@ -144,64 +144,86 @@ export function ExportSnapshotPage() {
       </section>
 
       <section className="card">
-        <h2 className="mb-3 text-heading-3 font-announce text-text-primary">
+        <h2 className="text-heading-3 font-announce text-text-primary">
           Expertise tags
         </h2>
+        <p className="mb-3 mt-1 text-small text-text-tertiary">
+          Select the expertise areas to include in the snapshot.
+        </p>
         {!profile || profile.expertise.length === 0 ? (
           <EmptyState text="No tags available to include." />
         ) : (
-          <div className="flex flex-wrap gap-2">
+          <ul className="divide-y divide-border-secondary border-y border-border-secondary">
             {profile.expertise.map((t) => {
               const active = selectedTags.has(t.tag.id);
               return (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() =>
-                    toggle(selectedTags, t.tag.id, setSelectedTags)
-                  }
-                  className={`pill ${
-                    active
-                      ? "border-brand-green bg-brand-green text-white"
-                      : ""
-                  }`}
-                >
-                  {t.tag.canonical_label}
-                </button>
+                <li key={t.id}>
+                  <label className="flex min-h-12 cursor-pointer items-center gap-3 px-2 py-3 transition-colors hover:bg-bg-surface">
+                    <input
+                      type="checkbox"
+                      className="h-5 w-5 shrink-0 accent-brand-green"
+                      checked={active}
+                      onChange={() =>
+                        toggle(selectedTags, t.tag.id, setSelectedTags)
+                      }
+                    />
+                    <span className="text-body font-signature text-text-primary">
+                      {t.tag.canonical_label}
+                    </span>
+                  </label>
+                </li>
               );
             })}
-          </div>
+          </ul>
         )}
       </section>
 
       <section className="card">
-        <h2 className="mb-3 text-heading-3 font-announce text-text-primary">
+        <h2 className="text-heading-3 font-announce text-text-primary">
           Publications
         </h2>
+        <p className="mb-3 mt-1 text-small text-text-tertiary">
+          Select the publications to include in the snapshot.
+        </p>
         {!profile || profile.publications.length === 0 ? (
           <EmptyState text="No publications available to include." />
         ) : (
-          <ul className="divide-y divide-border-secondary">
+          <ul className="divide-y divide-border-secondary border-y border-border-secondary">
             {profile.publications.map((p: Publication) => {
               const active = selectedPubs.has(p.id);
               return (
-                <li key={p.id} className="flex items-center gap-3 py-2">
-                  <input
-                    type="checkbox"
-                    checked={active}
-                    onChange={() =>
-                      toggle(selectedPubs, p.id, setSelectedPubs)
-                    }
-                  />
-                  <div>
-                    <div className="text-body text-text-primary">
-                      {p.title ?? p.doi}
+                <li key={p.id}>
+                  <label className="flex min-h-14 cursor-pointer items-start gap-3 px-2 py-3 transition-colors hover:bg-bg-surface">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 h-5 w-5 shrink-0 accent-brand-green"
+                      checked={active}
+                      onChange={() =>
+                        toggle(selectedPubs, p.id, setSelectedPubs)
+                      }
+                    />
+                    <div className="min-w-0">
+                      <div className="text-body font-signature leading-relaxed text-text-primary">
+                        {p.title ?? p.doi}
+                      </div>
+                      <dl className="mt-1 flex flex-wrap gap-x-5 gap-y-1 text-small text-text-tertiary">
+                        <div className="inline-flex gap-1.5">
+                          <dt>Venue</dt>
+                          <dd className="text-text-secondary">
+                            {p.venue ?? "Not available"}
+                          </dd>
+                        </div>
+                        {p.publication_year && (
+                          <div className="inline-flex gap-1.5">
+                            <dt>Year</dt>
+                            <dd className="text-text-secondary">
+                              {p.publication_year}
+                            </dd>
+                          </div>
+                        )}
+                      </dl>
                     </div>
-                    <div className="text-caption text-text-tertiary">
-                      {p.venue ?? "Venue n/a"}
-                      {p.publication_year && ` · ${p.publication_year}`}
-                    </div>
-                  </div>
+                  </label>
                 </li>
               );
             })}

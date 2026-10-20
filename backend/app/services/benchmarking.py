@@ -9,30 +9,21 @@ from typing import Dict, List, Optional, Sequence, Tuple
 from uuid import UUID
 
 import numpy as np
-from sqlalchemy import or_, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.config import get_settings
 from app.core.exceptions import ValidationFailure
 from app.db.models import (
-    AccountStatus,
     BenchmarkRun,
     BenchmarkType,
     BenchmarkWhiteSpace,
-    User,
-    UserExpertiseTag,
-    UserRole,
 )
 from app.services.document_representation import DocumentChunk, chunks_payload
 from app.services.embeddings import embed_texts
 from app.services.external_apis import OpenAlexClient
-from app.services.internal_expertise import (
-    ExpertiseEvidence,
-    StaffExpertiseProfile,
-    build_staff_profiles,
-    cluster_staff_profiles,
-)
+from app.services.internal_expertise import StaffExpertiseProfile, load_internal_expertise
 from app.services.llm_normalize import synthesize_narrative
 
 logger = logging.getLogger(__name__)
@@ -318,29 +309,12 @@ class BenchmarkingService:
     async def _load_internal_expertise(
         self,
     ) -> Tuple[List[StaffExpertiseProfile], List[List[float]], List[str]]:
-        stmt = (
-            select(UserExpertiseTag)
-            .join(UserExpertiseTag.user)
-            .where(User.status == AccountStatus.ACTIVE)
-            .where(or_(User.role == UserRole.ACADEMIC_STAFF, User.is_dual_role.is_(True)))
-            .options(selectinload(UserExpertiseTag.user), selectinload(UserExpertiseTag.tag))
-            .order_by(UserExpertiseTag.user_id, UserExpertiseTag.tag_id)
+        dataset = await load_internal_expertise(self._session)
+        return (
+            list(dataset.profiles),
+            [list(row) for row in dataset.clusters.centroids],
+            list(dataset.clusters.labels),
         )
-        links = list((await self._session.execute(stmt)).scalars().all())
-        evidence = [
-            ExpertiseEvidence(
-                user_id=link.user_id,
-                user_label=link.user.full_name,
-                tag_label=link.tag.canonical_label,
-                embedding=link.tag.embedding,
-                confidence=link.confidence,
-                validated=link.validated,
-            )
-            for link in links
-        ]
-        profiles = build_staff_profiles(evidence)
-        result = cluster_staff_profiles(profiles)
-        return profiles, [list(row) for row in result.centroids], list(result.labels)
 
     async def _fetch_global_vectors(
         self,

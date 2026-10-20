@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { api, extractApiError } from "../api/client";
 
 export { ProfileOverviewPage } from "./Profile";
+export { AccountSettingsPage } from "./Account";
 export { TagRefinementPage } from "./Tags";
 export { AcademicBackgroundPage } from "./Background";
 export { PublicationsPage } from "./Publications";

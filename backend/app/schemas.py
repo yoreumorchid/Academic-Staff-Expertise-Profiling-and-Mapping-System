@@ -511,6 +511,36 @@ class StaffProfileDetail(StaffDirectoryEntry):
     expertise: List["UserExpertiseTagOut"]
 
 
+class InternalExpertiseDepartment(BaseModel):
+    name: str
+    staff_count: int
+
+
+class InternalExpertiseArea(BaseModel):
+    label: str
+    staff_count: int
+    share: float
+    department_count: int
+    departments: List[InternalExpertiseDepartment]
+
+
+class InternalExpertiseMethodology(BaseModel):
+    observation_unit: str
+    inclusion_rule: str
+    confidence_threshold: float
+    interpretation: str
+
+
+class InternalExpertiseOverview(BaseModel):
+    total_academic_staff: int
+    total_departments: int
+    profiles_with_usable_expertise: int
+    profiles_without_usable_expertise: int
+    total_expertise_areas: int
+    areas: List[InternalExpertiseArea]
+    methodology: InternalExpertiseMethodology
+
+
 class StaffSearchQuery(BaseModel):
     q: Optional[str] = None
     department: Optional[str] = None

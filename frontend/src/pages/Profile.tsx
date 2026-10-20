@@ -5,13 +5,12 @@
  * Staff View and Admin View: the profile reflects the person, not the
  * portal. It always includes:
  *   * Personal information (read-only).
- *   * Account operations: change password, log out.
  *   * Academic features (sync, tags, publications, sync jobs) — these
  *     sections render only when the user is an academic staff member or
  *     a dual-role admin who has harvested data.
  */
-import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { api, extractApiError } from "../api/client";
 import { submitSync } from "../api/sync";
 import { useAuthStore } from "../store/auth";
@@ -49,25 +48,17 @@ const SYNC_STATUS_LABELS: Record<SyncJob["status"], string> = {
 };
 
 export function ProfileOverviewPage() {
-  const { user, logout, activeSyncJobId } = useAuthStore();
-  const navigate = useNavigate();
+  const { user, activeSyncJobId } = useAuthStore();
   const [profile, setProfile] = useState<StaffProfileDetail | null>(null);
   const [jobs, setJobs] = useState<SyncJob[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [info, setInfo] = useState<string | null>(null);
 
-  // ---- Account management state ----
-  const [pwCurrent, setPwCurrent] = useState("");
-  const [pwNext1, setPwNext1] = useState("");
-  const [pwNext2, setPwNext2] = useState("");
-  const [pwBusy, setPwBusy] = useState(false);
-  const [pwError, setPwError] = useState<string | null>(null);
-  const [pwInfo, setPwInfo] = useState<string | null>(null);
-
   // A user is considered "academic" if they hold the academic-staff role
   // or are flagged as dual-role (FA who also publishes). Pure FAs see
-  // only the account-management surfaces.
+  // personal information here and use the separate Account Settings page
+  // for sign-in security.
   const isAcademic =
     user?.role === "academic_staff" || user?.is_dual_role === true;
 
@@ -133,36 +124,6 @@ export function ProfileOverviewPage() {
     } finally {
       setBusy(false);
     }
-  }
-
-  async function changePassword(event: FormEvent) {
-    event.preventDefault();
-    setPwError(null);
-    setPwInfo(null);
-    if (pwNext1 !== pwNext2) {
-      setPwError("New password confirmation does not match.");
-      return;
-    }
-    setPwBusy(true);
-    try {
-      await api.post("/auth/change-password", {
-        current_password: pwCurrent,
-        new_password: pwNext1,
-      });
-      setPwInfo("Password updated.");
-      setPwCurrent("");
-      setPwNext1("");
-      setPwNext2("");
-    } catch (err) {
-      setPwError(extractApiError(err, "Could not change password."));
-    } finally {
-      setPwBusy(false);
-    }
-  }
-
-  function doLogout() {
-    logout();
-    navigate("/login", { replace: true });
   }
 
   const validatedCount = useMemo(
@@ -259,17 +220,24 @@ export function ProfileOverviewPage() {
               </h2>
               <Link
                 to="/staff/tags"
-                className="text-caption text-brand-green hover:text-brand-green-hover"
+                className="text-small font-signature text-brand-green hover:text-brand-green-hover"
               >
                 Refine tags →
               </Link>
             </div>
             {profile && profile.expertise.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {profile.expertise.slice(0, 30).map((t) => (
-                  <TagPill key={t.id} tag={t} />
-                ))}
-              </div>
+              <>
+                <ul className="grid grid-cols-1 gap-x-8 md:grid-cols-2">
+                  {profile.expertise.slice(0, 8).map((t) => (
+                    <TagSummaryRow key={t.id} tag={t} />
+                  ))}
+                </ul>
+                {profile.expertise.length > 8 && (
+                  <p className="mt-4 text-small text-text-tertiary">
+                    Showing 8 of {profile.expertise.length} expertise areas.
+                  </p>
+                )}
+              </>
             ) : (
               <EmptyState text="No expertise tags yet. Update your profile to add them." />
             )}
@@ -282,14 +250,14 @@ export function ProfileOverviewPage() {
               </h2>
               <Link
                 to="/staff/publications"
-                className="text-caption text-brand-green hover:text-brand-green-hover"
+                className="text-small font-signature text-brand-green hover:text-brand-green-hover"
               >
                 Manage abstracts →
               </Link>
             </div>
             {profile && profile.publications.length > 0 ? (
               <ul className="divide-y divide-border-secondary">
-                {profile.publications.slice(0, 8).map((p) => (
+                {profile.publications.slice(0, 5).map((p) => (
                   <PublicationRow key={p.id} publication={p} />
                 ))}
               </ul>
@@ -344,67 +312,6 @@ export function ProfileOverviewPage() {
         </>
       )}
 
-      {/* -------------------------------------------------------------- */}
-      {/* Account management — shown to everyone.                         */}
-      {/* -------------------------------------------------------------- */}
-      {pwError && <Banner kind="error">{pwError}</Banner>}
-      {pwInfo && <Banner kind="success">{pwInfo}</Banner>}
-      <section className="card space-y-3">
-        <h2 className="text-heading-3 font-announce text-text-primary">
-          Change password
-        </h2>
-        <form onSubmit={changePassword} className="space-y-3">
-          <div>
-            <label className="label">Current password</label>
-            <input
-              className="input"
-              type="password"
-              value={pwCurrent}
-              onChange={(e) => setPwCurrent(e.target.value)}
-              required
-            />
-          </div>
-          <div>
-            <label className="label">New password</label>
-            <input
-              className="input"
-              type="password"
-              value={pwNext1}
-              onChange={(e) => setPwNext1(e.target.value)}
-              required
-            />
-          </div>
-          <div>
-            <label className="label">Confirm new password</label>
-            <input
-              className="input"
-              type="password"
-              value={pwNext2}
-              onChange={(e) => setPwNext2(e.target.value)}
-              required
-            />
-          </div>
-          <div className="flex justify-end">
-            <button type="submit" className="btn-primary" disabled={pwBusy}>
-              {pwBusy ? "Updating…" : "Update password"}
-            </button>
-          </div>
-        </form>
-      </section>
-
-      <section className="card space-y-3">
-        <h2 className="text-heading-3 font-announce text-text-primary">
-          Account
-        </h2>
-        <p className="text-caption text-text-tertiary">
-          End the current session and return to the login screen.
-        </p>
-        <div className="flex justify-end">
-          <button type="button" className="btn-ghost" onClick={doLogout}>
-            Log out
-          </button>
-        </div>
-      </section>
     </div>
   );
 }
@@ -428,7 +335,7 @@ function InfoField({ label, value }: { label: string; value: string }) {
 // Shared subcomponents (reused across staff pages).
 // ---------------------------------------------------------------------------
 
-export function Stat({ label, value }: { label: string; value: number }) {
+export function Stat({ label, value }: { label: string; value: number | string }) {
   return (
     <div className="card">
       <div className="text-caption uppercase tracking-wide text-text-quaternary">
@@ -467,42 +374,55 @@ export function Banner({
   );
 }
 
-export function TagPill({ tag }: { tag: UserExpertiseTag }) {
-  const validated = tag.validated;
+function TagSummaryRow({ tag }: { tag: UserExpertiseTag }) {
   return (
-    <span
-      className={`pill ${
-        validated
-          ? "border-brand-green/50 text-text-primary"
-          : "text-text-secondary"
-      }`}
-      title={`Confidence: ${(tag.confidence * 100).toFixed(0)}% · Source: ${tag.source}`}
-    >
-      {tag.tag.canonical_label}
-      {validated && <span className="ml-1 text-status-emerald">✓</span>}
-    </span>
+    <li className="border-b border-border-secondary py-3">
+      <div className="text-body font-signature text-text-primary">
+        {tag.tag.canonical_label}
+      </div>
+      <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-small">
+        <span className="text-text-secondary">
+          {tag.tag.domain ?? "Unclassified"}
+        </span>
+        <span className="text-text-tertiary">
+          Confidence {(tag.confidence * 100).toFixed(0)}%
+        </span>
+        {tag.validated && (
+          <span className="font-signature text-status-green">Validated</span>
+        )}
+      </div>
+    </li>
   );
 }
 
 function PublicationRow({ publication }: { publication: Publication }) {
   return (
-    <li className="py-3">
+    <li className="py-4">
       <div className="flex items-start justify-between gap-4">
-        <div>
-          <div className="text-body text-text-primary">
+        <div className="min-w-0">
+          <div className="text-body font-signature leading-relaxed text-text-primary">
             {publication.title ?? publication.doi}
           </div>
-          <div className="mt-1 text-caption text-text-tertiary">
-            {publication.venue ?? "Venue n/a"}
+          <dl className="mt-1 flex flex-wrap gap-x-5 gap-y-1 text-small text-text-tertiary">
+            <div className="inline-flex gap-1.5">
+              <dt>Venue</dt>
+              <dd className="text-text-secondary">
+                {publication.venue ?? "Not available"}
+              </dd>
+            </div>
             {publication.publication_year && (
-              <span className="ml-2">· {publication.publication_year}</span>
+              <div className="inline-flex gap-1.5">
+                <dt>Year</dt>
+                <dd className="text-text-secondary">
+                  {publication.publication_year}
+                </dd>
+              </div>
             )}
-            <span className="ml-2">· DOI {publication.doi}</span>
-          </div>
+          </dl>
         </div>
         {publication.abstract_missing && (
-          <span className="text-caption font-signature text-status-amber">
-            Missing
+          <span className="shrink-0 text-small font-signature text-status-amber">
+            Abstract missing
           </span>
         )}
       </div>

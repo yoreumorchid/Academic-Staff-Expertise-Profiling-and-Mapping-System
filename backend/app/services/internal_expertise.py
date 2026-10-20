@@ -7,6 +7,11 @@ from math import isfinite
 from typing import Hashable, Iterable, Sequence
 
 import numpy as np
+from sqlalchemy import func, or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
+from app.db.models import AccountStatus, User, UserExpertiseTag, UserRole
 
 
 DEFAULT_CONFIDENCE_THRESHOLD = 0.70
@@ -44,6 +49,18 @@ class StaffClusterResult:
     assignments: tuple[tuple[Hashable, int], ...] = ()
     selected_k: int = 0
     silhouette: float | None = None
+
+
+@dataclass(frozen=True)
+class InternalExpertiseDataset:
+    """Current faculty expertise data shared by dashboards and benchmarks."""
+
+    profiles: tuple[StaffExpertiseProfile, ...]
+    clusters: StaffClusterResult
+    total_academic_staff: int
+    total_departments: int
+    department_by_user: dict[Hashable, str]
+    area_labels_by_user: dict[Hashable, tuple[str, ...]]
 
 
 def build_staff_profiles(
@@ -208,3 +225,116 @@ def cluster_staff_profiles(
         selected_k=len(clusters),
         silhouette=best_score,
     )
+
+
+async def load_internal_expertise(
+    session: AsyncSession, *, include_clusters: bool = True
+) -> InternalExpertiseDataset:
+    """Load and cluster the current active academic cohort once, deterministically."""
+    eligibility = (
+        User.status == AccountStatus.ACTIVE,
+        or_(User.role == UserRole.ACADEMIC_STAFF, User.is_dual_role.is_(True)),
+    )
+    total_stmt = select(
+        func.count(User.id),
+        func.count(func.distinct(User.department)),
+    ).where(*eligibility)
+    total, total_departments = (await session.execute(total_stmt)).one()
+
+    stmt = (
+        select(UserExpertiseTag)
+        .join(UserExpertiseTag.user)
+        .where(*eligibility)
+        .options(selectinload(UserExpertiseTag.user), selectinload(UserExpertiseTag.tag))
+        .order_by(UserExpertiseTag.user_id, UserExpertiseTag.tag_id)
+    )
+    links = list((await session.execute(stmt)).scalars().all())
+    area_sets: dict[Hashable, set[str]] = defaultdict(set)
+    for link in links:
+        confidence = min(1.0, max(0.0, float(link.confidence or 0.0)))
+        if link.validated or confidence >= DEFAULT_CONFIDENCE_THRESHOLD:
+            area_sets[link.user_id].add(
+                link.tag.parent_label or link.tag.canonical_label
+            )
+    evidence = [
+        ExpertiseEvidence(
+            user_id=link.user_id,
+            user_label=link.user.full_name,
+            tag_label=link.tag.canonical_label,
+            embedding=link.tag.embedding,
+            confidence=link.confidence,
+            validated=link.validated,
+        )
+        for link in links
+    ]
+    profiles = tuple(build_staff_profiles(evidence))
+    return InternalExpertiseDataset(
+        profiles=profiles,
+        clusters=cluster_staff_profiles(profiles) if include_clusters else StaffClusterResult(),
+        total_academic_staff=int(total),
+        total_departments=int(total_departments),
+        department_by_user={
+            link.user_id: link.user.department or "Not specified" for link in links
+        },
+        area_labels_by_user={
+            user_id: tuple(sorted(labels, key=str.casefold))
+            for user_id, labels in area_sets.items()
+            if labels
+        },
+    )
+
+
+def summarize_internal_expertise(dataset: InternalExpertiseDataset) -> dict[str, object]:
+    """Build aggregate, privacy-conscious decision support for every signed-in user."""
+    users_by_area: dict[str, set[Hashable]] = defaultdict(set)
+    departments_by_area: dict[str, Counter[str]] = defaultdict(Counter)
+    for user_id, labels in dataset.area_labels_by_user.items():
+        department = dataset.department_by_user.get(user_id, "Not specified")
+        for label in labels:
+            users_by_area[label].add(user_id)
+            departments_by_area[label][department] += 1
+
+    usable_count = len(dataset.area_labels_by_user)
+    areas = sorted(
+        (
+            {
+                "label": label,
+                "staff_count": len(user_ids),
+                "share": len(user_ids) / usable_count if usable_count else 0.0,
+                "department_count": len(departments_by_area[label]),
+                "departments": [
+                    {"name": name, "staff_count": count}
+                    for name, count in sorted(
+                        departments_by_area[label].items(),
+                        key=lambda pair: (-pair[1], pair[0].casefold()),
+                    )
+                ],
+            }
+            for label, user_ids in users_by_area.items()
+        ),
+        key=lambda area: (
+            -int(area["staff_count"]),
+            -int(area["department_count"]),
+            str(area["label"]).casefold(),
+        ),
+    )
+
+    return {
+        "total_academic_staff": dataset.total_academic_staff,
+        "total_departments": dataset.total_departments,
+        "profiles_with_usable_expertise": usable_count,
+        "profiles_without_usable_expertise": max(
+            dataset.total_academic_staff - usable_count, 0
+        ),
+        "total_expertise_areas": len(areas),
+        "areas": areas[:12],
+        "methodology": {
+            "observation_unit": "unique active staff profiles linked to each parent expertise area",
+            "inclusion_rule": "validated tags or generated tags meeting the confidence threshold",
+            "confidence_threshold": DEFAULT_CONFIDENCE_THRESHOLD,
+            "interpretation": (
+                "Coverage indicates where expertise is shared; it is not a staff performance "
+                "ranking or proof that less common areas are unimportant."
+            ),
+        },
+    }
