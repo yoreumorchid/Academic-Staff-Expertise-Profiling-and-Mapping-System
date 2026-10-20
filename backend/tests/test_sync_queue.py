@@ -50,4 +50,4 @@ def test_enqueue_marks_job_failed_when_redis_is_unavailable(
     assert session.committed is True
     assert job.status == SyncJobStatus.FAILED
     assert job.finished_at is not None
-    assert "task queue" in job.error_message
+    assert job.error_message == "The profile update could not be started."

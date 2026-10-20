@@ -38,7 +38,7 @@ export function SessionExpiredModal() {
           Session expired
         </h2>
         <p className="mt-2 text-small text-text-secondary">
-          Your access token has expired. Would you like to log in again?
+          Your session has expired. Please log in again.
         </p>
         <div className="mt-5 flex justify-end gap-2">
           <button

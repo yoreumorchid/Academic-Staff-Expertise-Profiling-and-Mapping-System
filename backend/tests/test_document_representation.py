@@ -130,7 +130,7 @@ def test_preview_reports_exact_token_budget_and_build_rejects_over_limit(monkeyp
 
     assert preview.sections[0].token_count == 11
     assert preview.warning_source_tokens == 8
-    with pytest.raises(ValidationFailure, match="11 source tokens"):
+    with pytest.raises(ValidationFailure, match="exceeds the analysis limit"):
         build_chunks(
             preview.sections, max_source_tokens=10, max_chunks=3
         )

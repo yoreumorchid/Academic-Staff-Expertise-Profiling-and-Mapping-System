@@ -34,6 +34,20 @@ const PORTFOLIO_LABELS: Record<string, string> = {
   deputy_dean_ugpg: "Deputy Dean (UG/PG)",
 };
 
+const SYNC_TRIGGER_LABELS: Record<SyncJob["trigger"], string> = {
+  first_login: "First sign-in",
+  manual: "Requested by user",
+  quarterly: "Scheduled update",
+};
+
+const SYNC_STATUS_LABELS: Record<SyncJob["status"], string> = {
+  queued: "Waiting to start",
+  running: "In progress",
+  succeeded: "Completed",
+  no_new_data: "Already up to date",
+  failed: "Could not complete",
+};
+
 export function ProfileOverviewPage() {
   const { user, logout, activeSyncJobId } = useAuthStore();
   const navigate = useNavigate();
@@ -89,10 +103,10 @@ export function ProfileOverviewPage() {
     const reload = (event: Event) => {
       const job = (event as CustomEvent<SyncJob>).detail;
       if (job?.status === "no_new_data") {
-        setInfo("Synchronization completed. Your expertise profile is already up to date.");
+        setInfo("Profile update completed. Your expertise profile is already up to date.");
       } else if (job?.status === "succeeded") {
         setInfo(
-          `Synchronization completed: ${job.publications_added} publication(s) and ${job.tags_added} expertise tag(s) added.`,
+          `Profile update completed: ${job.publications_added} publication(s) and ${job.tags_added} expertise area(s) added.`,
         );
       }
       void loadAll();
@@ -111,11 +125,11 @@ export function ProfileOverviewPage() {
       const submission = await submitSync();
       setInfo(
         submission.alreadyActive
-          ? "The synchronization already in progress is now being tracked."
-          : "Synchronization queued. Progress is now being tracked.",
+          ? "This profile is already being updated. Current progress is now shown."
+          : "Profile update started. Progress will be shown here.",
       );
     } catch (err) {
-      setError(extractApiError(err, "Manual sync failed."));
+      setError(extractApiError(err, "Could not start the profile update."));
     } finally {
       setBusy(false);
     }
@@ -174,11 +188,15 @@ export function ProfileOverviewPage() {
             disabled={busy || Boolean(activeSyncJobId) || !user.orcid_id}
             title={
               user.orcid_id
-                ? "Run a manual ORCID + OpenAlex harvest now."
-                : "Link an ORCID ID in your profile to enable harvesting."
+                ? "Check ORCID and OpenAlex for the latest publications."
+                : "Link an ORCID ID to enable profile updates."
             }
           >
-            {activeSyncJobId ? "Sync in progress…" : busy ? "Queuing…" : "Manual Sync"}
+            {activeSyncJobId
+              ? "Update in progress…"
+              : busy
+                ? "Starting update…"
+                : "Update My Profile"}
           </button>
         )}
       </header>
@@ -249,7 +267,7 @@ export function ProfileOverviewPage() {
                 ))}
               </div>
             ) : (
-              <EmptyState text="No expertise tags yet. Run a sync to populate them." />
+              <EmptyState text="No expertise tags yet. Update your profile to add them." />
             )}
           </section>
 
@@ -272,21 +290,21 @@ export function ProfileOverviewPage() {
                 ))}
               </ul>
             ) : (
-              <EmptyState text="There is no publications and please run manual sync first." />
+              <EmptyState text="No publications are available yet. Update your profile first." />
             )}
           </section>
 
           <section className="card">
             <h2 className="mb-4 text-heading-3 font-announce text-text-primary">
-              Recent Sync Jobs
+              Recent Profile Updates
             </h2>
             {jobs.length === 0 ? (
-              <EmptyState text="No sync jobs recorded yet." />
+              <EmptyState text="No profile updates have been recorded yet." />
             ) : (
               <table className="min-w-full divide-y divide-border-secondary text-small">
                 <thead className="text-caption uppercase tracking-wide text-text-quaternary">
                   <tr>
-                    <th className="px-2 py-2 text-left font-signature">Trigger</th>
+                    <th className="px-2 py-2 text-left font-signature">Started by</th>
                     <th className="px-2 py-2 text-left font-signature">Status</th>
                     <th className="px-2 py-2 text-right font-signature">Pubs</th>
                     <th className="px-2 py-2 text-right font-signature">Tags</th>
@@ -296,9 +314,11 @@ export function ProfileOverviewPage() {
                 <tbody className="divide-y divide-border-secondary">
                   {jobs.slice(0, 10).map((j) => (
                     <tr key={j.id}>
-                      <td className="px-2 py-2 text-text-secondary">{j.trigger}</td>
+                      <td className="px-2 py-2 text-text-secondary">
+                        {SYNC_TRIGGER_LABELS[j.trigger]}
+                      </td>
                       <td className="px-2 py-2">
-                        <span className="pill">{j.status}</span>
+                        <span className="pill">{SYNC_STATUS_LABELS[j.status]}</span>
                       </td>
                       <td className="px-2 py-2 text-right text-text-secondary">
                         {j.publications_added}

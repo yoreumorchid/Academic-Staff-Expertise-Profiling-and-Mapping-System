@@ -37,8 +37,21 @@ export function DocumentSectionPreview({
   return (
     <div className="mt-4 max-h-[28rem] space-y-3 overflow-y-auto rounded-comfy border border-border-secondary p-3">
       <div className={`text-caption ${usage.exceeds ? "text-status-red" : usage.warning ? "text-status-amber" : "text-text-tertiary"}`}>
-        {selected.size} of {preview.sections.length} sections · {usage.sourceTokens.toLocaleString()} / {preview.max_source_tokens.toLocaleString()} source tokens · about {usage.estimatedChunks} / {preview.max_chunks} chunks
+        {selected.size} of {preview.sections.length} sections selected ·{" "}
+        {usage.exceeds
+          ? "Over the analysis limit"
+          : usage.warning
+            ? "Close to the analysis limit"
+            : "Within the analysis limit"}
       </div>
+      <details className="text-caption text-text-tertiary">
+        <summary className="cursor-pointer">Technical details</summary>
+        <p className="mt-1">
+          {usage.sourceTokens.toLocaleString()} /{" "}
+          {preview.max_source_tokens.toLocaleString()} source tokens · about{" "}
+          {usage.estimatedChunks} / {preview.max_chunks} analysis segments
+        </p>
+      </details>
       {usage.warning && !usage.exceeds && <p className="text-small text-status-amber">This selection is close to the analysis limit. Exclude administrative or less relevant sections to reduce noise.</p>}
       {usage.exceeds && <p className="text-small text-status-red">This selection exceeds the analysis limit and cannot be submitted. Exclude less relevant sections; content will never be silently truncated.</p>}
       {preview.warnings.map((warning) => <p key={warning} className="text-small text-status-amber">{warning}</p>)}

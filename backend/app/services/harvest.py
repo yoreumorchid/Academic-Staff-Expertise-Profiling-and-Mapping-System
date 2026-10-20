@@ -106,7 +106,7 @@ class HarvestService:
         ).scalar_one_or_none()
         if active_job is not None:
             raise ConflictError(
-                "A sync is already queued or running for this user.",
+                "This expertise profile is already being updated.",
                 details={"job_id": str(active_job.id)},
             )
 
@@ -121,7 +121,7 @@ class HarvestService:
         except IntegrityError as exc:
             await self._session.rollback()
             raise ConflictError(
-                "A sync is already queued or running for this user."
+                "This expertise profile is already being updated."
             ) from exc
         await self._session.refresh(job)
         return job

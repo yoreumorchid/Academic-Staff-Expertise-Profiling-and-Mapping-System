@@ -82,7 +82,7 @@ def _build_mapping_report_pdf(report: MappingReport) -> bytes:
     story.append(Paragraph(escape_paragraph(spec.raw_text), body_style))
 
     story.append(Paragraph("MATCH RESULTS", label_style))
-    headers = ["Rank", "Staff", "Cosine", "Spread", "Combined"]
+    headers = ["Rank", "Staff", "Content Match", "Expertise Link", "Overall Match"]
     data = [[Paragraph(header, styles["Heading4"]) for header in headers]]
     for entry in report.entries:
         data.append(
@@ -95,7 +95,7 @@ def _build_mapping_report_pdf(report: MappingReport) -> bytes:
             ]
         )
 
-    table = Table(data, colWidths=[30, 80, 60, 60, 60])
+    table = Table(data, colWidths=[30, 70, 70, 75, 70])
     table.setStyle(
         TableStyle(
             [
@@ -108,12 +108,19 @@ def _build_mapping_report_pdf(report: MappingReport) -> bytes:
         )
     )
     story.append(table)
+    story.append(
+        Paragraph(
+            "Method details: Content Match is cosine similarity; Expertise Link "
+            "is spreading activation; Overall Match combines both measures.",
+            metadata_style,
+        )
+    )
 
-    story.append(Paragraph("AI ANALYSIS", label_style))
+    story.append(Paragraph("ANALYSIS SUMMARY", label_style))
     summary = (
         escape_paragraph(report.summary)
         if report.summary
-        else "No AI analysis generated for this report."
+        else "No analysis summary is available for this report."
     )
     story.append(Paragraph(summary, body_style))
 

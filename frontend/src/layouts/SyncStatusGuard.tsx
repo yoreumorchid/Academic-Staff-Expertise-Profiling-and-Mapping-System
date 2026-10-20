@@ -5,16 +5,16 @@ import type { SyncJob, SyncProgressStage, SyncStatus } from "../types";
 
 const TERMINAL_STATUSES = new Set(["succeeded", "no_new_data", "failed"]);
 const STAGE_MESSAGES: Record<SyncProgressStage, string> = {
-  queued: "Waiting for an available synchronization worker…",
-  resolving_profile: "Resolving your ORCID and OpenAlex profile…",
-  fetching_publications: "Retrieving your latest publications…",
-  processing_abstracts: "Preparing publication abstracts for analysis…",
-  extracting_keywords: "Extracting research concepts from abstracts…",
-  normalizing_tags: "Normalizing expertise terms with the language model…",
-  saving_results: "Saving publications and expertise tags…",
-  finalizing: "Finalizing your updated expertise profile…",
-  completed: "Synchronization completed.",
-  failed: "Synchronization failed.",
+  queued: "Preparing to update the expertise profile…",
+  resolving_profile: "Checking the linked researcher profile…",
+  fetching_publications: "Checking for the latest publications…",
+  processing_abstracts: "Reviewing publication information…",
+  extracting_keywords: "Identifying research areas from publications…",
+  normalizing_tags: "Organizing the identified expertise areas…",
+  saving_results: "Saving publication and expertise updates…",
+  finalizing: "Finishing the expertise profile update…",
+  completed: "Profile update completed.",
+  failed: "Profile update could not be completed.",
 };
 
 export function SyncStatusGuard() {
@@ -130,14 +130,14 @@ export function SyncStatusGuard() {
           <>
             <h2 className="text-heading-3 font-announce">
               {completedJob.status === "failed"
-                ? "Synchronization failed"
+                ? "Profile update could not be completed"
                 : completedJob.status === "no_new_data"
-                  ? "Your expertise profile is up to date"
-                  : "Synchronization completed"}
+                  ? "The expertise profile is up to date"
+                  : "Profile update completed"}
             </h2>
             <p className="mt-3 text-body text-text-secondary">
               {completedJob.status === "failed"
-                ? completedJob.error_message ?? "The synchronization could not be completed."
+                ? completedJob.error_message ?? "The profile update could not be completed."
                 : completedJob.status === "no_new_data"
                   ? "No new publications or expertise tags were found."
                   : `${completedJob.publications_added} publication(s) and ${completedJob.tags_added} expertise tag(s) were added.`}
@@ -151,7 +151,7 @@ export function SyncStatusGuard() {
           </>
         ) : (
           <>
-            <h2 className="text-heading-3 font-announce">Updating expertise profile</h2>
+            <h2 className="text-heading-3 font-announce">Updating Expertise Profile</h2>
             <div className="mx-auto mt-5 h-2 w-2/3 overflow-hidden rounded-full bg-bg-surface">
               <div className="h-full w-1/2 animate-pulse rounded-full bg-brand-green" />
             </div>
@@ -161,8 +161,8 @@ export function SyncStatusGuard() {
                 : STAGE_MESSAGES[progressStage]}
             </p>
             <p className="mt-2 text-small text-text-tertiary">
-              This job is tracked centrally. Its latest status will be restored
-              after a refresh.
+              Update progress is saved automatically. You can refresh this page
+              without interrupting the update.
             </p>
           </>
         )}

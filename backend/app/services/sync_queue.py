@@ -28,7 +28,7 @@ async def ensure_user_sync_inactive(
     active_job_id = (await session.execute(stmt)).scalar_one_or_none()
     if active_job_id is not None:
         raise ConflictError(
-            "Your expertise profile is currently synchronizing. "
+            "Your expertise profile is currently being updated. "
             "Please wait until it finishes before editing publications or tags.",
             details={"job_id": str(active_job_id)},
         )
@@ -51,9 +51,9 @@ async def enqueue_user_sync(
     except Exception as exc:  # Broker unavailable: retain an auditable failed row.
         job.status = SyncJobStatus.FAILED
         job.finished_at = datetime.now(timezone.utc)
-        job.error_message = "Could not publish the job to the task queue."
+        job.error_message = "The profile update could not be started."
         await session.commit()
         raise ExternalServiceError(
-            "The synchronization queue is currently unavailable."
+            "Profile updates are temporarily unavailable. Please try again later."
         ) from exc
     return job

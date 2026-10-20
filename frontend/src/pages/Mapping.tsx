@@ -100,12 +100,12 @@ function MappingWorkspace({
         title: draftTitle,
         raw_text: draftText,
       });
-      setInfo(`Specification "${data.title}" ingested.`);
+      setInfo(`Specification "${data.title}" saved.`);
       setDraftTitle("");
       setDraftText("");
       await loadSpecs();
     } catch (err) {
-      setError(extractApiError(err, "Ingestion failed."));
+      setError(extractApiError(err, "Could not save the specification."));
     } finally {
       setTextBusy(false);
     }
@@ -128,7 +128,7 @@ function MappingWorkspace({
       const { data } = await api.post<DocumentPreview>("/mapping/specs/preview", fd);
       setFilePreview(data);
       setSelectedSections(new Set(data.sections.filter((s) => s.included_by_default).map((s) => s.id)));
-      setInfo("Review the extracted sections, then ingest the selected content.");
+      setInfo("Review the extracted sections, then save the selected content.");
     } catch (err) {
       setError(extractApiError(err, "Preview failed."));
     } finally {
@@ -144,7 +144,7 @@ function MappingWorkspace({
       fd.append("spec_type", specType); fd.append("title", draftTitle); fd.append("file", draftFile);
       selectedSections.forEach((id) => fd.append("included_section_ids", id));
       const { data } = await api.post<SpecIngestResponse>("/mapping/specs/upload", fd);
-      setInfo(`Document "${data.title}" parsed and ingested.`);
+      setInfo(`Document "${data.title}" processed and saved.`);
       setDraftTitle("");
       setDraftFile(null);
       setFilePreview(null);
@@ -219,14 +219,14 @@ function MappingWorkspace({
         </div>
         <div className="flex justify-end">
           <button type="submit" className="btn-primary" disabled={textBusy}>
-            {textBusy ? "Ingesting…" : "Ingest text"}
+            {textBusy ? "Saving…" : "Save text"}
           </button>
         </div>
 
         <div className="border-t border-border-secondary pt-3">
           <p className="text-caption text-text-tertiary">
             Or upload a PDF / DOCX (maximum 10 MiB). You will review extracted
-            sections and the analysis budget before ingestion:
+            sections and the analysis limit before saving:
           </p>
           <div className="mt-2">
             <input
@@ -248,7 +248,7 @@ function MappingWorkspace({
               onClick={filePreview ? submitFile : previewFile}
               disabled={fileBusy || !draftFile || !draftTitle.trim() || !!(filePreview && (selectedSections.size === 0 || getDocumentSelectionUsage(filePreview, selectedSections).exceeds))}
             >
-              {fileBusy ? "Processing…" : filePreview ? "Ingest selected sections" : "Preview sections"}
+              {fileBusy ? "Processing…" : filePreview ? "Save selected sections" : "Preview sections"}
             </button>
           </div>
           {filePreview && <DocumentSectionPreview preview={filePreview} selected={selectedSections} onChange={setSelectedSections} />}
@@ -257,10 +257,10 @@ function MappingWorkspace({
 
       <section className="card">
         <h2 className="mb-3 text-heading-3 font-announce text-text-primary">
-          Ingested specifications
+          Saved specifications
         </h2>
         {specs.length === 0 ? (
-          <EmptyState text="No specifications ingested yet." />
+          <EmptyState text="No specifications have been saved yet." />
         ) : (
           <ul className="divide-y divide-border-secondary">
             {specs.map((s) => {
@@ -343,10 +343,10 @@ function MappingWorkspace({
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/30 backdrop-blur-sm">
           <div className="card text-center space-y-3">
             <p className="text-body font-signature text-text-primary">
-              Running semantic match...
+              Finding matching staff…
             </p>
             <p className="text-caption text-text-tertiary">
-              Computing cosine similarity and spreading activation across all staff profiles. This may take a moment.
+              Comparing the document with staff expertise profiles. This may take a moment.
             </p>
           </div>
         </div>
@@ -416,9 +416,9 @@ function MappingWorkspace({
                         <th className="px-2 py-2 text-left font-signature">Rank</th>
                         <th className="px-2 py-2 text-left font-signature">Staff</th>
                         <th className="px-2 py-2 text-left font-signature">Department</th>
-                        <th className="px-2 py-2 text-right font-signature">Cosine</th>
-                        <th className="px-2 py-2 text-right font-signature">Spread</th>
-                        <th className="px-2 py-2 text-right font-signature">Combined</th>
+                        <th className="px-2 py-2 text-right font-signature">Content Match</th>
+                        <th className="px-2 py-2 text-right font-signature">Expertise Connection</th>
+                        <th className="px-2 py-2 text-right font-signature">Overall Match</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border-secondary">
@@ -447,6 +447,14 @@ function MappingWorkspace({
                       })}
                     </tbody>
                   </table>
+                  <details className="mt-3 text-caption text-text-tertiary">
+                    <summary className="cursor-pointer">Method details</summary>
+                    <p className="mt-1">
+                      Content Match is the cosine similarity score. Expertise
+                      Connection is the spreading-activation score. Overall
+                      Match combines both measures for ranking.
+                    </p>
+                  </details>
                 </div>
 
                 {/* Section 4: AI Analysis */}

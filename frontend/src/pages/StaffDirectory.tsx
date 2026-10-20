@@ -122,7 +122,7 @@ export function StaffDirectoryPage() {
       await submitSync(id);
     } catch (err) {
       setPendingSyncTargetId(null);
-      setError(extractApiError(err, "Sync trigger failed."));
+      setError(extractApiError(err, "Could not start the profile update."));
     } finally {
       setSyncBusy(false);
     }
@@ -347,10 +347,10 @@ export function StaffDirectoryPage() {
                   disabled={syncBusy || Boolean(pendingSyncTargetId)}
                 >
                   {syncBusy
-                    ? "Queuing…"
+                    ? "Starting update…"
                     : pendingSyncTargetId
-                      ? "Sync in progress…"
-                      : "Trigger sync"}
+                      ? "Update in progress…"
+                      : "Update Profile"}
                 </button>
                 <button
                   type="button"

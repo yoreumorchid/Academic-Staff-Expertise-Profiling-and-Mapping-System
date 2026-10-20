@@ -235,8 +235,8 @@ def preview_documents(
     warning_source_tokens = max(1, int(max_source_tokens * 0.8))
     if selected_tokens >= warning_source_tokens:
         warnings.append(
-            f"The default selection contains {selected_tokens:,} source tokens and is "
-            f"close to the {max_source_tokens:,}-token analysis limit. Exclude irrelevant sections."
+            "The default selection is close to the analysis limit. "
+            "Exclude administrative or less relevant sections if needed."
         )
     return DocumentPreview(
         sections=sections,
@@ -348,8 +348,8 @@ def build_chunks(
     source_tokens = sum(count_tokens(section.excerpt) for section in sections)
     if source_tokens > max_source_tokens:
         raise ValidationFailure(
-            f"The selected content contains {source_tokens:,} source tokens; the limit is "
-            f"{max_source_tokens:,}. Exclude administrative or less relevant sections."
+            "The selected content exceeds the analysis limit. "
+            "Exclude administrative or less relevant sections."
         )
 
     chunks = chunk_sections(
@@ -359,11 +359,11 @@ def build_chunks(
         overlap_tokens=settings.document_chunk_overlap_tokens,
     )
     if not chunks:
-        raise ValidationFailure("No usable analytical document chunks remain after cleaning.")
+        raise ValidationFailure("No usable content remains after document processing.")
     if len(chunks) > max_chunks:
         raise ValidationFailure(
-            f"The selected content produces {len(chunks)} chunks; the limit is "
-            f"{max_chunks}. Exclude administrative or less relevant sections."
+            "The selected content exceeds the analysis limit. "
+            "Exclude administrative or less relevant sections."
         )
     return chunks, max_tokens
 

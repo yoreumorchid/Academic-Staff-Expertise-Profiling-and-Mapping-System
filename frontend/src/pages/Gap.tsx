@@ -93,7 +93,7 @@ export function GapAnalyticsPage() {
             </header>
             <div>
               <h3 className="mb-2 text-heading-3 font-announce text-text-primary">
-                Narrative
+                Summary
               </h3>
               <p className="whitespace-pre-line text-small text-text-secondary">
                 {report.narrative}
@@ -102,10 +102,10 @@ export function GapAnalyticsPage() {
             {report.warnings.map((warning) => (
               <Banner key={warning} kind="info">{warning}</Banner>
             ))}
-            <div className="rounded-comfy border border-border-secondary bg-bg-deepest p-3">
-              <h3 className="text-body font-signature text-text-primary">
-                Provisional priority method
-              </h3>
+            <details className="rounded-comfy border border-border-secondary bg-bg-deepest p-3">
+              <summary className="cursor-pointer text-body font-signature text-text-primary">
+                Method details
+              </summary>
               <p className="mt-1 text-caption text-text-secondary">
                 Global {(report.weighting.global_weight * 100).toFixed(0)}% · Peer{" "}
                 {(report.weighting.peer_weight * 100).toFixed(0)}%. Evidence is ranked
@@ -114,7 +114,7 @@ export function GapAnalyticsPage() {
               <p className="mt-1 text-caption text-status-amber">
                 Pending faculty UAT · {report.weighting.interpretation}
               </p>
-            </div>
+            </details>
             <div>
               <h3 className="mb-2 text-heading-3 font-announce text-text-primary">
                 Aggregated review priority
@@ -132,22 +132,26 @@ export function GapAnalyticsPage() {
                           </p>
                           <p className="font-signature text-text-primary">{item.domain_label}</p>
                         </div>
-                        <div className="text-right text-caption text-text-secondary">
-                          <p>weighted priority {item.weighted_priority_score.toFixed(3)}</p>
-                          <p>
-                            relative {item.source_relative_priority.toFixed(3)} × weight{" "}
-                            {item.source_weight.toFixed(2)}
-                          </p>
-                        </div>
+                        <p className="text-caption text-status-amber">
+                          Pending administrator review
+                        </p>
                       </div>
-                      <dl className="mt-2 grid gap-1 text-caption text-text-tertiary sm:grid-cols-2">
-                        <div><dt className="inline">Raw coverage distance: </dt><dd className="inline text-text-secondary">{item.displacement_score.toFixed(3)}</dd></div>
-                        <div><dt className="inline">Review status: </dt><dd className="inline text-status-amber">Pending administrator review</dd></div>
-                        <div><dt className="inline">Nearest internal cluster: </dt><dd className="inline text-text-secondary">{item.nearest_cluster_label ?? "Unavailable"}</dd></div>
-                        {item.nearest_staff_name && <div><dt className="inline">Nearest staff: </dt><dd className="inline text-text-secondary">{item.nearest_staff_name}</dd></div>}
-                        {item.external_source_id && <div><dt className="inline">OpenAlex source: </dt><dd className="inline text-text-secondary">{item.external_source_id}{item.external_subfield ? ` · ${item.external_subfield}` : ""}</dd></div>}
-                        {item.peer_filename && <div><dt className="inline">Peer source: </dt><dd className="inline text-text-secondary">{item.peer_filename}{item.detected_section ? ` · ${item.detected_section}` : ""}</dd></div>}
-                      </dl>
+                      {item.nearest_staff_name && (
+                        <p className="mt-2 text-caption text-text-tertiary">
+                          Closest staff expertise: <span className="text-text-secondary">{item.nearest_staff_name}</span>
+                        </p>
+                      )}
+                      <details className="mt-2 text-caption text-text-tertiary">
+                        <summary className="cursor-pointer">Method and source details</summary>
+                        <dl className="mt-1 grid gap-1 sm:grid-cols-2">
+                          <div><dt className="inline">Weighted priority: </dt><dd className="inline text-text-secondary">{item.weighted_priority_score.toFixed(3)}</dd></div>
+                          <div><dt className="inline">Relative priority × source weight: </dt><dd className="inline text-text-secondary">{item.source_relative_priority.toFixed(3)} × {item.source_weight.toFixed(2)}</dd></div>
+                          <div><dt className="inline">Raw coverage distance: </dt><dd className="inline text-text-secondary">{item.displacement_score.toFixed(3)}</dd></div>
+                          <div><dt className="inline">Nearest internal cluster: </dt><dd className="inline text-text-secondary">{item.nearest_cluster_label ?? "Unavailable"}</dd></div>
+                          {item.external_source_id && <div><dt className="inline">OpenAlex source: </dt><dd className="inline text-text-secondary">{item.external_source_id}{item.external_subfield ? ` · ${item.external_subfield}` : ""}</dd></div>}
+                          {item.peer_filename && <div><dt className="inline">Peer source: </dt><dd className="inline text-text-secondary">{item.peer_filename}{item.detected_section ? ` · ${item.detected_section}` : ""}</dd></div>}
+                        </dl>
+                      </details>
                       {item.source_excerpt && (
                         <p className="mt-2 whitespace-pre-line rounded-comfy bg-bg-deepest p-2 text-caption text-text-secondary">
                           {item.source_excerpt}
@@ -187,7 +191,7 @@ export function GlobalBenchmarkingPage() {
     try {
       const { data } = await api.post<BenchmarkRun>("/benchmarking/global");
       setRun(data);
-      setInfo(`Global run ${data.id.slice(0, 8)} completed.`);
+      setInfo("Global benchmark completed.");
     } catch (err) {
       setError(extractApiError(err, "Global benchmark failed."));
     } finally {
@@ -237,7 +241,7 @@ export function GlobalBenchmarkingPage() {
       fd.append("confirm_programme_coverage", String(coverageConfirmed));
       const { data } = await api.post<BenchmarkRun>("/benchmarking/peer", fd);
       setRun(data);
-      setInfo(`Peer run ${data.id.slice(0, 8)} completed.`);
+      setInfo("Peer comparison completed.");
     } catch (err) {
       setError(extractApiError(err, "Peer benchmark failed."));
     } finally {
@@ -310,7 +314,7 @@ export function GlobalBenchmarkingPage() {
           <DocumentSectionPreview preview={peerPreview} selected={selectedSections} onChange={setSelectedSections} />
           {peerPreview.appears_single_course && <label className="mt-3 flex gap-2 text-small text-text-secondary">
             <input type="checkbox" checked={coverageConfirmed} onChange={(e) => setCoverageConfirmed(e.target.checked)} />
-            I confirm these files adequately cover the programme. Results will remain candidate gaps, not an institution-level conclusion from one course.
+            I confirm these files adequately cover the programme. Results will remain potential gaps, not an institution-level conclusion from one course.
           </label>}
         </>}
       </section>
@@ -331,7 +335,9 @@ export function GlobalBenchmarkingPage() {
                 id="benchmark-run-title"
                 className="text-heading-3 font-announce text-text-primary"
               >
-                {run.benchmark_type} run results
+                {run.benchmark_type === "global"
+                  ? "Global benchmark results"
+                  : "Peer comparison results"}
               </h2>
               <button
                 type="button"
@@ -344,15 +350,17 @@ export function GlobalBenchmarkingPage() {
             </header>
             <div>
               <h3 className="mb-2 text-heading-3 font-announce text-text-primary">
-                Narrative
+                Summary
               </h3>
               <p className="whitespace-pre-line text-small text-text-secondary">
-                {run.narrative ?? "No narrative produced."}
+                {run.narrative ?? "No summary is available."}
               </p>
             </div>
             {run.benchmark_type === "global" && run.source_payload && (
-              <div className="rounded-comfy bg-bg-deepest p-3 text-caption text-text-tertiary">
-                <p className="font-signature text-text-secondary">Method and provenance</p>
+              <details className="rounded-comfy bg-bg-deepest p-3 text-caption text-text-tertiary">
+                <summary className="cursor-pointer font-signature text-text-secondary">
+                  Method and source details
+                </summary>
                 <p>
                   {run.source_payload.provider ?? "OpenAlex"} · {run.source_payload.scope?.display_name ?? "Computer Science"}
                   {run.source_payload.retrieved_at ? ` · retrieved ${new Date(run.source_payload.retrieved_at).toLocaleString()}` : ""}
@@ -361,22 +369,33 @@ export function GlobalBenchmarkingPage() {
                   Two highest-output research topics per official subfield; article, review, book, and book-chapter records only. No time-series trend score.
                 </p>
                 {run.source_payload.embedding_model && <p className="mt-1">Embedding model: {run.source_payload.embedding_model}</p>}
-              </div>
+              </details>
             )}
             {run.visualization_payload && (
               <div>
                 <h3 className="mb-2 text-heading-3 font-announce text-text-primary">
-                  UMAP projection
+                  Research Area Overview
                 </h3>
+                <p className="mb-2 text-caption text-text-tertiary">
+                  A two-dimensional view of similarity between research areas.
+                </p>
                 <UmapScatter payload={run.visualization_payload} />
               </div>
             )}
             <div>
               <h3 className="mb-2 text-heading-3 font-announce text-text-primary">
-                {run.benchmark_type === "peer" ? "Candidate coverage evidence" : "Global topic coverage evidence"}
+                {run.benchmark_type === "peer"
+                  ? "Potential Coverage Gaps"
+                  : "Global Topic Coverage"}
               </h3>
               {run.white_spaces.length === 0 ? (
-                <EmptyState text={run.benchmark_type === "peer" ? "No candidate coverage evidence was produced." : "No global topic coverage evidence was produced."} />
+                <EmptyState
+                  text={
+                    run.benchmark_type === "peer"
+                      ? "No potential coverage gaps were identified."
+                      : "No global topic coverage results were produced."
+                  }
+                />
               ) : run.benchmark_type === "peer" ? (
                 <PeerEvidenceList items={run.white_spaces} />
               ) : (
@@ -421,18 +440,22 @@ function GlobalEvidenceList({ items }: { items: BenchmarkWhiteSpace[] }) {
       {ordered.map((item, index) => <li key={`${item.external_source_id}-${index}`} className="py-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="text-body font-signature text-text-primary">{item.domain_label}</span>
-          <span className="text-caption text-text-tertiary">coverage distance {item.displacement_score.toFixed(3)}</span>
+          <span className="text-caption text-status-amber">Pending administrator review</span>
         </div>
         <p className="mt-1 text-caption text-text-tertiary">
-          {item.external_subfield ?? "Computer Science"} · OpenAlex {item.external_source_id ?? "topic"}
+          {item.external_subfield ?? "Computer Science"}
           {item.external_works_count == null ? "" : ` · ${item.external_works_count.toLocaleString()} research outputs`}
         </p>
         {item.source_excerpt && <p className="mt-2 text-small text-text-secondary">{item.source_excerpt}</p>}
-        <dl className="mt-2 grid gap-1 text-caption text-text-tertiary sm:grid-cols-2">
-          <div><dt className="inline">Nearest internal cluster: </dt><dd className="inline text-text-secondary">{item.nearest_cluster_label ?? "Unavailable"}</dd></div>
-          <div><dt className="inline">OpenAlex topic updated: </dt><dd className="inline text-text-secondary">{item.external_updated_date ?? "Unavailable"}</dd></div>
-        </dl>
-        <p className="mt-2 text-caption text-status-amber">Pending administrator review</p>
+        <details className="mt-2 text-caption text-text-tertiary">
+          <summary className="cursor-pointer">Method and source details</summary>
+          <dl className="mt-1 grid gap-1 sm:grid-cols-2">
+            <div><dt className="inline">Raw coverage distance: </dt><dd className="inline text-text-secondary">{item.displacement_score.toFixed(3)}</dd></div>
+            <div><dt className="inline">Nearest internal cluster: </dt><dd className="inline text-text-secondary">{item.nearest_cluster_label ?? "Unavailable"}</dd></div>
+            <div><dt className="inline">OpenAlex source: </dt><dd className="inline text-text-secondary">{item.external_source_id ?? "Unavailable"}</dd></div>
+            <div><dt className="inline">OpenAlex topic updated: </dt><dd className="inline text-text-secondary">{item.external_updated_date ?? "Unavailable"}</dd></div>
+          </dl>
+        </details>
       </li>)}
     </ul>
   </div>;
@@ -451,19 +474,20 @@ function PeerEvidenceList({ items }: { items: BenchmarkWhiteSpace[] }) {
       : a.displacement_score - b.displacement_score;
   });
   const label = (value: BenchmarkWhiteSpace["coverage_classification"]) =>
-    value === "candidate_gap" ? "Candidate gap"
+    value === "candidate_gap" ? "Potential gap"
       : value === "partially_covered" ? "Partially covered"
       : value === "covered" ? "Covered" : "Unclassified";
 
   return <div className="space-y-3">
     <div className="flex flex-wrap items-center justify-between gap-2">
       <p className="text-caption text-text-tertiary">
-        All {items.length} retained segments are shown with equal weight. Classifications use a synthetic-development calibration and require administrator review.
+        All {items.length} selected sections are shown with equal weight. Results
+        are indicative and require administrator review.
       </p>
       <label className="text-caption text-text-secondary">
         Sort{" "}
         <select className="rounded border border-border-secondary bg-bg-deepest p-1" value={sort} onChange={(event) => setSort(event.target.value as typeof sort)}>
-          <option value="gap_first">Candidate gaps first</option>
+          <option value="gap_first">Potential gaps first</option>
           <option value="covered_first">Covered first</option>
           <option value="file">Filename and section</option>
         </select>
@@ -473,7 +497,7 @@ function PeerEvidenceList({ items }: { items: BenchmarkWhiteSpace[] }) {
       {ordered.map((item, index) => <li key={`${item.peer_filename}-${item.detected_section}-${index}`} className="py-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="text-body font-signature text-text-primary">{label(item.coverage_classification)}</span>
-          <span className="text-caption text-text-tertiary">raw distance {item.displacement_score.toFixed(3)}</span>
+          <span className="text-caption text-status-amber">Pending administrator review</span>
         </div>
         <p className="mt-1 text-small text-text-secondary">
           {item.peer_filename} · {item.detected_section}
@@ -481,11 +505,20 @@ function PeerEvidenceList({ items }: { items: BenchmarkWhiteSpace[] }) {
         <p className="mt-2 whitespace-pre-line rounded-comfy bg-bg-deepest p-2 text-caption text-text-secondary">
           {item.source_excerpt}
         </p>
-        <dl className="mt-2 grid gap-1 text-caption text-text-tertiary sm:grid-cols-2">
-          <div><dt className="inline">Nearest staff: </dt><dd className="inline text-text-secondary">{item.nearest_staff_name ?? "Unavailable"}</dd></div>
-          <div><dt className="inline">Nearest cluster: </dt><dd className="inline text-text-secondary">{item.nearest_cluster_label ?? "Unavailable"}{item.nearest_cluster_distance == null ? "" : ` (${item.nearest_cluster_distance.toFixed(3)})`}</dd></div>
-        </dl>
-        <p className="mt-2 text-caption text-status-amber">Pending administrator review</p>
+        <p className="mt-2 text-caption text-text-tertiary">
+          Closest staff expertise:{" "}
+          <span className="text-text-secondary">
+            {item.nearest_staff_name ?? "Unavailable"}
+          </span>
+        </p>
+        <details className="mt-2 text-caption text-text-tertiary">
+          <summary className="cursor-pointer">Method details</summary>
+          <dl className="mt-1 grid gap-1 sm:grid-cols-2">
+            <div><dt className="inline">Raw coverage distance: </dt><dd className="inline text-text-secondary">{item.displacement_score.toFixed(3)}</dd></div>
+            <div><dt className="inline">Nearest cluster: </dt><dd className="inline text-text-secondary">{item.nearest_cluster_label ?? "Unavailable"}{item.nearest_cluster_distance == null ? "" : ` (${item.nearest_cluster_distance.toFixed(3)})`}</dd></div>
+            <div><dt className="inline">Calibration: </dt><dd className="inline text-text-secondary">Synthetic development dataset</dd></div>
+          </dl>
+        </details>
       </li>)}
     </ul>
   </div>;

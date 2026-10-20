@@ -444,7 +444,7 @@ class BenchmarkingService:
             results.append(BenchmarkEvidence(
                 domain_label=cls._peer_label(chunk),
                 displacement_score=staff_distance,
-                recommendation="Candidate coverage evidence; administrator review required.",
+                recommendation="Potential coverage area; administrator review required.",
                 peer_filename=chunk.filename,
                 detected_section=chunk.section,
                 source_excerpt=chunk.excerpt,
