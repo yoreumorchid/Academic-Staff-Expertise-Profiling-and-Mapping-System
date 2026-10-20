@@ -44,9 +44,13 @@ async def search_staff(
             full_name=user.full_name,
             email=user.email,
             department=user.department,
+            phone_number=user.phone_number,
             tag_labels=[
                 link.tag.canonical_label for link in user.expertise_links
             ],
+            has_exportable_data=bool(
+                user.expertise_links or user.publications or user.academic_background
+            ),
         )
         for user in result.users
     ]
@@ -79,6 +83,7 @@ async def get_staff_profile(
         full_name=user.full_name,
         email=user.email,
         department=user.department,
+        phone_number=user.phone_number,
         tag_labels=[
             link.tag.canonical_label for link in user.expertise_links
         ],
@@ -86,6 +91,9 @@ async def get_staff_profile(
         expertise=[
             expertise_link_to_out(link) for link in user.expertise_links
         ],
+        has_exportable_data=bool(
+            user.expertise_links or user.publications or user.academic_background
+        ),
     )
 
 
@@ -99,6 +107,7 @@ async def _load_full_profile(session: AsyncSession, user_id: UUID) -> User:
         .options(
             selectinload(User.expertise_links).selectinload(UserExpertiseTag.tag),
             selectinload(User.publications).selectinload(Publication.abstract),
+            selectinload(User.academic_background),
         )
     )
     user = (await session.execute(stmt)).scalar_one_or_none()

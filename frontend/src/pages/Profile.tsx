@@ -214,6 +214,10 @@ export function ProfileOverviewPage() {
         <dl className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <InfoField label="Full name" value={user.full_name} />
           <InfoField label="Email" value={user.email} />
+          <InfoField
+            label="Phone number"
+            value={user.phone_number ?? "Not provided"}
+          />
           <InfoField label="Department" value={user.department ?? "—"} />
           <InfoField label="Role" value={ROLE_LABELS[user.role] ?? user.role} />
           <InfoField

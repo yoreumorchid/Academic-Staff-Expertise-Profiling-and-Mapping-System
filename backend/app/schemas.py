@@ -37,6 +37,7 @@ PASSWORD_PATTERN = re.compile(
     r".{8,16}$"
 )
 DEPARTMENT_PATTERN = re.compile(r"^(?=.*[A-Za-z]).{2,100}$")
+PHONE_NUMBER_PATTERN = re.compile(r"^\+?[0-9][0-9 ()-]{6,30}[0-9]$")
 
 
 def _validate_um_email(value: str) -> str:
@@ -66,6 +67,18 @@ def _validate_department(value: Optional[str]) -> Optional[str]:
     return v
 
 
+def _validate_phone_number(value: Optional[str]) -> Optional[str]:
+    if value is None:
+        return value
+    v = " ".join(value.split())
+    if not PHONE_NUMBER_PATTERN.fullmatch(v):
+        raise ValueError(
+            "Phone number must contain 8-32 characters using digits, spaces, "
+            "parentheses, hyphens, and an optional leading +."
+        )
+    return v
+
+
 def _normalize_full_name(value: str) -> str:
     v = " ".join(value.split())  # collapse interior whitespace
     if not (1 <= len(v) <= 161):  # 80+1+80
@@ -90,6 +103,7 @@ class RegisterRequest(BaseModel):
     password: str = Field(min_length=8, max_length=128)
     role: UserRole
     department: Optional[str] = Field(default=None, max_length=255)
+    phone_number: Optional[str] = Field(default=None, max_length=32)
     orcid_id: Optional[str] = Field(default=None, min_length=19, max_length=19)
     portfolio: Optional[PortfolioType] = None
 
@@ -113,6 +127,11 @@ class RegisterRequest(BaseModel):
     def _check_department(cls, v: Optional[str]) -> Optional[str]:
         return _validate_department(v)
 
+    @field_validator("phone_number")
+    @classmethod
+    def _check_phone_number(cls, v: Optional[str]) -> Optional[str]:
+        return _validate_phone_number(v)
+
     @field_validator("orcid_id")
     @classmethod
     def _check_orcid(cls, v: Optional[str]) -> Optional[str]:
@@ -130,6 +149,8 @@ class RegisterRequest(BaseModel):
                 raise ValueError("Academic Staff registration requires an ORCID ID.")
             if not self.department:
                 raise ValueError("Academic Staff registration requires a department.")
+            if not self.phone_number:
+                raise ValueError("Academic Staff registration requires a phone number.")
         # UC-1 Step 4.2: Faculty Administrator MUST select a portfolio.
         if self.role == UserRole.FACULTY_ADMINISTRATOR and self.portfolio is None:
             raise ValueError("Faculty Administrator registration requires a portfolio.")
@@ -137,10 +158,10 @@ class RegisterRequest(BaseModel):
         if (
             self.role == UserRole.FACULTY_ADMINISTRATOR
             and self.orcid_id
-            and not self.department
+            and (not self.department or not self.phone_number)
         ):
             raise ValueError(
-                "Department is required when providing an ORCID as a Faculty Administrator."
+                "Department and phone number are required when providing an ORCID as a Faculty Administrator."
             )
         return self
 
@@ -164,6 +185,7 @@ class PendingRegistrationOut(_ORM):
     email: EmailStr
     role: UserRole
     department: Optional[str]
+    phone_number: Optional[str]
     portfolios: List["PortfolioOut"]
     orcid_id: Optional[str] = None
     created_at: datetime
@@ -249,6 +271,7 @@ class CurrentUserOut(_ORM):
     role: UserRole
     status: AccountStatus
     department: Optional[str]
+    phone_number: Optional[str]
     is_dual_role: bool
     portfolios: List[PortfolioOut]
     orcid_id: Optional[str] = None
@@ -468,7 +491,9 @@ class StaffDirectoryEntry(_ORM):
     full_name: str
     email: EmailStr
     department: Optional[str]
+    phone_number: Optional[str]
     tag_labels: List[str]
+    has_exportable_data: bool
 
 
 class StaffDirectoryPage(BaseModel):

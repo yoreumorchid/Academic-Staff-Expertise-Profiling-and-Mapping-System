@@ -35,6 +35,7 @@ def test_first_login_sync_trigger(
         role=UserRole.ACADEMIC_STAFF,
         status=AccountStatus.ACTIVE,
         department="Computer Science",
+        phone_number="+60 12-345 6789",
         is_dual_role=False,
         portfolios=[],
         orcid_profile=(

@@ -23,6 +23,7 @@ def _to_pending(user: User) -> PendingRegistrationOut:
         email=user.email,
         role=user.role,
         department=user.department,
+        phone_number=user.phone_number,
         portfolios=[PortfolioOut.model_validate(p) for p in user.portfolios],
         orcid_id=user.orcid_profile.orcid_id if user.orcid_profile else None,
         created_at=user.created_at,

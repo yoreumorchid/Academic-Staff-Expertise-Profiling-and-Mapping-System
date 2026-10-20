@@ -139,6 +139,7 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     full_name: Mapped[str] = mapped_column(String(255), nullable=False)
     email: Mapped[str] = mapped_column(String(320), nullable=False)
+    phone_number: Mapped[Optional[str]] = mapped_column(String(32))
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[UserRole] = mapped_column(Enum(UserRole, name="user_role"), nullable=False)
     status: Mapped[AccountStatus] = mapped_column(

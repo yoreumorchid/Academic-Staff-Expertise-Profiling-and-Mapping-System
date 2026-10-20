@@ -24,6 +24,7 @@ export interface CurrentUser {
   role: UserRole;
   status: AccountStatus;
   department: string | null;
+  phone_number: string | null;
   is_dual_role: boolean;
   portfolios: Portfolio[];
   orcid_id: string | null;
@@ -164,7 +165,9 @@ export interface StaffDirectoryEntry {
   full_name: string;
   email: string;
   department: string | null;
+  phone_number: string | null;
   tag_labels: string[];
+  has_exportable_data: boolean;
 }
 
 export interface StaffDirectoryPage {

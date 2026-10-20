@@ -130,7 +130,9 @@ async def search_staff(
         select(User)
         .where(*filters)
         .options(
-            selectinload(User.expertise_links).selectinload(UserExpertiseTag.tag)
+            selectinload(User.expertise_links).selectinload(UserExpertiseTag.tag),
+            selectinload(User.publications),
+            selectinload(User.academic_background),
         )
         .order_by(func.lower(User.full_name), User.id)
         .limit(query.page_size)

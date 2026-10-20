@@ -48,9 +48,11 @@ export function StaffDirectoryPage() {
   const [filter, setFilter] = useState<StaffSearchCategory>("all");
   const [rows, setRows] = useState<StaffDirectoryEntry[]>([]);
   const [openProfile, setOpenProfile] = useState<StaffProfileDetail | null>(null);
+  const [copiedEmail, setCopiedEmail] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [syncBusy, setSyncBusy] = useState(false);
+  const [cvBusy, setCvBusy] = useState<string | null>(null);
   const [pendingSyncTargetId, setPendingSyncTargetId] = useState<string | null>(
     null,
   );
@@ -96,11 +98,52 @@ export function StaffDirectoryPage() {
 
   async function openStaff(id: string) {
     setError(null);
+    setCopiedEmail(null);
     try {
       const { data } = await api.get<StaffProfileDetail>(`/profile/staff/${id}`);
       setOpenProfile(data);
     } catch (err) {
       setError(extractApiError(err, "Could not load staff profile."));
+    }
+  }
+
+  async function copyEmail(email: string) {
+    try {
+      await navigator.clipboard.writeText(email);
+      setCopiedEmail(email);
+    } catch {
+      setError("Could not copy the email address. Please copy it manually.");
+    }
+  }
+
+  async function generateCv(row: StaffDirectoryEntry) {
+    if (!row.has_exportable_data || cvBusy) return;
+    setCvBusy(row.id);
+    setError(null);
+    try {
+      const response = await api.post(
+        `/export/staff/${row.id}/snapshot`,
+        {
+          include_tag_ids: [],
+          include_publication_ids: [],
+          include_background_ids: [],
+          format: "pdf",
+          use_defaults: true,
+        },
+        { responseType: "blob" },
+      );
+      const url = URL.createObjectURL(
+        new Blob([response.data], { type: "application/pdf" }),
+      );
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${row.full_name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-one-page-cv.pdf`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(extractApiError(err, "Could not generate the one-page CV."));
+    } finally {
+      setCvBusy(null);
     }
   }
 
@@ -273,17 +316,26 @@ export function StaffDirectoryPage() {
             <EmptyState text="No matching staff." />
           </div>
         ) : viewMode === "individual" ? (
-          <IndividualGrid rows={rows} onOpen={openStaff} />
+          <IndividualGrid
+            rows={rows}
+            onOpen={openStaff}
+            onGenerateCv={generateCv}
+            cvBusy={cvBusy}
+          />
         ) : viewMode === "department" ? (
           <GroupList
             groups={groupedByDepartment}
             onOpen={openStaff}
+            onGenerateCv={generateCv}
+            cvBusy={cvBusy}
             groupLabel="Department"
           />
         ) : (
           <GroupList
             groups={groupedByExpertise}
             onOpen={openStaff}
+            onGenerateCv={generateCv}
+            cvBusy={cvBusy}
             groupLabel="Cluster"
           />
         )}
@@ -326,7 +378,7 @@ export function StaffDirectoryPage() {
             if (e.target === e.currentTarget) setOpenProfile(null);
           }}
         >
-          <section className="card w-full max-w-2xl max-h-[80vh] overflow-y-auto space-y-4 shadow-floating">
+          <section className="card w-full max-w-3xl max-h-[85vh] overflow-y-auto space-y-6 shadow-floating">
             <header className="flex items-start justify-between gap-4">
               <div>
                 <h2
@@ -335,8 +387,8 @@ export function StaffDirectoryPage() {
                 >
                   {openProfile.full_name}
                 </h2>
-                <p className="text-caption text-text-tertiary">
-                  {openProfile.department ?? "Department n/a"} · {openProfile.email}
+                <p className="mt-1 text-caption text-text-tertiary">
+                  Academic staff profile
                 </p>
               </div>
               <div className="flex gap-2">
@@ -362,6 +414,39 @@ export function StaffDirectoryPage() {
                 </button>
               </div>
             </header>
+
+            <section className="rounded-comfy border border-border-secondary bg-bg-surface p-4">
+              <div className="mb-3 text-caption uppercase tracking-wide text-text-quaternary">
+                Contact &amp; affiliation
+              </div>
+              <div className="space-y-3">
+                <ContactLine
+                  kind="department"
+                  label="Department"
+                  value={openProfile.department ?? "Not provided"}
+                />
+                <ContactLine
+                  kind="email"
+                  label="Email"
+                  value={openProfile.email}
+                  action={
+                    <button
+                      type="button"
+                      className="rounded-comfy border border-border-primary bg-white px-2.5 py-1 text-label font-signature text-brand-green transition-colors hover:bg-bg-secondary"
+                      onClick={() => void copyEmail(openProfile.email)}
+                      aria-label={`Copy ${openProfile.email}`}
+                    >
+                      {copiedEmail === openProfile.email ? "Copied" : "Copy"}
+                    </button>
+                  }
+                />
+                <ContactLine
+                  kind="phone"
+                  label="Phone number"
+                  value={openProfile.phone_number ?? "Not provided"}
+                />
+              </div>
+            </section>
 
             <div>
               <div className="mb-2 text-caption uppercase tracking-wide text-text-quaternary">
@@ -411,54 +496,172 @@ export function StaffDirectoryPage() {
 // View-By renderers
 // ---------------------------------------------------------------------------
 
+type ContactKind = "department" | "email" | "phone";
+
+function ContactIcon({ kind }: { kind: ContactKind }) {
+  const common = {
+    width: 18,
+    height: 18,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.8,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true,
+  };
+
+  if (kind === "department") {
+    return (
+      <svg {...common}>
+        <path d="M3 21h18M5 21V7l7-4 7 4v14M9 10h1M14 10h1M9 14h1M14 14h1M10 21v-3h4v3" />
+      </svg>
+    );
+  }
+  if (kind === "email") {
+    return (
+      <svg {...common}>
+        <rect x="3" y="5" width="18" height="14" rx="2" />
+        <path d="m3 7 9 6 9-6" />
+      </svg>
+    );
+  }
+  return (
+    <svg {...common}>
+      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.9.33 1.78.62 2.63a2 2 0 0 1-.45 2.11L8 9.73a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.85.29 1.73.5 2.63.62A2 2 0 0 1 22 16.92Z" />
+    </svg>
+  );
+}
+
+function ContactLine({
+  kind,
+  label,
+  value,
+  action,
+}: {
+  kind: ContactKind;
+  label: string;
+  value: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="flex min-w-0 items-center gap-3">
+      <span className="shrink-0 text-brand-green" aria-hidden="true">
+        <ContactIcon kind={kind} />
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="text-label uppercase tracking-wide text-text-quaternary">
+          {label}
+        </div>
+        <div className="break-words text-small text-text-secondary">{value}</div>
+      </div>
+      {action}
+    </div>
+  );
+}
+
 function StaffCard({
   row,
   onOpen,
+  onGenerateCv,
+  cvBusy,
 }: {
   row: StaffDirectoryEntry;
   onOpen: (id: string) => void;
+  onGenerateCv: (row: StaffDirectoryEntry) => void;
+  cvBusy: string | null;
 }) {
   return (
-    <button
-      type="button"
-      onClick={() => onOpen(row.id)}
-      className="card flex w-full flex-col items-start gap-2 text-left transition-shadow hover:shadow-floating"
+    <article
+      className="card flex min-h-72 w-full flex-col items-stretch gap-4 transition-shadow hover:shadow-floating"
     >
-      <div>
-        <div className="text-body text-text-primary">{row.full_name}</div>
-        <div className="text-caption text-text-tertiary">
-          {row.department ?? "Department n/a"} · {row.email}
+      <div className="border-b border-border-secondary pb-3">
+        <div className="text-heading-3 font-announce text-text-primary">
+          {row.full_name}
+        </div>
+        <div className="mt-1 text-label uppercase tracking-wide text-brand-green">
+          Academic staff
         </div>
       </div>
+      <div className="space-y-3">
+        <ContactLine
+          kind="department"
+          label="Department"
+          value={row.department ?? "Not provided"}
+        />
+        <ContactLine kind="email" label="Email" value={row.email} />
+        <ContactLine
+          kind="phone"
+          label="Phone number"
+          value={row.phone_number ?? "Not provided"}
+        />
+      </div>
       {row.tag_labels.length > 0 && (
-        <div className="flex flex-wrap gap-1">
-          {row.tag_labels.slice(0, 6).map((t) => (
-            <span key={t} className="pill">
-              {t}
-            </span>
-          ))}
-          {row.tag_labels.length > 6 && (
-            <span className="text-caption text-text-quaternary">
-              +{row.tag_labels.length - 6}
-            </span>
-          )}
+        <div className="border-t border-border-secondary pt-3">
+          <div className="mb-2 text-label uppercase tracking-wide text-text-quaternary">
+            Expertise highlights
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {row.tag_labels.slice(0, 6).map((t) => (
+              <span key={t} className="pill">
+                {t}
+              </span>
+            ))}
+            {row.tag_labels.length > 6 && (
+              <span className="text-caption text-text-quaternary">
+                +{row.tag_labels.length - 6}
+              </span>
+            )}
+          </div>
         </div>
       )}
-    </button>
+      <div className="mt-auto flex flex-wrap justify-end gap-2 pt-1">
+        <button
+          type="button"
+          className="btn-primary"
+          onClick={() => onGenerateCv(row)}
+          disabled={!row.has_exportable_data || cvBusy !== null}
+          title={
+            row.has_exportable_data
+              ? "Generate this staff member's one-page CV as a PDF."
+              : "This profile has no expertise, publications, or academic background to export yet."
+          }
+        >
+          {cvBusy === row.id ? "Generating…" : "View One-page CV"}
+        </button>
+        <button
+          type="button"
+          className="btn-ghost"
+          onClick={() => onOpen(row.id)}
+        >
+          View Profile
+        </button>
+      </div>
+    </article>
   );
 }
 
 function IndividualGrid({
   rows,
   onOpen,
+  onGenerateCv,
+  cvBusy,
 }: {
   rows: StaffDirectoryEntry[];
   onOpen: (id: string) => void;
+  onGenerateCv: (row: StaffDirectoryEntry) => void;
+  cvBusy: string | null;
 }) {
   return (
-    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
       {rows.map((r) => (
-        <StaffCard key={r.id} row={r} onOpen={onOpen} />
+        <StaffCard
+          key={r.id}
+          row={r}
+          onOpen={onOpen}
+          onGenerateCv={onGenerateCv}
+          cvBusy={cvBusy}
+        />
       ))}
     </div>
   );
@@ -467,10 +670,14 @@ function IndividualGrid({
 function GroupList({
   groups,
   onOpen,
+  onGenerateCv,
+  cvBusy,
   groupLabel,
 }: {
   groups: [string, StaffDirectoryEntry[]][];
   onOpen: (id: string) => void;
+  onGenerateCv: (row: StaffDirectoryEntry) => void;
+  cvBusy: string | null;
   groupLabel: string;
 }) {
   return (
@@ -488,9 +695,15 @@ function GroupList({
             </div>
             <span className="pill">{members.length} staff</span>
           </header>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             {members.map((m) => (
-              <StaffCard key={m.id + key} row={m} onOpen={onOpen} />
+              <StaffCard
+                key={m.id + key}
+                row={m}
+                onOpen={onOpen}
+                onGenerateCv={onGenerateCv}
+                cvBusy={cvBusy}
+              />
             ))}
           </div>
         </section>

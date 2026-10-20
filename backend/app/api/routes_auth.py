@@ -34,6 +34,7 @@ def _to_current_user_out(user: User) -> CurrentUserOut:
         role=user.role,
         status=user.status,
         department=user.department,
+        phone_number=user.phone_number,
         is_dual_role=user.is_dual_role,
         portfolios=[PortfolioOut.model_validate(p) for p in user.portfolios],
         orcid_id=user.orcid_profile.orcid_id if user.orcid_profile else None,

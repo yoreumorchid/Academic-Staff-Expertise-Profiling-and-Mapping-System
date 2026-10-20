@@ -27,6 +27,7 @@ interface PendingRegistration {
   email: string;
   role: string;
   department: string | null;
+  phone_number: string | null;
   orcid_id: string | null;
   portfolios: { portfolio_type: string }[];
   created_at: string;
@@ -153,6 +154,16 @@ export function PendingRegistrationsPage() {
                           </dd>
                         </div>
                       )}
+                      {row.phone_number && (
+                        <div className="flex gap-2">
+                          <dt className="w-24 text-caption text-text-quaternary">
+                            Phone
+                          </dt>
+                          <dd className="text-text-secondary">
+                            {row.phone_number}
+                          </dd>
+                        </div>
+                      )}
                       {row.orcid_id && (
                         <div className="flex gap-2">
                           <dt className="w-24 text-caption text-text-quaternary">
@@ -176,6 +187,7 @@ export function PendingRegistrationsPage() {
                         </div>
                       )}
                       {!row.department &&
+                        !row.phone_number &&
                         !row.orcid_id &&
                         row.portfolios.length === 0 && (
                           <span className="text-caption text-text-quaternary">

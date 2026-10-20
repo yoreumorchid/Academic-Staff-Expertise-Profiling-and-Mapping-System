@@ -46,6 +46,7 @@ function AuthShell({
 const UM_EMAIL_PATTERN = /^[A-Za-z0-9._%+-]+@(um\.edu\.my|siswa\.um\.edu\.my)$/;
 const PASSWORD_PATTERN =
   /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>/?`~]).{8,16}$/;
+const PHONE_NUMBER_PATTERN = /^\+?[0-9][0-9 ()-]{6,30}[0-9]$/;
 
 function validateUmEmail(value: string): string | null {
   return UM_EMAIL_PATTERN.test(value.trim())
@@ -68,6 +69,12 @@ function validateDepartment(value: string): string | null {
     return "Department must contain alphabetic characters.";
   }
   return null;
+}
+
+function validatePhoneNumber(value: string): string | null {
+  return PHONE_NUMBER_PATTERN.test(value.trim())
+    ? null
+    : "Phone number must use 8-32 characters: digits, spaces, parentheses, hyphens, and an optional leading +.";
 }
 
 function validateName(value: string, field: string): string | null {
@@ -189,6 +196,7 @@ export function RegisterPage() {
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<UserRole>("academic_staff");
   const [department, setDepartment] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [orcidId, setOrcidId] = useState("");
   const [portfolio, setPortfolio] = useState<PortfolioType>("faculty_manager");
   const [error, setError] = useState<string | null>(null);
@@ -215,6 +223,8 @@ export function RegisterPage() {
     if (role === "academic_staff") {
       const dErr = validateDepartment(department);
       if (dErr) return setError(dErr);
+      const phoneErr = validatePhoneNumber(phoneNumber);
+      if (phoneErr) return setError(phoneErr);
       if (!/^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$/.test(orcidId)) {
         return setError("ORCID ID must match the format 0000-0000-0000-0000.");
       }
@@ -225,6 +235,8 @@ export function RegisterPage() {
       }
       const dErr = validateDepartment(department);
       if (dErr) return setError(dErr);
+      const phoneErr = validatePhoneNumber(phoneNumber);
+      if (phoneErr) return setError(phoneErr);
     }
 
     setLoading(true);
@@ -237,12 +249,14 @@ export function RegisterPage() {
       };
       if (role === "academic_staff") {
         payload.department = department.trim();
+        payload.phone_number = phoneNumber.trim();
         payload.orcid_id = orcidId;
       } else {
         payload.portfolio = portfolio;
         if (orcidId) {
           payload.orcid_id = orcidId;
           if (department) payload.department = department.trim();
+          payload.phone_number = phoneNumber.trim();
         }
       }
       await api.post("/auth/register", payload);
@@ -369,8 +383,25 @@ export function RegisterPage() {
               />
             </div>
             <div>
+              <label className="label" htmlFor="phone_number">
+                Phone number
+              </label>
+              <input
+                id="phone_number"
+                type="tel"
+                className="input"
+                placeholder="+60 12-345 6789"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                minLength={8}
+                maxLength={32}
+                autoComplete="tel"
+                required
+              />
+            </div>
+            <div>
               <label className="label" htmlFor="orcid">
-                ORCID ID (Fill in if you also have academic publications)
+                ORCID ID
               </label>
               <input
                 id="orcid"
@@ -418,20 +449,40 @@ export function RegisterPage() {
               />
             </div>
             {orcidId && (
-              <div>
-                <label className="label" htmlFor="department_optional">
-                  Department (required when ORCID provided)
-                </label>
-                <input
-                  id="department_optional"
-                  type="text"
-                  className="input"
-                  value={department}
-                  onChange={(e) => setDepartment(e.target.value)}
-                  minLength={2}
-                  maxLength={100}
-                />
-              </div>
+              <>
+                <div>
+                  <label className="label" htmlFor="department_optional">
+                    Department (required when ORCID provided)
+                  </label>
+                  <input
+                    id="department_optional"
+                    type="text"
+                    className="input"
+                    value={department}
+                    onChange={(e) => setDepartment(e.target.value)}
+                    minLength={2}
+                    maxLength={100}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="label" htmlFor="phone_number_optional">
+                    Phone number (required when ORCID provided)
+                  </label>
+                  <input
+                    id="phone_number_optional"
+                    type="tel"
+                    className="input"
+                    placeholder="+60 12-345 6789"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    minLength={8}
+                    maxLength={32}
+                    autoComplete="tel"
+                    required
+                  />
+                </div>
+              </>
             )}
           </>
         )}

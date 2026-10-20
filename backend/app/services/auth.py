@@ -104,6 +104,7 @@ class AuthService:
             role=payload.role,
             status=AccountStatus.PENDING,
             department=payload.department,
+            phone_number=payload.phone_number,
             is_dual_role=is_dual_role,
         )
         self._session.add(user)

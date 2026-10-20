@@ -132,7 +132,7 @@ class ExportService:
     def _default_background(user: User) -> List[AcademicBackground]:
         return sorted(
             user.academic_background,
-            key=lambda b: b.start_date,
+            key=lambda b: b.start_date or date.min,
             reverse=True,
         )[:5]
 
